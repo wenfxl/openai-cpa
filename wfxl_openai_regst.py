@@ -18,6 +18,7 @@ from typing import Any, Dict, Optional, Tuple
 import urllib.parse
 from urllib.parse import urlparse, parse_qs, quote
 from html import unescape
+from concurrent.futures import ThreadPoolExecutor
 
 import imaplib
 import socks
@@ -85,6 +86,7 @@ BATCH_REG_COUNT = _cpa.get("batch_reg_count", 1)
 MIN_REMAINING_WEEKLY_PERCENT = _cpa.get("min_remaining_weekly_percent", 80)
 REMOVE_ON_LIMIT_REACHED = _cpa.get("remove_on_limit_reached", False)
 REMOVE_DEAD_ACCOUNTS = _cpa.get("remove_dead_accounts", False)
+CPA_THREADS = _cpa.get("threads", 10)
 CHECK_INTERVAL_MINUTES = _cpa.get("check_interval_minutes", 60)
 
 _normal = _c.get("normal_mode", {})
@@ -1503,6 +1505,122 @@ def test_cliproxy_auth_file(item: dict, api_url: str, api_token: str) -> Tuple[b
     except Exception: 
         return False, "测活超时"
 
+def process_account_worker(i: int, total: int, item: dict, args: Any) -> bool:
+    """多线程处理单个账号的测活与状态流转"""
+    name = item.get("name")
+    is_disabled = item.get("disabled", False) 
+    
+    is_ok, msg = test_cliproxy_auth_file(item, CPA_API_URL, CPA_API_TOKEN)
+    
+    if is_ok:
+        if is_disabled:
+            print(f"[{ts()}] [INFO] 测活: {mask_email(name)} 额度已恢复且有效，准备启用...")
+            if set_cpa_auth_file_status(CPA_API_URL, CPA_API_TOKEN, name, disabled=False):
+                print(f"[{ts()}] [SUCCESS] 凭证 {mask_email(name)} 已成功启用！")
+                return True
+            else:
+                print(f"[{ts()}] [ERROR] 凭证 {mask_email(name)} 启用失败。")
+                return False
+        else:
+            print(f"[{ts()}] [INFO] 测活: {mask_email(name)} 状态健康")
+            return True
+            
+    else:
+        print(f"[{ts()}] [WARNING] 测活: 凭证 {mask_email(name)} 失效，原因: {msg}")
+        
+        if "周限额" in msg or "usage_limit_reached" in msg:
+            if REMOVE_ON_LIMIT_REACHED:
+                print(f"[{ts()}] [INFO] 触发限额剔除规则，执行物理剔除...")
+                requests.delete(
+                    _normalize_cpa_auth_files_url(CPA_API_URL), 
+                    headers={"Authorization": f"Bearer {CPA_API_TOKEN}"}, 
+                    params={"name": name}
+                )
+            else:
+                if not is_disabled:
+                    print(f"[{ts()}] [INFO] 测活: 凭证额度耗尽或低于设定值，正在将其状态设置为 [禁用]...")
+                    if set_cpa_auth_file_status(CPA_API_URL, CPA_API_TOKEN, name, disabled=True):
+                        print(f"[{ts()}] [SUCCESS] 测活: 凭证 {mask_email(name)} 已成功禁用，等待额度重置。")
+                    else:
+                        print(f"[{ts()}] [ERROR] 测活: 凭证 {mask_email(name)} 禁用失败！")
+                else:
+                    print(f"[{ts()}] [INFO] 测活: 账号额度尚未恢复，继续保持禁用状态。")
+            return False
+            
+        print(f"[{ts()}] [INFO] 测活: 凭证 {mask_email(name)} 准备尝试刷新 Token 复活...")
+        refresh_success = False
+        
+        is_runtime_only = item.get("runtime_only", False)
+        source_type = item.get("source", "")
+        
+        if is_runtime_only or source_type == "memory":
+            print(f"[{ts()}] [WARNING] {mask_email(name)} 属于纯内存凭据，跳过抢救。")
+            full_item_data = {}
+        else:
+            try:
+                base_auth_url = _normalize_cpa_auth_files_url(CPA_API_URL)
+                download_url = f"{base_auth_url}/download"
+                content_resp = requests.get(
+                    download_url, 
+                    params={"name": name}, 
+                    headers={"Authorization": f"Bearer {CPA_API_TOKEN}"}, 
+                    timeout=20
+                )
+                if content_resp.status_code == 200:
+                    full_item_data = content_resp.json()
+                else:
+                    print(f"[{ts()}] [ERROR] 获取 {mask_email(name)} 完整内容失败 (HTTP {content_resp.status_code})")
+                    full_item_data = {}
+            except Exception as e:
+                print(f"[{ts()}] [ERROR] 获取 {mask_email(name)} 完整内容异常: {e}")
+                full_item_data = {}
+
+        refresh_token = full_item_data.get("refresh_token")
+        
+        if refresh_token:
+            proxies = {"http": args.proxy, "https": args.proxy} if args.proxy else None
+            ok, new_tokens = refresh_oauth_token(refresh_token, proxies=proxies)
+            
+            if ok:
+                print(f"[{ts()}] [INFO] {mask_email(name)} Token 刷新成功，正在同步至CPA...")
+                full_item_data.update(new_tokens)
+                if "email" not in full_item_data:
+                    full_item_data["email"] = name.replace(".json", "")
+                
+                up_ok, up_msg = upload_to_cpa_integrated(full_item_data, CPA_API_URL, CPA_API_TOKEN, custom_filename=name)
+                if up_ok:
+                    time.sleep(3)
+                    is_ok2, msg2 = test_cliproxy_auth_file(item, CPA_API_URL, CPA_API_TOKEN)
+                    if is_ok2:
+                        refresh_success = True
+                        print(f"[{ts()}] [SUCCESS] 测活: {mask_email(name)} 刷新后复活成功！")
+                    else:
+                        print(f"[{ts()}] [WARNING] {mask_email(name)} 刷新后二次测活依然失败({msg2})")
+                else:
+                    print(f"[{ts()}] [ERROR] 刷新后覆盖CPA失败: {up_msg}")
+            else:
+                print(f"[{ts()}] [WARNING] {mask_email(name)} Token 复活请求被拒绝: {new_tokens.get('error', '未知错误')}")
+        else:
+            print(f"[{ts()}] [WARNING] {mask_email(name)} 未找到有效数据，无法抢救")
+        
+        if not refresh_success:
+            if REMOVE_DEAD_ACCOUNTS:
+                print(f"[{ts()}] [WARNING] 测活: 凭证 {mask_email(name)} 彻底死亡，执行物理剔除...")
+                requests.delete(
+                    _normalize_cpa_auth_files_url(CPA_API_URL), 
+                    headers={"Authorization": f"Bearer {CPA_API_TOKEN}"}, 
+                    params={"name": name}
+                )
+            else:
+                if not is_disabled:
+                    print(f"[{ts()}] [INFO] 测活: 凭证 {mask_email(name)} ，根据配置保留不删除，正在将其(禁用)...")
+                    if set_cpa_auth_file_status(CPA_API_URL, CPA_API_TOKEN, name, disabled=True):
+                        print(f"[{ts()}] [SUCCESS] 测活: 死亡凭证 {mask_email(name)} 已成功禁用。")
+                else:
+                    print(f"[{ts()}] [WARNING] 测活: 凭证 {mask_email(name)} 已死亡，当前已是禁用状态，根据配置保留不删除。")
+        return refresh_success
+
+
 async def cpa_main_loop(args):
     """CPA 智能仓管模式 (测活、清理、补货、上传一体化)"""
     print("=" * 60)
@@ -1522,123 +1640,15 @@ async def cpa_main_loop(args):
             )
             all_files = res.json().get("files", [])
             codex_files = [f for f in all_files if "codex" in str(f.get("type","")).lower() or "codex" in str(f.get("provider","")).lower()]
-            
-            valid_count = 0
-            for i, item in enumerate(codex_files, 1):
-                name = item.get("name")
-                is_disabled = item.get("disabled", False) 
-                
-                is_ok, msg = test_cliproxy_auth_file(item, CPA_API_URL, CPA_API_TOKEN)
-                
-                if is_ok:
-                    if is_disabled:
-                        print(f"[{ts()}] [INFO] 测活 [{i}/{len(codex_files)}]: {mask_email(name)} 额度已恢复且有效，准备启用...")
-                        if set_cpa_auth_file_status(CPA_API_URL, CPA_API_TOKEN, name, disabled=False):
-                            print(f"[{ts()}] [SUCCESS] 凭证 {mask_email(name)} 已成功启用！")
-                            valid_count += 1
-                        else:
-                            print(f"[{ts()}] [ERROR] 凭证 {mask_email(name)} 启用失败。")
-                    else:
-                        valid_count += 1
-                        print(f"[{ts()}] [INFO] 测活 [{i}/{len(codex_files)}]: {mask_email(name)} 状态健康")
-                
-                else:
-                    print(f"[{ts()}] [WARNING] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} 失效，原因: {msg}")
-                    
-                    if "周限额" in msg or "usage_limit_reached" in msg:
-                        if REMOVE_ON_LIMIT_REACHED:
-                            print(f"[{ts()}] [INFO] 触发限额剔除规则，执行物理剔除...")
-                            requests.delete(
-                                _normalize_cpa_auth_files_url(CPA_API_URL), 
-                                headers={"Authorization": f"Bearer {CPA_API_TOKEN}"}, 
-                                params={"name": name}
-                            )
-                        else:
-                            if not is_disabled:
-                                print(f"[{ts()}] [INFO] 测活 [{i}/{len(codex_files)}]: 凭证额度耗尽或低于设定值，正在将其状态设置为 [禁用]...")
-                                if set_cpa_auth_file_status(CPA_API_URL, CPA_API_TOKEN, name, disabled=True):
-                                    print(f"[{ts()}] [SUCCESS] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} 已成功禁用，等待额度重置。")
-                                else:
-                                    print(f"[{ts()}] [ERROR] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} 禁用失败！")
-                            else:
-                                print(f"[{ts()}] [INFO] 测活 [{i}/{len(codex_files)}]: 账号额度尚未恢复，继续保持禁用状态。")
-                        continue
-                
-                    print(f"[{ts()}] [INFO] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} 准备尝试刷新 Token 复活...")
-                    refresh_success = False
-                    
-                    is_runtime_only = item.get("runtime_only", False)
-                    source_type = item.get("source", "")
-                    
-                    if is_runtime_only or source_type == "memory":
-                        print(f"[{ts()}] [WARNING] {mask_email(name)} 属于纯内存凭据，跳过抢救。")
-                        full_item_data = {}
-                    else:
-                        try:
-                            base_auth_url = _normalize_cpa_auth_files_url(CPA_API_URL)
-                            download_url = f"{base_auth_url}/download"
-                            content_resp = requests.get(
-                                download_url, 
-                                params={"name": name}, 
-                                headers={"Authorization": f"Bearer {CPA_API_TOKEN}"}, 
-                                timeout=20
-                            )
-                            if content_resp.status_code == 200:
-                                full_item_data = content_resp.json()
-                            else:
-                                print(f"[{ts()}] [ERROR] 获取 {mask_email(name)} 完整内容失败 (HTTP {content_resp.status_code})")
-                                full_item_data = {}
-                        except Exception as e:
-                            print(f"[{ts()}] [ERROR] 获取 {mask_email(name)} 完整内容异常: {e}")
-                            full_item_data = {}
-
-                    refresh_token = full_item_data.get("refresh_token")
-                    
-                    if refresh_token:
-                        proxies = {"http": args.proxy, "https": args.proxy} if args.proxy else None
-                        
-                        ok, new_tokens = refresh_oauth_token(refresh_token, proxies=proxies)
-                        
-                        if ok:
-                            print(f"[{ts()}] [INFO] {mask_email(name)} Token 刷新成功，正在同步至CPA...")
-                            full_item_data.update(new_tokens)
-                            if "email" not in full_item_data:
-                                full_item_data["email"] = name.replace(".json", "")
-                            
-                            up_ok, up_msg = upload_to_cpa_integrated(full_item_data, CPA_API_URL, CPA_API_TOKEN, custom_filename=name)
-                            if up_ok:
-                                time.sleep(3)
-                                
-                                is_ok2, msg2 = test_cliproxy_auth_file(item, CPA_API_URL, CPA_API_TOKEN)
-                                if is_ok2:
-                                    valid_count += 1
-                                    refresh_success = True
-                                    print(f"[{ts()}] [SUCCESS] 测活 [{i}/{len(codex_files)}]: {mask_email(name)} 刷新后复活成功！")
-                                else:
-                                    print(f"[{ts()}] [WARNING] {mask_email(name)} 刷新后二次测活依然失败({msg2})")
-                            else:
-                                print(f"[{ts()}] [ERROR] 刷新后覆盖CPA失败: {up_msg}")
-                        else:
-                            print(f"[{ts()}] [WARNING] {mask_email(name)} Token 复活请求被拒绝: {new_tokens.get('error', '未知错误')}")
-                    else:
-                        print(f"[{ts()}] [WARNING] {mask_email(name)} 未找到有效数据，无法抢救")
-                    
-                    if not refresh_success:
-                        if REMOVE_DEAD_ACCOUNTS:
-                            print(f"[{ts()}] [WARNING] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} 彻底死亡，执行物理剔除...")
-                            requests.delete(
-                                _normalize_cpa_auth_files_url(CPA_API_URL), 
-                                headers={"Authorization": f"Bearer {CPA_API_TOKEN}"}, 
-                                params={"name": name}
-                            )
-                        else:
-                            if not is_disabled:
-                                print(f"[{ts()}] [INFO] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} ，根据配置保留不删除，正在将其(禁用)...")
-                                if set_cpa_auth_file_status(CPA_API_URL, CPA_API_TOKEN, name, disabled=True):
-                                    print(f"[{ts()}] [SUCCESS] 测活 [{i}/{len(codex_files)}]: 死亡凭证 {mask_email(name)} 已成功禁用。")
-                            else:
-                                print(f"[{ts()}] 测活 [{i}/{len(codex_files)}]: 凭证 {mask_email(name)} 已死亡，当前已是禁用状态，根据配置保留不删除。")
-                                
+            total_files = len(codex_files)
+            with ThreadPoolExecutor(max_workers=CPA_THREADS) as executor:
+                futures = []
+                for i, item in enumerate(codex_files, 1):
+                    futures.append(
+                        loop.run_in_executor(executor, process_account_worker, i, total_files, item, args)
+                    )
+                results = await asyncio.gather(*futures)
+            valid_count = sum(1 for is_valid in results if is_valid)
             print(f"[{ts()}] [INFO] 巡检结束，当前仓库有效数: {valid_count}")
 
             if valid_count < MIN_ACCOUNTS_THRESHOLD:
