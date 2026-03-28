@@ -5,6 +5,20 @@ A Python utility that provides multi-backend mailbox support, multi-domain rotat
 > Use only in systems and environments you own or are explicitly authorized to test.
 > Make sure your use complies with applicable laws, platform rules, and service terms.
 
+## Web Console Preview
+
+### Dashboard
+
+![Web Console Preview 1](./assets/manager1.png)
+
+### Task / Account View
+
+![Web Console Preview 2](./assets/manager2.png)
+
+### Configuration / Management View
+
+![Web Console Preview 3](./assets/manager3.png)
+
 ## Features
 
 ### Flexible mailbox and verification workflow
@@ -195,6 +209,7 @@ cpa_mode:
   min_remaining_weekly_percent: 80
   remove_on_limit_reached: false
   remove_dead_accounts: false
+  enable_token_revive: false
   check_interval_minutes: 60
   threads: 10
 
@@ -484,6 +499,7 @@ cpa_mode:
   min_remaining_weekly_percent: 80
   remove_on_limit_reached: false
   remove_dead_accounts: false
+  enable_token_revive: false
   check_interval_minutes: 60
   threads: 10
 ```
@@ -498,6 +514,7 @@ Field notes:
 - `min_remaining_weekly_percent`: weekly remaining-quota threshold
 - `remove_on_limit_reached`: whether to physically delete exhausted accounts instead of disabling them
 - `remove_dead_accounts`: whether to physically delete permanently dead accounts instead of disabling them
+- `enable_token_revive`：reset tokens
 - `check_interval_minutes`: CPA inspection interval
 - `threads`: concurrent worker count for CPA health inspection
 
@@ -551,6 +568,52 @@ Run normally:
 ```bash
 python wfxl_openai_regst.py
 ```
+
+## Running with Docker Compose
+
+The repository also includes a ready-to-use `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  codex-web:
+    image: wenfxl/wenfxl-codex-manager:v1.0
+    container_name: wenfxl_codex_manager
+    ports:
+      - "8000:8000"
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./data:/app/data
+```
+
+### Docker deployment steps
+
+1. Place `docker-compose.yml` and `config.yaml` in the same directory.
+2. Start the container:
+
+```bash
+docker compose up -d
+```
+
+3. View logs if needed:
+
+```bash
+docker compose logs -f
+```
+
+4. Stop the container:
+
+```bash
+docker compose down
+```
+
+Notes:
+- `./config.yaml:/app/config.yaml` means the container reads your host-side config directly.
+- `./data:/app/data` is used to persist runtime output data.
 
 ## Running Mihomo / Clash on a server
 
