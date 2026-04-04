@@ -5,7 +5,7 @@ import yaml
 import random
 import string
 from datetime import datetime
-
+from typing import Optional
 from utils.proxy_manager import reload_proxy_config
 
 
@@ -92,6 +92,8 @@ SUB2API_ENABLE_TOKEN_REVIVE: bool = False
 LUCKMAIL_PREFERRED_DOMAIN: str = ""
 LUCKMAIL_EMAIL_TYPE: str = ""
 LUCKMAIL_VARIANT_MODE: str = ""
+LUCKMAIL_REUSE_PURCHASED: bool = False
+LUCKMAIL_TAG_ID: Optional[int] = None
 HERO_SMS_ENABLED: bool = False
 HERO_SMS_API_KEY: str = ""
 HERO_SMS_BASE_URL: str = "https://hero-sms.com/stubs/handler_api.php"
@@ -137,7 +139,7 @@ def reload_all_configs():
     global SUB2API_MIN_THRESHOLD, SUB2API_BATCH_COUNT, SUB2API_CHECK_INTERVAL, SUB2API_THREADS
     global SUB2API_SAVE_TO_LOCAL, SUB2API_MIN_REMAINING_WEEKLY_PERCENT
     global SUB2API_REMOVE_ON_LIMIT_REACHED, SUB2API_REMOVE_DEAD_ACCOUNTS, SUB2API_ENABLE_TOKEN_REVIVE
-    global LUCKMAIL_API_KEY,LUCKMAIL_PREFERRED_DOMAIN,LUCKMAIL_EMAIL_TYPE,LUCKMAIL_VARIANT_MODE
+    global LUCKMAIL_API_KEY,LUCKMAIL_PREFERRED_DOMAIN,LUCKMAIL_EMAIL_TYPE,LUCKMAIL_VARIANT_MODE,LUCKMAIL_REUSE_PURCHASED, LUCKMAIL_TAG_ID
     global HERO_SMS_ENABLED, HERO_SMS_API_KEY, HERO_SMS_BASE_URL, HERO_SMS_COUNTRY, HERO_SMS_SERVICE
     global HERO_SMS_AUTO_PICK_COUNTRY, HERO_SMS_REUSE_PHONE, HERO_SMS_MAX_PRICE
     global HERO_SMS_MIN_BALANCE, HERO_SMS_MAX_TRIES, HERO_SMS_POLL_TIMEOUT_SEC
@@ -229,8 +231,12 @@ def reload_all_configs():
     LUCKMAIL_PREFERRED_DOMAIN = _luckmail.get("preferred_domain", "")
     LUCKMAIL_EMAIL_TYPE = str(_luckmail.get("email_type") or "ms_graph").strip()
     LUCKMAIL_VARIANT_MODE = str(_luckmail.get("variant_mode") or "").strip()
-
-
+    LUCKMAIL_REUSE_PURCHASED = bool(_luckmail.get("reuse_purchased", False))
+    _raw_tag_id = _luckmail.get("tag_id")
+    try:
+        LUCKMAIL_TAG_ID = int(_raw_tag_id) if _raw_tag_id else None
+    except (ValueError, TypeError):
+        LUCKMAIL_TAG_ID = None
 
     SUB_DOMAIN_LEVEL = _c.get("sub_domain_level", {})
     ENABLE_SUB_DOMAINS = _c.get("enable_sub_domains", False)

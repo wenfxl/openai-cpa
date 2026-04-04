@@ -136,11 +136,46 @@ def get_email_and_token(proxies: Any = None) -> tuple:
                 email_type=getattr(cfg, 'LUCKMAIL_EMAIL_TYPE', "ms_graph"),
                 variant_mode=getattr(cfg, 'LUCKMAIL_VARIANT_MODE', "")
             )
-            email, token = lm_service.get_email_and_token()
-            print(f"[{cfg.ts()}] [INFO] LuckMail 成功分配邮箱: ({mask_email(email)})")
-            return email, token
+
+            email, token, p_id = None, None, None
+            tag_id = getattr(cfg, 'LUCKMAIL_TAG_ID', None)
+            if getattr(cfg, 'LUCKMAIL_REUSE_PURCHASED', False):
+                if not tag_id:
+                    tag_id = lm_service.get_or_create_tag_id("已使用")
+                    if tag_id:
+                        cfg.LUCKMAIL_TAG_ID = tag_id
+                        try:
+                            import yaml
+                            with open("config.yaml", "r", encoding="utf-8") as f:
+                                y = yaml.safe_load(f) or {}
+                            y.setdefault("luckmail", {})["tag_id"] = tag_id
+                            with open("config.yaml", "w", encoding="utf-8") as f:
+                                yaml.dump(y, f, allow_unicode=True, sort_keys=False)
+                        except:
+                            pass
+
+                print(f"[{cfg.ts()}] [INFO] LuckMail 正在尝试从历史库复用邮箱...")
+                email, token, p_id = lm_service.get_random_purchased_email(tag_id=tag_id)
+
+                if email and token:
+                    print(f"[{cfg.ts()}] [SUCCESS] LuckMail 成功复用历史邮箱: ({mask_email(email)})")
+                    if p_id and tag_id: lm_service.set_email_tag(p_id, tag_id)
+                    return email, token
+                else:
+                    print(f"[{cfg.ts()}] [WARNING] 未找到可复用的号，切换至购号流程...")
+            email, token, p_id = lm_service.get_email_and_token(auto_tag=False)
+
+            if email and token:
+                print(f"[{cfg.ts()}] [INFO] LuckMail 成功购买新邮箱: ({mask_email(email)})")
+                if p_id:
+                    if not tag_id: tag_id = lm_service.get_or_create_tag_id("已使用")
+                    if tag_id:
+                        lm_service.set_email_tag(p_id, tag_id)
+
+                return email, token
+
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] LuckMail 获取邮箱异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] LuckMail 流程异常: {e}")
             return None, None
 
     if cfg.ENABLE_SUB_DOMAINS:

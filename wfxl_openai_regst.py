@@ -96,6 +96,11 @@ class CFQueryReq(BaseModel):
     api_email: str
     api_key: str
 
+class LuckMailBulkBuyReq(BaseModel):
+    quantity: int
+    auto_tag: bool
+    config: dict
+
 class SMSPriceReq(BaseModel):
     service: str = "openai"
 
@@ -755,6 +760,29 @@ async def api_get_sms_prices(req: SMSPriceReq, token: str = Depends(verify_token
     if rows:
         return {"status": "success", "prices": rows}
     return {"status": "error", "message": "无法获取价格或当前服务无库存"}
+
+
+@app.post("/api/luckmail/bulk_buy")
+async def api_luckmail_bulk_buy(req: LuckMailBulkBuyReq, token: str = Depends(verify_token)):
+    try:
+        from utils.luckmail_service import LuckMailService
+        lm_service = LuckMailService(
+            api_key=req.config.get("api_key"),
+            preferred_domain=req.config.get("preferred_domain", ""),
+            email_type=req.config.get("email_type", "ms_graph"),
+            variant_mode=req.config.get("variant_mode", "")
+        )
+
+        tag_id = req.config.get("tag_id") or lm_service.get_or_create_tag_id("已使用")
+
+        results = lm_service.bulk_purchase(
+            quantity=req.quantity,
+            auto_tag=req.auto_tag,
+            tag_id=tag_id
+        )
+        return {"status": "success", "message": f"成功购买 {len(results)} 个邮箱！", "data": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     try: reload_all_configs()

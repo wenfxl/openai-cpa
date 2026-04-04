@@ -573,57 +573,113 @@
                                     </div>
                                 </div>
 
-                                <div v-if="config.email_api_mode === 'luckmail' && config.luckmail">
-                                    <p class="text-xs md:text-sm text-yellow-700 mb-3 md:mb-4 font-bold bg-yellow-100 inline-block px-2 py-1 rounded">当前: LuckMail 接码</p>
-
-                                    <label class="form-label">API Key (密钥)</label>
-                                    <div class="relative mb-2">
-                                        <input :type="showPwd.luckmail ? 'text' : 'password'" v-model="config.luckmail.api_key" class="form-input pr-10 text-sm" style="margin-bottom: 0;">
-                                        <button @click="showPwd.luckmail = !showPwd.luckmail" class="absolute right-3 top-1/2 -translate-y-1/2 text-base md:text-lg text-gray-400 hover:text-blue-500 focus:outline-none">
-                                            {{ showPwd.luckmail ? '👁️' : '🙈' }}
-                                        </button>
+                                <div v-if="config.email_api_mode === 'luckmail' && config.luckmail" class="space-y-4">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <p class="text-xs md:text-sm text-yellow-700 font-black bg-yellow-100 px-3 py-1 rounded-full border border-yellow-200 shadow-sm">
+                                            ⚡ 当前模式: LuckMail 接码
+                                        </p>
+                                        <div class="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100 shadow-sm">
+                                            <span class="text-[10px] md:text-xs font-bold text-blue-800">绑定标签:</span>
+                                            <code class="px-1.5 py-0.5 bg-white border border-blue-200 rounded text-blue-600 font-mono font-black text-[10px] md:text-xs">
+                                                {{ config.luckmail.tag_id || '未对账' }}
+                                            </code>
+                                        </div>
                                     </div>
 
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 md:mt-4 items-start">
-
+                                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
                                         <div>
-                                            <label class="form-label mb-1">邮箱类型</label>
-                                            <select v-model="config.luckmail.email_type" @change="config.luckmail.preferred_domain=''" class="form-input bg-white font-bold text-gray-700 shadow-sm text-sm mb-0">
-                                                <option value="ms_graph">微软邮箱</option>
-                                                <option value="google_variant">谷歌变种</option>
-                                            </select>
+                                            <label class="form-label text-gray-700 font-bold mb-1.5 flex items-center gap-1">
+                                                <span>🔑</span> API Key (密钥)
+                                            </label>
+                                            <div class="relative">
+                                                <input :type="showPwd.luckmail ? 'text' : 'password'" v-model="config.luckmail.api_key"
+                                                       class="form-input pr-10 text-sm font-mono border-gray-300 focus:ring-blue-500" placeholder="ak_...">
+                                                <button @click="showPwd.luckmail = !showPwd.luckmail" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition">
+                                                    {{ showPwd.luckmail ? '👁️' : '🙈' }}
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        <div>
-                                            <label class="form-label mb-1">指定邮箱后缀</label>
-                                            <select v-if="config.luckmail.email_type !== 'google_variant'" v-model="config.luckmail.preferred_domain" class="form-input bg-white font-bold text-gray-700 shadow-sm text-sm mb-0">
-                                                <option value="">不限 (随机)</option>
-                                                <option value="outlook.com">@outlook.com</option>
-                                                <option value="hotmail.com">@hotmail.com</option>
-                                            </select>
-                                            <select v-else v-model="config.luckmail.preferred_domain" class="form-input bg-white font-bold text-gray-700 shadow-sm text-sm mb-0">
-                                                <option value="">不限 (随机)</option>
-                                                <option value="gmail.com">@gmail.com</option>
-                                                <option value="googlemail.com">@googlemail.com</option>
-                                            </select>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div class="space-y-1">
+                                                <label class="text-[11px] font-black text-gray-500 uppercase tracking-wider">邮箱类型</label>
+                                                <select v-model="config.luckmail.email_type" @change="config.luckmail.preferred_domain=''" class="form-input bg-gray-50 font-bold text-gray-700 shadow-sm text-sm">
+                                                    <option value="ms_graph">微软邮箱 (ms_graph)</option>
+                                                    <option value="ms_imap">微软邮箱 (ms_imap)</option>
+                                                    <option value="google_variant">谷歌变种</option>
+                                                </select>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-[11px] font-black text-gray-500 uppercase tracking-wider">指定后缀</label>
+                                                <select v-if="config.luckmail.email_type !== 'google_variant'" v-model="config.luckmail.preferred_domain" class="form-input bg-gray-50 font-bold text-gray-700 shadow-sm text-sm">
+                                                    <option value="">不限 (随机)</option>
+                                                    <option value="outlook.com">@outlook.com</option>
+                                                    <option value="hotmail.com">@hotmail.com</option>
+                                                </select>
+                                                <select v-else v-model="config.luckmail.preferred_domain" class="form-input bg-gray-50 font-bold text-gray-700 shadow-sm text-sm">
+                                                    <option value="">不限 (随机)</option>
+                                                    <option value="gmail.com">@gmail.com</option>
+                                                    <option value="googlemail.com">@googlemail.com</option>
+                                                </select>
+                                            </div>
+                                            <div v-if="config.luckmail.email_type === 'google_variant'" class="space-y-1">
+                                                <label class="text-[11px] font-black text-green-600 uppercase tracking-wider">变种模式</label>
+                                                <select v-model="config.luckmail.variant_mode" class="form-input bg-green-50 font-bold text-green-700 shadow-sm text-sm border-green-200 focus:ring-green-500">
+                                                    <option value="">不限 (全随机)</option>
+                                                    <option value="all">随机混合 (all)</option>
+                                                    <option value="dot">仅点号 (dot)</option>
+                                                    <option value="plus">仅+号 (plus)</option>
+                                                    <option value="mixed">混合变种 (mixed)</option>
+                                                </select>
+                                            </div>
                                         </div>
 
-                                        <div v-if="config.luckmail.email_type === 'google_variant'">
-                                            <label class="form-label mb-1">变种模式</label>
-                                            <select v-model="config.luckmail.variant_mode" class="form-input bg-white font-bold text-green-700 shadow-sm text-sm mb-0 border-green-300">
-                                                <option value="">不限 (全随机)</option>
-                                                <option value="all">随机混合 (all)</option>
-                                                <option value="dot">仅点号 (dot)</option>
-                                                <option value="plus">仅+号 (plus)</option>
-                                                <option value="mixed">混合变种 (mixed)</option>
-                                            </select>
+                                        <div class="pt-2 border-t border-gray-100">
+                                            <label class="flex items-center gap-3 p-2 bg-blue-50/50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-50 transition">
+                                                <input type="checkbox" v-model="config.luckmail.reuse_purchased" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-xs md:text-sm font-bold text-blue-900">开启历史复用机制</span>
+                                                    <span class="text-[10px] text-blue-500 font-medium">优先获取已购邮箱并过滤已使用的邮箱，省钱利器。</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-4 bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-100 shadow-md">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h4 class="text-xs md:text-sm font-black text-indigo-800 flex items-center gap-2">
+                                                <span class="text-base">🛒</span> 手动囤号控制台
+                                            </h4>
+                                            <span class="px-2 py-0.5 bg-indigo-200 text-indigo-700 text-[9px] font-bold rounded uppercase">Tools</span>
                                         </div>
 
+                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                                            <div class="sm:col-span-3">
+                                                <label class="block text-[10px] text-indigo-500 font-black mb-1 px-1 uppercase">购买数量</label>
+                                                <input type="number" v-model.number="luckmailManualQty"
+                                                       class="form-input text-center font-black text-indigo-700 border-indigo-200 focus:ring-indigo-500 shadow-sm"
+                                                       min="1" max="100">
+                                            </div>
+                                            <div class="sm:col-span-9 flex flex-col sm:flex-row items-center gap-3">
+                                                <label class="flex items-center gap-2 cursor-pointer group shrink-0">
+                                                    <input type="checkbox" v-model="luckmailManualAutoTag"
+                                                           class="w-4 h-4 text-indigo-600 border-indigo-300 rounded focus:ring-indigo-500">
+                                                    <span class="text-[11px] md:text-xs text-indigo-600 font-bold group-hover:text-indigo-800 transition">购后立即打标(锁定)</span>
+                                                </label>
+                                                <button @click="executeManualLuckMailBuy" :disabled="isManualBuying"
+                                                        class="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-xs md:text-sm font-black hover:bg-indigo-700 active:scale-95 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
+                                                    <span v-if="isManualBuying" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                                    <span>{{ isManualBuying ? '正在补货...' : '一键执行批量购买' }}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p class="text-[10px] text-indigo-400 mt-3 italic font-medium">
+                                            💡 提示：若不勾选“购后打标”，新号将保留“未用”状态，随后可被自动化脚本通过“历史复用”逻辑随机抽走。
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                         <div v-show="currentTab === 'sms'" v-if="config" class="space-y-4 md:space-y-6">
                             <div class="config-card lg:col-span-2 border-t-4 border-orange-500 bg-orange-50/20" v-if="config.hero_sms">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 border-b border-orange-200 pb-3 md:pb-4 gap-3">

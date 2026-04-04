@@ -63,7 +63,8 @@ luckmail:
   preferred_domain: ""
   email_type: ms_graph
   variant_mode: ''
-
+  reuse_purchased: true
+  tag_id: 
 # [代理配置]
 # openai注册时代理地址，例子：http://127.0.0.1:7897。如果是国外服务器此项可以不填
 default_proxy: ""

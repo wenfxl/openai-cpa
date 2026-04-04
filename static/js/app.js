@@ -20,6 +20,9 @@ createApp({
             ],
 			cfGlobalStatus: null,
 			isLoadingSync: false,
+            luckmailManualQty: 1,
+            luckmailManualAutoTag: false,
+            isManualBuying: false,
 			cfRoutes: [],
             heroSmsBalance: '0.00',
             heroSmsPrices: [],
@@ -739,7 +742,6 @@ createApp({
                 this.isLoadingBalance = false;
             }
         },
-
         async fetchHeroSmsPrices() {
             if (!this.config.hero_sms.api_key) return this.showToast('请先填写 API Key！', 'warning');
             this.isLoadingPrices = true;
@@ -761,5 +763,29 @@ createApp({
                 this.isLoadingPrices = false;
             }
         },
+        async executeManualLuckMailBuy() {
+            if (this.luckmailManualQty < 1) return;
+            this.isManualBuying = true;
+            try {
+                const res = await this.authFetch('/api/luckmail/bulk_buy', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        quantity: this.luckmailManualQty,
+                        auto_tag: this.luckmailManualAutoTag,
+                        config: this.config.luckmail
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.showToast(data.message, 'success');
+                } else {
+                    this.showToast('购买失败: ' + data.message, 'error');
+                }
+            } catch (e) {
+                this.showToast('网络请求异常', 'error');
+            } finally {
+                this.isManualBuying = false;
+            }
+        }
     }
 }).mount('#app');
