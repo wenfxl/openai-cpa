@@ -8,7 +8,7 @@ It combines:
 - proxy / Clash / Mihomo switching
 - CPA warehouse maintenance
 - Sub2API warehouse maintenance
-- Cloudflare subdomain generation and route operations
+- AI-powered profile & subdomain generation (Codex)
 - local account inventory, export, deletion, and real-time log streaming
 
 It also supports **random multi-level subdomain generation**, designed to work together with customized mailbox backends such as:
@@ -80,10 +80,15 @@ playwright install --with-deps chromium
 
 ### Web console and runtime control
 - **Web visual console**: The current version is managed mainly through a browser-based control panel instead of a config-only workflow.
+- **Seamless Config Upgrades**: The backend automatically detects missing configuration keys and merges defaults from `config.example.yaml`, ensuring zero downtime or white-screens during system updates.
 - **Password login + Bearer session**: The console uses password login and token-based authenticated API operations.
 - **Real-time log streaming**: Backend logs are pushed to the page through SSE for live monitoring.
 - **Task orchestration**: Supports one-click start / stop and automatically identifies `normal`, `CPA`, or `Sub2API` mode.
 - **Live statistics dashboard**: Shows success, failure, retries, elapsed time, progress, and current mode in real time.
+
+### AI Profile & Subdomain Enhancement (Codex)
+  - **Realistic Profile Generation**: Automatically calls AI models (e.g., `gpt-5.1-codex`) to generate realistic European/American names (`firstname.lastname`) for registration.
+  - **Smart Tech Subdomains**: Generates trending tech/AI keywords (e.g., `vector-database`, `neural`) to be seamlessly injected into the multi-level subdomain generator, significantly increasing account credibility.
 
 ### Mailbox and OTP workflow
 - **Multi-backend mailbox support**: Supports `cloudflare_temp_email`, `freemail`, `imap`, `cloudmail`, `mail_curl`, and `luckmail`.
@@ -91,6 +96,8 @@ playwright install --with-deps chromium
 - **Random multi-level subdomain generation**: Can generate random subdomains in batches, including multi-level subdomain structures.
 - **Subdomain pool takeover**: When subdomain mode is enabled, generated subdomains can directly replace the normal mailbox domain pool for subsequent registration tasks.
 - **Backend-compatible subdomain workflow**: Multi-level subdomain generation is intended to work together with customized mailbox backends / wildcard-domain backends such as `freemail`, `cloud-mail`, and `cloudflare_temp_email_worker`.
+- **HeroSMS Integration**: Full support for SMS verification with live balance checking, real-time global pricing/stock panels, and auto-country picking to avoid blacklists and timeouts.
+- **LuckMail Advanced Controls**: Built-in support to directly buy emails via API, auto-tag purchases, use a "history reuse" mode to save costs, and a manual bulk-purchase console.
 
 ### Proxy management and network resilience
 - **Clash / Mihomo node rotation**: Can switch outbound nodes through the Clash API before registration tasks.
@@ -100,15 +107,9 @@ playwright install --with-deps chromium
 - **Region-aware liveness checks**: Verifies outbound connectivity and rejects blocked or unsuitable regions such as `CN` / `HK`.
 - **Retry handling**: Includes retry and cooling logic for unstable networks, OTP polling, and temporary request failures.
 
-### Cloudflare route management
-- **Random subdomain generation panel**: The Web Console can generate two-level or multi-level random subdomains in batches.
-- **Cloudflare route sync**: Generated subdomains can be pushed to Cloudflare Email Routing from the panel.
-- **Cloudflare route query**: Can query currently configured Cloudflare routing records from the UI.
-- **Cloudflare route cleanup**: Supports batch deletion of existing Cloudflare route records from the panel.
-- **Global route status view**: Can query main-domain route readiness / sync status in the console.
-- **Subdomain auto-heal**: Failed subdomains can be rotated out and replaced automatically when failure thresholds are reached.
-
 ### Inventory maintenance and warehouse operations
+- **Standalone Liveness Check**: A dedicated "Manual Check" button in the Web Console exclusively scans and cleans up dead accounts in your CPA/Sub2API warehouse without triggering the main registration loop.
+- **Fast Replenish Toggle**: An `auto_check` toggle to skip full inventory inspections before replenishing, drastically speeding up the loop based purely on cloud API total counts.
 - **Local SQLite inventory**: Stores accounts locally and provides paginated inventory browsing in the panel.
 - **Batch export / delete**: Supports exporting selected accounts as JSON or TXT and deleting selected accounts in bulk.
 - **Optional CPA maintenance mode**: Can periodically inspect CPA inventory and replenish stock automatically when valid account count is low.
@@ -146,8 +147,9 @@ admin
 ```
 
 Recommended workflow:
+The repository includes a ready-to-use `docker-compose.yml` for starting the **Wenfxl Codex Manager Web Console** with persistent config and data mounts.
 - log in to the Web Console
-- configure mailbox / proxy / Cloudflare / warehouse settings in the UI
+- configure mailbox / proxy / warehouse settings in the UI
 - start or stop tasks from the dashboard
 - monitor logs, task status, and account inventory in real time
 
@@ -165,13 +167,20 @@ services:
     image: wenfxl/wenfxl-codex-manager:latest
     container_name: wenfxl_codex_manager
     ports:
-      - "8000:8000"
+      - "8899:8000"
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./config.yaml:/app/config.yaml
       - ./data:/app/data
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 86400 --cleanup
 ```
 
 ### Docker deployment steps
@@ -194,9 +203,8 @@ docker compose logs -f
 ```bash
 docker compose down
 ```
-
+config directly
 Notes:
-- `./config.yaml:/app/config.yaml` means the container reads your host-side config directly.
 - `./data:/app/data` is used to persist runtime data, local database content, and exports.
 - The Docker Web Console is exposed on port `8000` by default.
 - Default Web Console password: `admin`
@@ -496,7 +504,25 @@ Check the following:
 - Restrict access to the output directory.
 - If used in a team environment, add audit logging and permission boundaries.
 
-## Author
+## Terms of Use & License
 
-- wenfxl
+This project is a **"Source-Available"** private project, licensed under the **CC BY-NC 4.0** (Creative Commons Attribution-NonCommercial 4.0 International) license.
 
+* **Author**: wfxl (GitHub: [wenfxl](https://github.com/wenfxl))
+* **License File**: [`LICENSE`](https://github.com/wenfxl/openai-cpa/blob/master/LICENSE)
+* **Full License**: [CC BY-NC 4.0 Legal Code](https://creativecommons.org/licenses/by-nc/4.0/legalcode)
+
+### 🚫 Strict Compliance & No Commercial Use
+This project is **NOT** Free and Open-Source Software (FOSS) in the strict sense. All users must strictly adhere to the following guidelines:
+
+1. ✅ **Allowed**: Limited strictly to individual developers for technical learning, code research, and non-profit local testing.
+2. ⚠ **Attribution Required (BY)**: If you copy, distribute, or modify this code, you **MUST** clearly attribute the original author (**wfxl**) and provide a link to this original repository. Removing the author's copyright notice and claiming the code as your own is strictly prohibited.
+3. ❌ **Strictly Prohibited (NC)**: Any individual, team, or enterprise is strictly prohibited from using this project (and any modified versions thereof) for any form of commercial monetization. This includes, but is not limited to:
+   - Packaging as closed-source, encrypting, or hiding the code for secondary reselling;
+   - Deploying it as a paid SaaS service (e.g., paid registration platforms, token-selling sites) for public use;
+   - Bundling it within other commercial traffic-generating products.
+
+**If any unauthorized commercial use or copyright infringement (e.g., failure to attribute) is discovered, the author reserves the right to pursue full legal action and claim financial compensation.**
+
+> **Disclaimer**
+> This project is strictly for technical learning, automated research, and educational exchange. Please ensure that your usage complies with local laws and regulations, as well as the Terms of Service of the platforms involved (e.g., OpenAI, Cloudflare, etc.). The user assumes full and sole responsibility for any legal disputes, account suspensions, or asset losses resulting from improper or illegal use. The author bears no liability or joint responsibility whatsoever.
