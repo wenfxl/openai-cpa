@@ -340,3 +340,14 @@ def update_pool_fission_result(email: str, is_blocked: bool, is_raw: bool):
             conn.commit()
     except Exception as e:
         print(f"[{ts()}] [DB_ERROR] 结果更新失败: {e}")
+
+def clear_retry_master_status(email: str):
+    """
+    清除邮箱的母号重试标记，防止多线程并发时重复取号
+    """
+    try:
+        with sqlite3.connect(DB_PATH, timeout=10) as conn:
+            conn.execute("UPDATE local_mailboxes SET retry_master = 0 WHERE email = ?", (email,))
+            conn.commit()
+    except Exception as e:
+        print(f"[{ts()}] [DB_ERROR] 清除 {email} 的 retry_master 状态失败: {e}")

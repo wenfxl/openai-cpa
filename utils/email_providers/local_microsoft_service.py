@@ -3,10 +3,12 @@ import random
 import string
 import time
 import uuid
+import threading
 from typing import List, Optional, Dict, Any
 from curl_cffi import requests as cffi_requests
 from utils import config as cfg
 from utils import db_manager
+_fission_lock = threading.Lock()
 
 class LocalMicrosoftService:
     def __init__(self, proxies: Optional[Dict[str, str]] = None):
@@ -35,27 +37,29 @@ class LocalMicrosoftService:
                 }
 
         if getattr(cfg, "LOCAL_MS_POOL_FISSION", False):
-            mailbox_data = db_manager.get_mailbox_for_pool_fission()
-            if mailbox_data:
-                master_email = mailbox_data["email"]
-                is_raw = (mailbox_data.get("retry_master") == 1)
+            with _fission_lock:
+                mailbox_data = db_manager.get_mailbox_for_pool_fission()
+                if mailbox_data:
+                    master_email = mailbox_data["email"]
+                    is_raw = (mailbox_data.get("retry_master") == 1)
 
-                if is_raw:
-                    target_email = master_email
-                else:
-                    random_suffix = self.generate_suffix_v2()
-                    user_part, domain_part = master_email.split("@", 1)
-                    target_email = f"{user_part}+{random_suffix}@{domain_part}"
+                    if is_raw:
+                        target_email = master_email
+                        db_manager.clear_retry_master_status(master_email)
+                    else:
+                        random_suffix = self.generate_suffix_v2()
+                        user_part, domain_part = master_email.split("@", 1)
+                        target_email = f"{user_part}+{random_suffix}@{domain_part}"
 
-                return {
-                    "id": mailbox_data["id"],
-                    "email": target_email,
-                    "master_email": master_email,
-                    "is_raw_trial": is_raw,
-                    "client_id": mailbox_data.get("client_id", ""),
-                    "refresh_token": mailbox_data.get("refresh_token", ""),
-                    "assigned_at": time.time()
-                }
+                    return {
+                        "id": mailbox_data["id"],
+                        "email": target_email,
+                        "master_email": master_email,
+                        "is_raw_trial": is_raw,
+                        "client_id": mailbox_data.get("client_id", ""),
+                        "refresh_token": mailbox_data.get("refresh_token", ""),
+                        "assigned_at": time.time()
+                    }
         mailbox = db_manager.get_and_lock_unused_local_mailbox()
         if mailbox:
             res = dict(mailbox)
