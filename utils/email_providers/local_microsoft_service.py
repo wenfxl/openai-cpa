@@ -110,8 +110,10 @@ class LocalMicrosoftService:
             data = resp.json()
             mailbox['token_type'] = 'legacy_imap'
         else:
-            token_val = data.get("access_token", "")
-            if token_val.startswith("EwA4"):
+            returned_scope = str(data.get("scope", "")).lower()
+            if "mail.read" in returned_scope:
+                mailbox['token_type'] = 'graph_full'
+            elif "imap.accessasuser.all" in returned_scope:
                 mailbox['token_type'] = 'outlook_legacy'
             else:
                 mailbox['token_type'] = 'graph_full'
@@ -188,7 +190,7 @@ class LocalMicrosoftService:
             imap = imaplib.IMAP4_SSL("outlook.office365.com", 993)
             imap.authenticate("XOAUTH2", lambda _: auth_string.encode("ascii"))
 
-            from email.utils import parsedate_to_datetime  # 用于处理时间格式
+            from email.utils import parsedate_to_datetime
 
             for folder in ["INBOX", "Junk"]:
                 status, _ = imap.select(folder, readonly=True)
