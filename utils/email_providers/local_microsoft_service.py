@@ -127,6 +127,14 @@ class LocalMicrosoftService:
             return data["access_token"]
         else:
             err_msg = data.get('error_description', data)
+            err_text = str(err_msg)
+            if "AADSTS70000" in err_text and "service abuse mode" in err_text.lower():
+                target_email = mailbox.get("master_email") or mailbox.get("email")
+                if target_email:
+                    try:
+                        db_manager.update_local_mailbox_status(target_email, 3)
+                    except:
+                        pass
             raise RuntimeError(f"[{cfg.ts()}] [ERROR] 双令牌模式尝试均失败: {err_msg}")
 
     def fetch_openai_messages(self, mailbox: dict) -> List[Dict[str, Any]]:
