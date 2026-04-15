@@ -8,7 +8,7 @@ from unittest.mock import patch
 fake_requests_module = types.SimpleNamespace(post=None, get=None)
 sys.modules.setdefault("curl_cffi", types.SimpleNamespace(requests=fake_requests_module))
 
-from utils.email_providers.local_microsoft_service import LocalMicrosoftService
+from utils.email_providers.local_microsoft_service import LocalMicrosoftService, MailboxAbuseModeError
 
 
 class _FakeResponse:
@@ -57,11 +57,32 @@ class LocalMicrosoftServiceAbuseModeTests(unittest.TestCase):
                 "utils.email_providers.local_microsoft_service.db_manager.update_local_mailbox_status"
             ) as update_status:
                 with redirect_stdout(io.StringIO()):
-                    with self.assertRaises(RuntimeError) as ctx:
+                    with self.assertRaises(MailboxAbuseModeError) as ctx:
                         service._exchange_refresh_token(mailbox)
 
-        self.assertIn("AADSTS70000", str(ctx.exception))
+        self.assertIn("service abuse mode", str(ctx.exception))
         update_status.assert_called_once_with("user@example.com", 3)
+
+    def test_fetch_openai_messages_logs_warning_instead_of_debug_for_service_abuse(self):
+        service = LocalMicrosoftService()
+        mailbox = {
+            "email": "user+alias@example.com",
+            "master_email": "user@example.com",
+        }
+
+        with patch.object(
+            service,
+            "_exchange_refresh_token",
+            side_effect=MailboxAbuseModeError("user@example.com"),
+        ):
+            captured = io.StringIO()
+            with redirect_stdout(captured):
+                messages = service.fetch_openai_messages(mailbox)
+
+        self.assertEqual([], messages)
+        output = captured.getvalue()
+        self.assertIn("service abuse mode", output)
+        self.assertNotIn("[DEBUG-GRAPH]", output)
 
 
 if __name__ == "__main__":
