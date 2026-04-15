@@ -668,6 +668,8 @@ def _poll_local_ms_for_oai_code_graph(ms_service, target_email: str, mailbox_dic
         if getattr(cfg, 'GLOBAL_STOP', False): return ""
 
         messages = ms_service.fetch_openai_messages(mailbox_dict)
+        if mailbox_dict.get("_polling_stopped") == "abuse_mode":
+            return ""
         if not messages:
             if attempt % 2 == 0:
                 print(f"[{cfg.ts()}] [INFO] 第 {attempt + 1} 次轮询: 未发现任何邮件", flush=True)

@@ -176,6 +176,7 @@ class LocalMicrosoftService:
             else:
                 print(f"[{cfg.ts()}] [ERROR] 扫信接口请求失败: {resp.status_code} | {resp.text}")
         except MailboxAbuseModeError as e:
+            mailbox["_polling_stopped"] = "abuse_mode"
             print(str(e), flush=True)
         except Exception as e:
             print(f"[{cfg.ts()}] [DEBUG-GRAPH] 扫信模块严重错误: {e}", flush=True)

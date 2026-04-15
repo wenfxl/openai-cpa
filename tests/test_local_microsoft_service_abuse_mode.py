@@ -80,6 +80,7 @@ class LocalMicrosoftServiceAbuseModeTests(unittest.TestCase):
                 messages = service.fetch_openai_messages(mailbox)
 
         self.assertEqual([], messages)
+        self.assertEqual("abuse_mode", mailbox.get("_polling_stopped"))
         output = captured.getvalue()
         self.assertIn("service abuse mode", output)
         self.assertNotIn("[DEBUG-GRAPH]", output)
