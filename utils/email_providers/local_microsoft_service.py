@@ -4,6 +4,10 @@ import string
 import time
 import uuid
 import threading
+import imaplib
+import base64
+import email as email_lib
+from email.header import decode_header
 from typing import List, Optional, Dict, Any
 from curl_cffi import requests as cffi_requests
 from utils import config as cfg
@@ -106,7 +110,11 @@ class LocalMicrosoftService:
             data = resp.json()
             mailbox['token_type'] = 'legacy_imap'
         else:
-            mailbox['token_type'] = 'graph_full'
+            token_val = data.get("access_token", "")
+            if token_val.startswith("EwA4"):
+                mailbox['token_type'] = 'outlook_legacy'
+            else:
+                mailbox['token_type'] = 'graph_full'
         if resp.status_code == 200 and "access_token" in data:
             new_rt = data.get("refresh_token")
             if new_rt and new_rt != refresh_token and mailbox.get("id") != "fission":
@@ -123,6 +131,8 @@ class LocalMicrosoftService:
         all_msgs = []
         try:
             access_token = self._exchange_refresh_token(mailbox)
+            if mailbox.get('token_type') == 'outlook_legacy':
+                return self._fetch_via_imap(mailbox)
             url = f"{self.graph_base_url}/messages"
             params = {
                 "$select": "subject,from,toRecipients,receivedDateTime,body",
@@ -149,4 +159,86 @@ class LocalMicrosoftService:
                 print(f"[{cfg.ts()}] [ERROR] 扫信接口请求失败: {resp.status_code} | {resp.text}")
         except Exception as e:
             print(f"[{cfg.ts()}] [DEBUG-GRAPH] 扫信模块严重错误: {e}", flush=True)
+        return all_msgs
+
+    def _fetch_via_imap(self, mailbox: dict) -> List[Dict[str, Any]]:
+        all_msgs = []
+        login_email = mailbox.get("master_email") or mailbox.get("email")
+        target_email = mailbox.get("email").lower()
+        refresh_token = mailbox.get("refresh_token")
+
+        BUILTIN_CLIENT_ID = "7feada80-d946-4d06-b134-73afa3524fb7"
+        client_id = str(mailbox.get("client_id") or getattr(cfg, "LOCAL_MS_CLIENT_ID", "") or BUILTIN_CLIENT_ID).strip()
+
+        try:
+            payload = {
+                "client_id": client_id,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "scope": "https://outlook.office.com/IMAP.AccessAsUser.All offline_access"
+            }
+            resp = cffi_requests.post(self.token_url, data=payload, proxies=self.proxies, timeout=15,
+                                      impersonate="chrome110")
+            data = resp.json()
+            if resp.status_code != 200: return all_msgs
+
+            access_token = data["access_token"]
+            auth_string = f"user={login_email}\x01auth=Bearer {access_token}\x01\x01"
+
+            imap = imaplib.IMAP4_SSL("outlook.office365.com", 993)
+            imap.authenticate("XOAUTH2", lambda _: auth_string.encode("ascii"))
+
+            from email.utils import parsedate_to_datetime  # 用于处理时间格式
+
+            for folder in ["INBOX", "Junk"]:
+                status, _ = imap.select(folder, readonly=True)
+                if status != 'OK': continue
+
+                _, search_data = imap.search(None, "ALL")
+                uids = search_data[0].split()
+                if not uids: continue
+
+                for uid in reversed(uids[-10:]):
+                    _, raw = imap.fetch(uid, "(RFC822)")
+                    if not raw or not raw[0]: continue
+
+                    msg = email_lib.message_from_bytes(raw[0][1])
+                    try:
+                        date_str = msg.get("Date")
+                        dt = parsedate_to_datetime(date_str)
+                        iso_date = dt.isoformat()
+                    except:
+                        iso_date = ""
+
+                    to_header = str(msg.get("To", "")).lower()
+                    to_recipients = [{"emailAddress": {"address": to_header}}]
+
+                    subject_raw, enc = decode_header(msg.get("Subject", ""))[0]
+                    subject = subject_raw.decode(enc or "utf-8") if isinstance(subject_raw, bytes) else (
+                                subject_raw or "无主题")
+
+                    body = ""
+                    if msg.is_multipart():
+                        for part in msg.walk():
+                            if part.get_content_type() == "text/html":
+                                body = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8",
+                                                                            errors="replace")
+                                break
+                    else:
+                        body = msg.get_payload(decode=True).decode(msg.get_content_charset() or "utf-8",
+                                                                   errors="replace")
+
+                    all_msgs.append({
+                        "id": f"imap_{uid.decode()}",
+                        "subject": subject,
+                        "from": {"emailAddress": {"address": str(msg.get("From", "")).lower()}},
+                        "toRecipients": to_recipients,
+                        "receivedDateTime": iso_date,
+                        "body": {"content": body}
+                    })
+
+            imap.logout()
+        except:
+            pass
+
         return all_msgs
