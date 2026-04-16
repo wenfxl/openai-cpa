@@ -391,7 +391,12 @@ def _get_country_names_map(proxies: Any) -> dict[int, str]:
     return _HERO_SMS_COUNTRY_NAMES_MAP
 
 
-def _hero_sms_prices_by_service(service_code: str, proxies: Any) -> list[dict[str, Any]]:
+def _hero_sms_prices_by_service(
+        service_code: str,
+        proxies: Any,
+        *,
+        force_refresh: bool = False,
+) -> list[dict[str, Any]]:
     svc = str(service_code or "").strip()
     # 自动转换：如果用户填的是 openai，底层自动查 dr
     search_svc = "dr" if svc.lower() == "openai" else svc
@@ -407,7 +412,7 @@ def _hero_sms_prices_by_service(service_code: str, proxies: Any) -> list[dict[st
         cache_svc = str(_HERO_SMS_PRICE_CACHE.get("service") or "")
         cache_at = float(_HERO_SMS_PRICE_CACHE.get("updated_at") or 0.0)
         cache_items = list(_HERO_SMS_PRICE_CACHE.get("items") or [])
-        if cache_svc == svc and cache_items and (now - cache_at) <= float(ttl):
+        if (not force_refresh) and cache_svc == svc and cache_items and (now - cache_at) <= float(ttl):
             return [dict(x) for x in cache_items if isinstance(x, dict)]
 
     # 2. 获取国家名称映射
@@ -496,8 +501,11 @@ def _hero_sms_pick_country_id(
         *,
         service_code: str,
         preferred_country: int,
+        exclude_country_ids: Optional[set[int]] = None,
+        force_refresh: bool = False,
 ) -> int:
     preferred = int(preferred_country)
+    excluded = {int(x) for x in (exclude_country_ids or set())}
     if not _hero_sms_auto_pick_country():
         if preferred in _OPENAI_SMS_BLOCKED_COUNTRY_IDS:
             _warn(f"HeroSMS 已关闭自动选国：首选国家 ID {preferred} 在黑名单内，仍将尝试使用该 ID")
@@ -506,7 +514,7 @@ def _hero_sms_pick_country_id(
             _warn(f"HeroSMS 已关闭自动选国：首选国家冷却中，仍使用 {preferred}")
         return preferred
 
-    rows = _hero_sms_prices_by_service(service_code, proxies)
+    rows = _hero_sms_prices_by_service(service_code, proxies, force_refresh=force_refresh)
     if not rows:
         if preferred not in _OPENAI_SMS_BLOCKED_COUNTRY_IDS and not _hero_sms_country_is_on_cooldown(preferred):
             return preferred
@@ -516,6 +524,8 @@ def _hero_sms_pick_country_id(
     for row in rows:
         cid = int(row.get("country") or -1)
         if cid < 0:
+            continue
+        if cid in excluded:
             continue
         try:
             cost = float(row.get("cost") or -1.0)
@@ -842,6 +852,13 @@ def _is_hero_sms_country_blocked_issue(reason: str) -> bool:
     if not low:
         return False
     return "country_blocked" in low or "国家受限" in low
+
+
+def _is_hero_sms_no_numbers_issue(reason: str) -> bool:
+    low = str(reason or "").strip().lower()
+    if not low:
+        return False
+    return "no_numbers" in low or "no numbers" in low or "no free phones" in low
 
 def _hero_sms_get_number(
         proxies: Any,
@@ -1171,6 +1188,7 @@ def _try_verify_phone_via_hero_sms(
             service_code=service_code,
             preferred_country=preferred_country_id,
         )
+        excluded_country_ids: set[int] = set()
         if country_id != preferred_country_id:
             _warn(
                 f"HeroSMS 国家自动切换: {preferred_country_id} -> {country_id}"
@@ -1242,6 +1260,25 @@ def _try_verify_phone_via_hero_sms(
                     break
                 if _is_hero_sms_country_blocked_issue(get_err):
                     break
+                if (
+                        attempt < max_tries
+                        and _hero_sms_auto_pick_country()
+                        and _is_hero_sms_no_numbers_issue(get_err)
+                ):
+                    excluded_country_ids.add(int(country_id))
+                    next_country = _hero_sms_pick_country_id(
+                        proxies,
+                        service_code=service_code,
+                        preferred_country=preferred_country_id,
+                        exclude_country_ids=excluded_country_ids,
+                        force_refresh=True,
+                    )
+                    if next_country != country_id:
+                        _warn(f"当前国家无号，自动重选国家: {country_id} -> {next_country}")
+                        country_id = next_country
+                        if _sleep_interruptible(0.3):
+                            raise UserStoppedError("stopped_by_user")
+                        continue
                 if _sleep_interruptible(1.2):
                     raise UserStoppedError("stopped_by_user")
                 continue
