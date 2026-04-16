@@ -68,7 +68,7 @@ def init_config():
             default_config = yaml.safe_load(f) or {}
 
         if deep_update_config(default_config, user_config):
-            print(f"[{ts()}] [系统] 🛠️ 检测到旧版配置缺失新参数，已自动补齐并生效！")
+            print(f"[{ts()}] [系统] 检测到旧版配置缺失新参数，已自动补齐并生效！")
             try:
                 with CONFIG_FILE_LOCK:
                     with open(config_path, "w", encoding="utf-8") as f:
@@ -93,6 +93,7 @@ IMAP_PASS: str = ""
 
 LOCAL_MS_ENABLE_FISSION: bool = False
 LOCAL_MS_POOL_FISSION: bool = False
+LOCAL_MS_FISSION_DEAD_THRESHOLD: int = 60
 LOCAL_MS_MASTER_EMAIL: str = ""
 LOCAL_MS_PASSWORD: str = ""
 LOCAL_MS_CLIENT_ID: str = ""
@@ -153,6 +154,7 @@ SUB2API_ACCOUNT_LOAD_FACTOR: int = 10
 SUB2API_ACCOUNT_PRIORITY: int = 1
 SUB2API_ACCOUNT_RATE_MULTIPLIER: float = 1.0
 SUB2API_ACCOUNT_GROUP_IDS: list = []
+SUB2API_ACCOUNT_PROXY_ID: int = 0
 SUB2API_ENABLE_WS_MODE: bool = True
 
 LUCKMAIL_PREFERRED_DOMAIN: str = ""
@@ -170,6 +172,8 @@ DUCK_OFFICIAL_API_BASE: str = "https://quack.duckduckgo.com"
 DUCKMAIL_FORWARD_MODE: str = "Gmail_OAuth"
 DUCKMAIL_FORWARD_EMAIL: str = ""
 DUCK_USE_PROXY: bool = True
+
+GMAIL_ALIAS_BASE_EMAIL: str = ""
 
 HERO_SMS_ENABLED: bool = False
 HERO_SMS_API_KEY: str = ""
@@ -232,7 +236,7 @@ def reload_all_configs():
     global SUB2API_SAVE_TO_LOCAL
     global SUB2API_REMOVE_ON_LIMIT_REACHED, SUB2API_REMOVE_DEAD_ACCOUNTS, SUB2API_ENABLE_TOKEN_REVIVE
     global SUB2API_ACCOUNT_CONCURRENCY, SUB2API_ACCOUNT_LOAD_FACTOR, SUB2API_ACCOUNT_PRIORITY
-    global SUB2API_ACCOUNT_RATE_MULTIPLIER, SUB2API_ACCOUNT_GROUP_IDS, SUB2API_ENABLE_WS_MODE
+    global SUB2API_ACCOUNT_RATE_MULTIPLIER, SUB2API_ACCOUNT_GROUP_IDS, SUB2API_ACCOUNT_PROXY_ID, SUB2API_ENABLE_WS_MODE
     global LUCKMAIL_API_KEY,LUCKMAIL_PREFERRED_DOMAIN,LUCKMAIL_EMAIL_TYPE,LUCKMAIL_VARIANT_MODE,LUCKMAIL_REUSE_PURCHASED, LUCKMAIL_TAG_ID
     global HERO_SMS_ENABLED, HERO_SMS_API_KEY, HERO_SMS_BASE_URL, HERO_SMS_COUNTRY, HERO_SMS_SERVICE
     global HERO_SMS_AUTO_PICK_COUNTRY, HERO_SMS_REUSE_PHONE, HERO_SMS_MAX_PRICE, HERO_SMS_VERIFY_ON_REGISTER
@@ -246,9 +250,10 @@ def reload_all_configs():
     global DUCKMAIL_API_URL, DUCKMAIL_DOMAIN, DUCKMAIL_MODE, DUCK_API_TOKEN, DUCK_COOKIE, DUCK_OFFICIAL_API_BASE
     global DUCKMAIL_FORWARD_MODE, DUCKMAIL_FORWARD_EMAIL
     global DUCK_USE_PROXY
+    global GMAIL_ALIAS_BASE_EMAIL
     global CLUSTER_NODE_NAME, CLUSTER_MASTER_URL, CLUSTER_SECRET
     global REG_MODE
-    global LOCAL_MS_ENABLE_FISSION, LOCAL_MS_MASTER_EMAIL, LOCAL_MS_PASSWORD, LOCAL_MS_CLIENT_ID, LOCAL_MS_REFRESH_TOKEN, LOCAL_MS_POOL_FISSION
+    global LOCAL_MS_ENABLE_FISSION, LOCAL_MS_MASTER_EMAIL, LOCAL_MS_PASSWORD, LOCAL_MS_CLIENT_ID, LOCAL_MS_REFRESH_TOKEN, LOCAL_MS_POOL_FISSION, LOCAL_MS_FISSION_DEAD_THRESHOLD
 
     def safe_int(value, default, minimum=None):
         try:
@@ -352,6 +357,7 @@ def reload_all_configs():
     _local_microsoft = _c.get("local_microsoft", {})
     LOCAL_MS_ENABLE_FISSION = bool(_local_microsoft.get("enable_fission", False))
     LOCAL_MS_POOL_FISSION = bool(_local_microsoft.get("pool_fission", False))
+    LOCAL_MS_FISSION_DEAD_THRESHOLD = safe_int(_local_microsoft.get("fission_dead_threshold", 60), 60, minimum=1)
     LOCAL_MS_MASTER_EMAIL = str(_local_microsoft.get("master_email", "")).strip()
     LOCAL_MS_CLIENT_ID = str(_local_microsoft.get("client_id", "")).strip()
     LOCAL_MS_REFRESH_TOKEN = str(_local_microsoft.get("refresh_token", "")).strip()
@@ -415,6 +421,7 @@ def reload_all_configs():
     SUB2API_ACCOUNT_PRIORITY = safe_int(_sub2api.get("account_priority", 1), 1, minimum=1)
     SUB2API_ACCOUNT_RATE_MULTIPLIER = safe_float(_sub2api.get("account_rate_multiplier", 1.0), 1.0, minimum=0.0)
     SUB2API_ACCOUNT_GROUP_IDS = parse_group_ids(_sub2api.get("account_group_ids", ""))
+    SUB2API_ACCOUNT_PROXY_ID = safe_int(_sub2api.get("account_proxy_id", 0), 0, minimum=0)
     SUB2API_ENABLE_WS_MODE = safe_bool(_sub2api.get("enable_ws_mode", True), default=True)
 
     _normal          = _c.get("normal_mode", {})
@@ -511,6 +518,9 @@ def reload_all_configs():
     DUCKMAIL_FORWARD_MODE = str(_duck.get("forward_mode") or "Gmail_OAuth").strip()
     DUCKMAIL_FORWARD_EMAIL = str(_duck.get("forward_email") or "").strip()
     DUCK_USE_PROXY = safe_bool(_duck.get("use_proxy", True), default=True)
+
+    _gmail_alias = _c.get("gmail_alias", {})
+    GMAIL_ALIAS_BASE_EMAIL = str(_gmail_alias.get("base_email", "")).strip()
 
     CLUSTER_NODE_NAME = str(_c.get("cluster_node_name", "")).strip()
     CLUSTER_MASTER_URL = str(_c.get("cluster_master_url", "")).strip().rstrip("/")

@@ -73,6 +73,7 @@ class Sub2APIClient:
             "rate_multiplier": as_float(getattr(cfg, "SUB2API_ACCOUNT_RATE_MULTIPLIER", 1.0) if cfg else 1.0, 1.0,
                                         0.0),
             "group_ids": group_ids,
+            "proxy_id": as_int(getattr(cfg, "SUB2API_ACCOUNT_PROXY_ID", 0) if cfg else 0, 0, 0),
             "enable_ws": bool(getattr(cfg, "SUB2API_ENABLE_WS_MODE", True) if cfg else True),
         }
 
@@ -141,6 +142,8 @@ class Sub2APIClient:
         }
         if settings["group_ids"]:
             account_item["group_ids"] = settings["group_ids"]
+        if settings["proxy_id"]:
+            account_item["proxy_id"] = settings["proxy_id"]
 
         payload = {
             "data": {
@@ -236,6 +239,8 @@ class Sub2APIClient:
         }
         if settings["group_ids"]:
             payload["group_ids"] = settings["group_ids"]
+        if settings["proxy_id"]:
+            payload["proxy_id"] = settings["proxy_id"]
 
         try:
             response = cffi_requests.post(

@@ -622,6 +622,12 @@
                                     <option value="fvia">FviaInboxes (需填authorization)</option>
                                     <option value="inboxes">Inboxes.com</option>
                                     <option value="temporarymail">TemporaryMail.com</option>
+                                    <option value="tempmail_plus">TempMail.Plus</option>
+                                    <option value="m2u">M2U.io (MailToYou)</option>
+                                    <option value="guerrillamail">GuerrillaMail</option>
+                                    <option value="beeinbox">BeeInbox</option>
+                                    <option value="moakt">Moakt</option>
+                                    <option value="gmail_alias">Gmail 别名 (需 OAuth)</option>
                                 </select>
 
                                 <label class="block text-slate-700 text-sm font-extrabold mb-1 mt-6">发信域名池 (mail_domains)</label>
@@ -958,7 +964,76 @@
                                         <p class="mt-3 text-rose-600 font-black bg-rose-50/50 p-2 rounded-lg border border-rose-100">🔥 提示：建议务必开启左侧的【获取邮箱使用全局代理穿透】！</p>
                                     </div>
                                 </div>
-                                <div v-if="config.email_api_mode === 'Gmail_OAuth'" class="mt-8 border-t-2 border-dashed border-slate-200 pt-8 animate-fade-in">
+                                <div v-if="config.email_api_mode === 'tempmail_plus'" class="animate-fade-in space-y-4">
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
+                                        <span class="text-sm font-black text-slate-700">TempMail.Plus</span>
+                                    </div>
+                                    <div class="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-4 rounded-xl leading-relaxed shadow-sm">
+                                        <p class="flex items-center gap-1.5 text-sm"><span>✅</span> 免费临时邮箱，无需任何配置</p>
+                                        <p class="mt-2 text-emerald-700 opacity-90">内置 9 个免费域名（mailto.plus、rover.info、fexpost.com 等），随机生成即用，无需 API Key！</p>
+                                        <p class="mt-3 text-rose-600 font-black bg-rose-50/50 p-2 rounded-lg border border-rose-100">🔥 提示：建议务必开启左侧的【获取邮箱使用全局代理穿透】！</p>
+                                    </div>
+                                </div>
+                                <div v-if="config.email_api_mode === 'm2u'" class="animate-fade-in space-y-4">
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
+                                        <span class="text-sm font-black text-slate-700">M2U.io (MailToYou)</span>
+                                    </div>
+                                    <div class="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-4 rounded-xl leading-relaxed shadow-sm">
+                                        <p class="flex items-center gap-1.5 text-sm"><span>✅</span> 免费临时邮箱，支持 EDU 教育邮箱域名</p>
+                                        <p class="mt-2 text-emerald-700 opacity-90">内置 tmail.bio、shaole.me、kkb.qzz.io 等免费域名，无需 API Key，选中即用！</p>
+                                        <p class="mt-3 text-rose-600 font-black bg-rose-50/50 p-2 rounded-lg border border-rose-100">🔥 提示：建议务必开启左侧的【获取邮箱使用全局代理穿透】！</p>
+                                    </div>
+                                </div>
+                                <div v-if="config.email_api_mode === 'guerrillamail'" class="animate-fade-in space-y-4">
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
+                                        <span class="text-sm font-black text-slate-700">GuerrillaMail</span>
+                                    </div>
+                                    <div class="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-4 rounded-xl leading-relaxed shadow-sm">
+                                        <p class="flex items-center gap-1.5 text-sm"><span>✅</span> 老牌免费临时邮箱，10 个域名可选</p>
+                                        <p class="mt-2 text-emerald-700 opacity-90">内置 guerrillamail.com、sharklasers.com、grr.la、spam4.me 等域名，无需 API Key，选中即用！</p>
+                                        <p class="mt-3 text-rose-600 font-black bg-rose-50/50 p-2 rounded-lg border border-rose-100">🔥 提示：建议务必开启左侧的【获取邮箱使用全局代理穿透】！</p>
+                                    </div>
+                                </div>
+                                <div v-if="config.email_api_mode === 'beeinbox'" class="animate-fade-in space-y-4">
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
+                                        <span class="text-sm font-black text-slate-700">BeeInbox</span>
+                                    </div>
+                                    <div class="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-4 rounded-xl leading-relaxed shadow-sm">
+                                        <p class="flex items-center gap-1.5 text-sm"><span>✅</span> 免费临时邮箱，6 个域名可选</p>
+                                        <p class="mt-2 text-emerald-700 opacity-90">内置 beeinbox.com、beeinbox.edu.pl、superbee.my、ussteel.xyz、chinasteel.xyz、obee.info 域名，无需 API Key，选中即用！</p>
+                                        <p class="mt-3 text-rose-600 font-black bg-rose-50/50 p-2 rounded-lg border border-rose-100">🔥 提示：建议务必开启左侧的【获取邮箱使用全局代理穿透】！</p>
+                                    </div>
+                                </div>
+                                <div v-if="config.email_api_mode === 'moakt'" class="animate-fade-in space-y-4">
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
+                                        <span class="text-sm font-black text-slate-700">Moakt</span>
+                                    </div>
+                                    <div class="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-4 rounded-xl leading-relaxed shadow-sm">
+                                        <p class="flex items-center gap-1.5 text-sm"><span>✅</span> 免费临时邮箱，14 个域名可选，1小时有效期</p>
+                                        <p class="mt-2 text-emerald-700 opacity-90">内置 moakt.cc、drmail.in、tmpmail.org、disbox.net 等域名，无需 API Key，选中即用！</p>
+                                        <p class="mt-3 text-rose-600 font-black bg-rose-50/50 p-2 rounded-lg border border-rose-100">🔥 提示：建议务必开启左侧的【获取邮箱使用全局代理穿透】！</p>
+                                    </div>
+                                </div>
+                                <div v-if="config.email_api_mode === 'gmail_alias' && config.gmail_alias" class="animate-fade-in space-y-4">
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
+                                        <span class="text-sm font-black text-slate-700">Gmail 别名</span>
+                                    </div>
+                                    <label class="block text-slate-700 text-sm font-extrabold mb-1">主邮箱地址 (base_email)</label>
+                                    <input v-model="config.gmail_alias.base_email" type="email" placeholder="yourname@gmail.com"
+                                        class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                                    <div class="text-xs text-blue-800 font-bold bg-blue-50 border border-blue-200 p-4 rounded-xl leading-relaxed shadow-sm">
+                                        <p class="flex items-center gap-1.5 text-sm"><span>📧</span> 原理：利用 Gmail + 号别名，一个邮箱无限注册</p>
+                                        <p class="mt-2 text-blue-700 opacity-90">填入你的 Gmail 主地址，系统自动生成 yourname+随机字符@gmail.com 别名。所有邮件由主邮箱通过 OAuth 接收。</p>
+                                        <p class="mt-2 text-amber-700 font-bold">⚠️ 前提：需要先在下方完成 Gmail OAuth 2.0 授权！</p>
+                                    </div>
+                                </div>
+                                <div v-if="['Gmail_OAuth', 'gmail_alias'].includes(config.email_api_mode)" class="mt-8 border-t-2 border-dashed border-slate-200 pt-8 animate-fade-in">
                                     <div class="flex items-center gap-3 mb-8">
                                         <span class="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-xl shadow-md text-sm font-black">?</span>
                                         <h3 class="text-lg font-black text-slate-800 tracking-tight">Gmail OAuth 2.0 自动化配置向导</h3>

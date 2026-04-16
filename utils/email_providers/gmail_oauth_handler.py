@@ -1,7 +1,7 @@
 import os
 import json
 import base64
-import httplib2
+import socket as _socket
 import socks
 import urllib.parse
 from google_auth_oauthlib.flow import Flow
@@ -12,6 +12,35 @@ from utils import config as cfg
 
 class GmailOAuthHandler:
     SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+    _original_socket = None
+    _current_proxy = None
+
+    @staticmethod
+    def _apply_socks_proxy(proxy_str):
+        """在 socket 级别应用 socks5 代理"""
+        if not proxy_str:
+            return
+        if GmailOAuthHandler._original_socket is None:
+            GmailOAuthHandler._original_socket = _socket.socket
+        GmailOAuthHandler._current_proxy = proxy_str
+        parsed = urllib.parse.urlparse(proxy_str)
+        if parsed.scheme in ('socks5', 'socks5h'):
+            socks.set_default_proxy(
+                socks.SOCKS5,
+                parsed.hostname,
+                parsed.port or 1080,
+                username=parsed.username,
+                password=parsed.password
+            )
+            _socket.socket = socks.socksocket
+
+    @staticmethod
+    def _restore_socket():
+        """恢复原始 socket"""
+        if GmailOAuthHandler._original_socket is not None:
+            _socket.socket = GmailOAuthHandler._original_socket
+            GmailOAuthHandler._original_socket = None
+            GmailOAuthHandler._current_proxy = None
 
     @staticmethod
     def _set_proxy(proxy):
@@ -64,7 +93,6 @@ class GmailOAuthHandler:
     def get_service(client_secrets_path, token_path, proxy=None):
         if not os.path.exists(token_path):
             return None
-        GmailOAuthHandler._set_proxy(proxy)
 
         try:
             creds = Credentials.from_authorized_user_file(token_path, GmailOAuthHandler.SCOPES)
@@ -74,28 +102,14 @@ class GmailOAuthHandler:
                 with open(token_path, 'w') as f:
                     f.write(creds.to_json())
 
-            custom_http = None
-            if proxy and proxy.startswith("socks5"):
-
-                parsed = urllib.parse.urlparse(proxy)
-                proxy_info = httplib2.ProxyInfo(
-                    proxy_type=socks.PROXY_TYPE_SOCKS5,
-                    proxy_host=parsed.hostname,
-                    proxy_port=parsed.port
-                )
-
-                custom_http = httplib2.Http(proxy_info=proxy_info)
-            if custom_http:
-                return build('gmail', 'v1', credentials=creds, http=custom_http, static_discovery=False)
-            else:
-                return build('gmail', 'v1', credentials=creds, static_discovery=False)
+            GmailOAuthHandler._apply_socks_proxy(proxy)
+            return build('gmail', 'v1', credentials=creds, static_discovery=False)
 
         except Exception as e:
             from utils import config as cfg
             print(f"[{cfg.ts()}] [ERROR] Gmail 服务启动失败: {e}")
+            GmailOAuthHandler._restore_socket()
             return None
-        finally:
-            GmailOAuthHandler._clear_proxy()
 
     @staticmethod
     def fetch_and_mark_read(service, target_email, search_query="is:unread"):
@@ -155,3 +169,5 @@ class GmailOAuthHandler:
         except Exception as e:
             print(f"[{cfg.ts()}] [SKIP] DEBUG: 邮件解析过程报错: {e}")
             return []
+        finally:
+            GmailOAuthHandler._restore_socket()

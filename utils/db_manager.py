@@ -42,11 +42,15 @@ def init_db():
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
-        try:
-            c.execute('ALTER TABLE local_mailboxes ADD COLUMN fission_count INTEGER DEFAULT 0;')
-            c.execute('ALTER TABLE local_mailboxes ADD COLUMN retry_master INTEGER DEFAULT 0;')
-        except sqlite3.OperationalError:
-            pass
+        for alter in [
+            'ALTER TABLE local_mailboxes ADD COLUMN fission_count INTEGER DEFAULT 0;',
+            'ALTER TABLE local_mailboxes ADD COLUMN retry_master INTEGER DEFAULT 0;',
+            'ALTER TABLE local_mailboxes ADD COLUMN fission_fail_count INTEGER DEFAULT 0;',
+        ]:
+            try:
+                c.execute(alter)
+            except sqlite3.OperationalError:
+                pass
         conn.commit()
     print(f"[{ts()}] [系统] 数据库模块初始化完成")
 
@@ -327,16 +331,34 @@ def get_mailbox_for_pool_fission() -> dict:
 def update_pool_fission_result(email: str, is_blocked: bool, is_raw: bool):
     """
     处理库分裂结果：
+    is_blocked=True  -> 连续失败计数+1，达到阈值才标记死号
+    is_blocked=False -> 成功，清零连续失败计数
     """
+    threshold = getattr(__import__('utils.config', fromlist=['LOCAL_MS_FISSION_DEAD_THRESHOLD']).LOCAL_MS_FISSION_DEAD_THRESHOLD, 'LOCAL_MS_FISSION_DEAD_THRESHOLD', 60)
+    try:
+        from utils.config import LOCAL_MS_FISSION_DEAD_THRESHOLD
+        threshold = LOCAL_MS_FISSION_DEAD_THRESHOLD
+    except Exception:
+        threshold = 60
+
     try:
         with sqlite3.connect(DB_PATH, timeout=10) as conn:
+            conn.row_factory = sqlite3.Row
             if not is_blocked:
-                conn.execute("UPDATE local_mailboxes SET retry_master = 0 WHERE email = ?", (email,))
+                conn.execute("UPDATE local_mailboxes SET retry_master = 0, fission_fail_count = 0 WHERE email = ?", (email,))
             else:
-                if not is_raw:
-                    conn.execute("UPDATE local_mailboxes SET retry_master = 1 WHERE email = ?", (email,))
+                conn.execute("UPDATE local_mailboxes SET fission_fail_count = fission_fail_count + 1 WHERE email = ?", (email,))
+                row = conn.execute("SELECT fission_fail_count FROM local_mailboxes WHERE email = ?", (email,)).fetchone()
+                fail_count = row['fission_fail_count'] if row else 0
+
+                if fail_count >= threshold:
+                    conn.execute("UPDATE local_mailboxes SET status = 3, retry_master = 0, fission_fail_count = 0 WHERE email = ?", (email,))
+                    print(f"[{ts()}] [WARNING] {email} 连续失败 {fail_count} 次已达阈值 {threshold}，标记为死号")
                 else:
-                    conn.execute("UPDATE local_mailboxes SET status = 3, retry_master = 0 WHERE email = ?", (email,))
+                    if not is_raw:
+                        conn.execute("UPDATE local_mailboxes SET retry_master = 1 WHERE email = ?", (email,))
+                    else:
+                        conn.execute("UPDATE local_mailboxes SET retry_master = 1 WHERE email = ?", (email,))
             conn.commit()
     except Exception as e:
         print(f"[{ts()}] [DB_ERROR] 结果更新失败: {e}")

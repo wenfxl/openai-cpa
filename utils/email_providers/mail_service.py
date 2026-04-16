@@ -393,6 +393,102 @@ def get_email_and_token(proxies: Any = None) -> tuple:
             print(f"[{cfg.ts()}] [ERROR] GeneratorEmail 流程异常: {e}")
         return None, None
 
+    if mode == "tempmail_plus":
+        try:
+            from utils.email_providers.tempmail_plus_service import TempMailPlusService
+            tp_service = TempMailPlusService(proxies=mail_proxies)
+            email, token = tp_service.create_email()
+
+            if email and token:
+                set_last_email(email)
+                print(f"[{cfg.ts()}] [INFO] TempMailPlus 成功创建邮箱: ({mask_email(email)})")
+                return email, token
+            else:
+                print(f"[{cfg.ts()}] [ERROR] TempMailPlus 获取邮箱失败")
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] TempMailPlus 流程异常: {e}")
+        return None, None
+
+    if mode == "m2u":
+        try:
+            from utils.email_providers.m2u_service import M2UService
+            m2u_service = M2UService(proxies=mail_proxies)
+            email, token = m2u_service.create_email()
+
+            if email and token:
+                set_last_email(email)
+                print(f"[{cfg.ts()}] [INFO] M2U 成功创建邮箱: ({mask_email(email)})")
+                return email, token
+            else:
+                print(f"[{cfg.ts()}] [ERROR] M2U 获取邮箱失败")
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] M2U 流程异常: {e}")
+        return None, None
+
+    if mode == "guerrillamail":
+        try:
+            from utils.email_providers.guerrillamail_service import GuerrillaMailService
+            gm_service = GuerrillaMailService(proxies=mail_proxies)
+            email, token = gm_service.create_email()
+
+            if email and token:
+                set_last_email(email)
+                print(f"[{cfg.ts()}] [INFO] GuerrillaMail 成功创建邮箱: ({mask_email(email)})")
+                return email, token
+            else:
+                print(f"[{cfg.ts()}] [ERROR] GuerrillaMail 获取邮箱失败")
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] GuerrillaMail 流程异常: {e}")
+        return None, None
+
+    if mode == "beeinbox":
+        try:
+            from utils.email_providers.beeinbox_service import BeeInboxService
+            bi_service = BeeInboxService(proxies=mail_proxies)
+            email, state = bi_service.create_email()
+
+            if email and state:
+                set_last_email(email)
+                print(f"[{cfg.ts()}] [INFO] BeeInbox 成功创建邮箱: ({mask_email(email)})")
+                return email, state
+            else:
+                print(f"[{cfg.ts()}] [ERROR] BeeInbox 获取邮箱失败")
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] BeeInbox 流程异常: {e}")
+        return None, None
+
+    if mode == "moakt":
+        try:
+            from utils.email_providers.moakt_service import MoaktService
+            mk_service = MoaktService(proxies=mail_proxies)
+            email, token = mk_service.create_email()
+
+            if email and token:
+                set_last_email(email)
+                print(f"[{cfg.ts()}] [INFO] Moakt 成功创建邮箱: ({mask_email(email)})")
+                return email, token
+            else:
+                print(f"[{cfg.ts()}] [ERROR] Moakt 获取邮箱失败")
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] Moakt 流程异常: {e}")
+        return None, None
+
+    if mode == "gmail_alias":
+        try:
+            from utils.email_providers.gmail_alias_service import GmailAliasService
+            ga_service = GmailAliasService(proxies=mail_proxies)
+            email, token = ga_service.create_email()
+
+            if email and token:
+                set_last_email(email)
+                print(f"[{cfg.ts()}] [INFO] Gmail 别名成功生成: ({mask_email(email)})")
+                return email, token
+            else:
+                print(f"[{cfg.ts()}] [ERROR] Gmail 别名生成失败")
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] Gmail 别名流程异常: {e}")
+        return None, None
+
     if mode == "tempmail":
         try:
             from utils.email_providers.tempmail_service import TempmailService
@@ -1145,7 +1241,206 @@ def get_oai_code(
                 except Exception as e:
                     pass
 
-            elif mode == "tempmail":
+            elif mode == "tempmail_plus":
+                try:
+                    from utils.email_providers.tempmail_plus_service import TempMailPlusService
+                    tp_service = TempMailPlusService(proxies=mail_proxies)
+                    mail_list = tp_service.get_inbox(email)
+
+                    for mail in mail_list:
+                        m_id = str(mail.get("mail_id", ""))
+                        if not m_id or m_id in processed_mail_ids:
+                            continue
+
+                        subject = str(mail.get("subject", ""))
+                        from_mail = str(mail.get("from_mail", "")).lower()
+
+                        if "openai" not in from_mail and "openai" not in subject.lower():
+                            continue
+
+                        code = _extract_otp_code(subject)
+                        if code:
+                            processed_mail_ids.add(m_id)
+                            print(f"\n[{cfg.ts()}] [SUCCESS] TempMailPlus ({mask_email(email)})邮箱提取成功: {code}")
+                            return code
+
+                        detail = tp_service.get_mail_content(int(m_id), email)
+                        if detail:
+                            content = f"{subject}\n{detail.get('text', '')}\n{detail.get('html', '')}"
+                            code = _extract_otp_code(content)
+                            if code:
+                                processed_mail_ids.add(m_id)
+                                print(f"\n[{cfg.ts()}] [SUCCESS] TempMailPlus ({mask_email(email)})邮箱提取成功: {code}")
+                                return code
+                except Exception:
+                    pass
+
+            elif mode == "m2u":
+                if not jwt:
+                    print(f"\n[{cfg.ts()}] [ERROR] M2U 缺少 token，无法提取验证码！")
+                    return ""
+                try:
+                    from utils.email_providers.m2u_service import M2UService
+                    m2u_service = M2UService(proxies=mail_proxies)
+                    mail_list = m2u_service.get_inbox(jwt)
+
+                    for mail in mail_list:
+                        m_id = str(mail.get("id", ""))
+                        if not m_id or m_id in processed_mail_ids:
+                            continue
+
+                        subject = str(mail.get("subject", ""))
+                        from_addr = str(mail.get("from_addr", "")).lower()
+
+                        if "openai" not in from_addr and "openai" not in subject.lower():
+                            continue
+
+                        code = _extract_otp_code(subject)
+                        if code:
+                            processed_mail_ids.add(m_id)
+                            print(f"\n[{cfg.ts()}] [SUCCESS] M2U ({mask_email(email)})邮箱提取成功: {code}")
+                            return code
+
+                        detail = m2u_service.get_message(jwt, m_id)
+                        if detail:
+                            content = f"{subject}\n{detail.get('text_body', '')}\n{detail.get('html_body', '')}"
+                            code = _extract_otp_code(content)
+                            if code:
+                                processed_mail_ids.add(m_id)
+                                print(f"\n[{cfg.ts()}] [SUCCESS] M2U ({mask_email(email)})邮箱提取成功: {code}")
+                                return code
+                except Exception:
+                    pass
+
+            elif mode == "guerrillamail":
+                if not jwt:
+                    print(f"\n[{cfg.ts()}] [ERROR] GuerrillaMail 缺少 sid_token，无法提取验证码！")
+                    return ""
+                try:
+                    from utils.email_providers.guerrillamail_service import GuerrillaMailService
+                    gm_service = GuerrillaMailService(proxies=mail_proxies)
+                    mail_list = gm_service.get_inbox(jwt)
+
+                    for mail in mail_list:
+                        m_id = str(mail.get("mail_id", ""))
+                        if not m_id or m_id in processed_mail_ids:
+                            continue
+
+                        subject = str(mail.get("mail_subject", ""))
+                        from_addr = str(mail.get("mail_from", "")).lower()
+
+                        if "openai" not in from_addr and "openai" not in subject.lower():
+                            continue
+
+                        code = _extract_otp_code(subject)
+                        if code:
+                            processed_mail_ids.add(m_id)
+                            print(f"\n[{cfg.ts()}] [SUCCESS] GuerrillaMail ({mask_email(email)})邮箱提取成功: {code}")
+                            return code
+
+                        excerpt = str(mail.get("mail_excerpt", ""))
+                        code = _extract_otp_code(f"{subject}\n{excerpt}")
+                        if code:
+                            processed_mail_ids.add(m_id)
+                            print(f"\n[{cfg.ts()}] [SUCCESS] GuerrillaMail ({mask_email(email)})邮箱提取成功: {code}")
+                            return code
+
+                        detail = gm_service.get_email_detail(m_id, jwt)
+                        if detail:
+                            body = detail.get("mail_body", "")
+                            code = _extract_otp_code(f"{subject}\n{body}")
+                            if code:
+                                processed_mail_ids.add(m_id)
+                                print(f"\n[{cfg.ts()}] [SUCCESS] GuerrillaMail ({mask_email(email)})邮箱提取成功: {code}")
+                                return code
+                except Exception:
+                    pass
+
+            elif mode == "beeinbox":
+                if not jwt:
+                    print(f"\n[{cfg.ts()}] [ERROR] BeeInbox 缺少邮箱地址，无法提取验证码！")
+                    return ""
+                try:
+                    from utils.email_providers.beeinbox_service import BeeInboxService
+                    if not hasattr(get_oai_code, '_beeinbox_svc') or get_oai_code._beeinbox_svc is None:
+                        get_oai_code._beeinbox_svc = BeeInboxService(proxies=mail_proxies)
+                    bi_service = get_oai_code._beeinbox_svc
+                    messages = bi_service.get_inbox(jwt)
+
+                    for mail in messages:
+                        m_id = str(mail.get("id", ""))
+                        if not m_id or m_id in processed_mail_ids:
+                            continue
+
+                        subject = str(mail.get("subject", ""))
+                        sender = str(mail.get("sender_email", "")).lower()
+
+                        if "openai" not in sender and "openai" not in subject.lower():
+                            continue
+
+                        content_text = re.sub(r"<[^>]+>", " ", str(mail.get("content", "")))
+                        code = _extract_otp_code(f"{subject}\n{content_text}")
+                        if code:
+                            processed_mail_ids.add(m_id)
+                            print(f"\n[{cfg.ts()}] [SUCCESS] BeeInbox ({mask_email(email)})邮箱提取成功: {code}")
+                            return code
+                except Exception:
+                    pass
+
+            elif mode == "moakt":
+                if not jwt:
+                    print(f"\n[{cfg.ts()}] [ERROR] Moakt 缺少邮箱地址，无法提取验证码！")
+                    return ""
+                try:
+                    from utils.email_providers.moakt_service import MoaktService
+                    mk_service = MoaktService(proxies=mail_proxies)
+                    messages = mk_service.get_inbox(jwt)
+
+                    for mail in messages:
+                        m_id = str(mail.get("id", ""))
+                        if not m_id or m_id in processed_mail_ids:
+                            continue
+
+                        subject = str(mail.get("subject", ""))
+                        sender = str(mail.get("sender", "")).lower()
+
+                        if "openai" not in sender and "openai" not in subject.lower():
+                            continue
+
+                        code = _extract_otp_code(subject)
+                        if code:
+                            processed_mail_ids.add(m_id)
+                            print(f"\n[{cfg.ts()}] [SUCCESS] Moakt ({mask_email(email)})邮箱提取成功: {code}")
+                            return code
+
+                        # 获取邮件正文
+                        link = mail.get("link", "")
+                        if link:
+                            body = mk_service.get_mail_content(link)
+                            code = _extract_otp_code(f"{subject}\n{body}")
+                            if code:
+                                processed_mail_ids.add(m_id)
+                                print(f"\n[{cfg.ts()}] [SUCCESS] Moakt ({mask_email(email)})邮箱提取成功: {code}")
+                                return code
+                except Exception:
+                    pass
+
+            elif mode == "gmail_alias":
+                try:
+                    from utils.email_providers.gmail_service import get_gmail_otp_via_oauth
+                    proxy_str = None
+                    if mail_proxies:
+                        if isinstance(mail_proxies, dict):
+                            proxy_str = mail_proxies.get("https") or mail_proxies.get("http")
+                        else:
+                            proxy_str = str(mail_proxies)
+                    otp_code = get_gmail_otp_via_oauth(email, proxy=proxy_str)
+                    if otp_code:
+                        print(f"\n[{cfg.ts()}] [SUCCESS] Gmail 别名 ({mask_email(email)}) 提取成功: {otp_code}")
+                        return otp_code
+                except Exception:
+                    pass
+
                 if not jwt:
                     print(f"\n[{cfg.ts()}] [ERROR] Tempmail 缺少 token，无法提取验证码！")
                     return ""
