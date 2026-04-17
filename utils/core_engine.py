@@ -34,6 +34,7 @@ from utils.proxy_manager import smart_switch_node
 from utils.integrations.sub2api_client import Sub2APIClient
 from utils.integrations.tg_notifier import send_tg_msg_sync
 
+
 _stats_lock = threading.Lock()
 sub_fail_counts = {}
 _heal_lock = threading.Lock()
@@ -55,11 +56,30 @@ KNOWN_CLIPROXY_ERROR_LABELS = {
     "unsupported_region":   "地区不支持",
 }
 
-log_queue = queue.Queue(maxsize=500)
 _orig_print  = builtins.print
 _thread_local = threading.local()
 _print_lock   = threading.Lock()
 
+
+class FakeLogQueue:
+    def put_nowait(self, item):
+        try:
+            from global_state import append_log
+            if isinstance(item, str):
+                append_log(item.strip())
+            else:
+                append_log(str(item).strip())
+        except Exception:
+            pass
+    def put(self, item, block=True, timeout=None):
+        self.put_nowait(item)
+
+    def empty(self):
+        return True
+
+    def qsize(self):
+        return 0
+log_queue = FakeLogQueue()
 
 def web_print(*args, **kwargs):
     if "file" in kwargs and kwargs["file"] is not None:
@@ -76,8 +96,9 @@ def web_print(*args, **kwargs):
             msg = _thread_local.buffer.lstrip("\n")
             if msg and msg.strip() != ".":
                 try:
-                    log_queue.put_nowait(msg.strip())
-                except queue.Full:
+                    from global_state import append_log
+                    append_log(msg.strip())
+                except Exception:
                     pass
         _thread_local.buffer = ""
 
@@ -1274,7 +1295,6 @@ def main() -> None:
 
 class RegEngine:
     """GUI 用控制类，封装线程/协程生命周期。"""
-
     def __init__(self):
         self.thread_stop_event = threading.Event()
         self.async_stop_event  = None

@@ -283,7 +283,7 @@ web_password: admin
 cf_api_email: 
 #CF KEY
 cf_api_key:
-
+max_log_lines: "500"
 #集群总控
 cluster_node_name: "NODE-1"
 cluster_master_url: ""

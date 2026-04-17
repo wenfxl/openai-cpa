@@ -175,6 +175,7 @@ HERO_SMS_POLL_TIMEOUT_SEC: int = 120
 NORMAL_SLEEP_MIN: int = 5
 NORMAL_SLEEP_MAX: int = 30
 NORMAL_TARGET_COUNT: int = 0
+MAX_LOG_LINES: int = 500
 _clash_enable: bool = False
 _clash_pool_mode: bool = False
 CLASH_CLUSTER_COUNT: int = 5
@@ -239,6 +240,7 @@ def reload_all_configs(new_config_dict=None):
     global REG_MODE
     global LOCAL_MS_ENABLE_FISSION, LOCAL_MS_MASTER_EMAIL, LOCAL_MS_PASSWORD, LOCAL_MS_CLIENT_ID, LOCAL_MS_REFRESH_TOKEN, LOCAL_MS_POOL_FISSION
     global DB_TYPE, MYSQL_CFG
+    global MAX_LOG_LINES
 
     base_yaml_config = init_config()
 
@@ -256,16 +258,16 @@ def reload_all_configs(new_config_dict=None):
     }
 
     base_yaml_config["database"] = {"type": DB_TYPE, "mysql": MYSQL_CFG}
-
+    is_cloud_db = (DB_TYPE == "mysql")
     db_ready = False
-    try:
-        from utils.db_manager import get_sys_kv, set_sys_kv
-        db_ready = True
-    except Exception as e:
-        print(f"[{ts()}] [WARNING] 无法连接到数据库模块，退回只读 YAML 模式: {e}")
+    if is_cloud_db:
+        try:
+            from utils.db_manager import get_sys_kv, set_sys_kv
+            db_ready = True
+        except Exception as e:
+            print(f"[{ts()}] [WARNING] 无法连接到云端数据库，退回本地 YAML 模式: {e}")
 
     if new_config_dict is not None and db_ready:
-        set_sys_kv("global_app_config", new_config_dict)
         _c = new_config_dict
         try:
             with CONFIG_FILE_LOCK:
@@ -273,16 +275,23 @@ def reload_all_configs(new_config_dict=None):
                     yaml.dump(new_config_dict, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
         except Exception:
             pass
-    elif db_ready:
-        db_config = get_sys_kv("global_app_config")
-        if db_config:
-            deep_update_config(base_yaml_config, db_config)
-            _c = db_config
+
+        if is_cloud_db and db_ready:
+            try:
+                set_sys_kv("global_app_config", new_config_dict)
+            except Exception:
+                pass
+    else:
+        if is_cloud_db and db_ready:
+            db_config = get_sys_kv("global_app_config")
+            if db_config:
+                deep_update_config(base_yaml_config, db_config)
+                _c = db_config
+            else:
+                _c = base_yaml_config
+                set_sys_kv("global_app_config", _c)
         else:
             _c = base_yaml_config
-            set_sys_kv("global_app_config", _c)
-    else:
-        _c = base_yaml_config
 
     def safe_int(value, default, minimum=None):
         try:
@@ -517,6 +526,9 @@ def reload_all_configs(new_config_dict=None):
 
     _fvia = _c.get("fvia", {})
     FVIA_TOKEN = str(_fvia.get("token") or "").strip()
+
+    MAX_LOG_LINES = safe_int(_c.get("max_log_lines", 500), 500, minimum=50)
+
 
     reload_proxy_config()
     print(f"[{ts()}] [系统] 核心配置已完成同步。")

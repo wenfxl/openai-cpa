@@ -315,6 +315,9 @@ createApp({
                 if (!this.config.tmailor) {
                     this.config.tmailor = { current_token: '' };
                 }
+                if (!this.config.max_log_lines) {
+                    this.config.max_log_lines = 500;
+                }
                 if (!this.config.temporam) {
                     this.config.temporam = { cookie: '' };
                 }
@@ -790,9 +793,9 @@ createApp({
                     }
                     this.logs.push(...this.logBuffer);
                     this.logBuffer = [];
-
-                    if (this.logs.length > 500) {
-                        this.logs.splice(0, this.logs.length - 500);
+                    const maxLines = (this.config && this.config.max_log_lines) ? this.config.max_log_lines : 500;
+                    if (this.logs.length > maxLines) {
+                        this.logs.splice(0, this.logs.length - maxLines);
                     }
                     this.$nextTick(() => {
                         if (container && (isScrolledToBottom || this.logs.length < 20)) {

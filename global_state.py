@@ -2,14 +2,22 @@ import threading
 from collections import deque
 from fastapi import Header, HTTPException
 from utils import core_engine
+import utils.config as cfg
 
 VALID_TOKENS = set()
 CLUSTER_NODES = {}
 NODE_COMMANDS = {}
 cluster_lock = threading.Lock()
-log_history = deque(maxlen=500)
+log_history = []
 worker_status: dict = {}
 engine = core_engine.RegEngine()
+
+
+def append_log(msg: str):
+    log_history.append(msg)
+    limit = getattr(cfg, 'MAX_LOG_LINES', 500)
+    if len(log_history) > limit * 1.2:
+        del log_history[:-limit]
 
 async def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
