@@ -1644,6 +1644,32 @@
                                 </div>
                             </div>
 
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50/40 to-white" v-if="config.raw_proxy_pool">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-cyan-100 pb-5 gap-4">
+                                    <div>
+                                        <h3 class="text-xl md:text-2xl font-black text-cyan-700 tracking-tight flex items-center gap-2"><span>🧦</span> 批量代理池</h3>
+                                        <p class="text-xs text-cyan-700/80 mt-2 font-medium">独立于 Clash 池，按列表轮换代理；启用后优先于 `warp_proxy_list`。</p>
+                                    </div>
+                                    <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-cyan-50 transition-colors shadow-sm border border-cyan-200 w-full sm:w-auto items-center justify-center group">
+                                        <input type="checkbox" v-model="config.raw_proxy_pool.enable" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-cyan-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="font-black text-cyan-900 text-sm md:text-base ml-3 tracking-wide">启用批量代理池</span>
+                                    </label>
+                                </div>
+                                <div class="space-y-4" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.raw_proxy_pool.enable}">
+                                    <div class="bg-cyan-50/70 border border-cyan-200 rounded-2xl p-5 shadow-sm">
+                                        <label class="block text-cyan-800 text-xs font-black mb-2 flex items-center justify-between uppercase tracking-wider">
+                                            代理列表
+                                            <span class="text-[10px] font-bold text-cyan-500 bg-white px-2 py-0.5 rounded shadow-sm border border-cyan-100">一行一个</span>
+                                        </label>
+                                        <p class="text-xs text-cyan-700/80 mb-3 leading-relaxed">
+                                            支持 `http://...`、`https://...`、`socks5://...`、`socks5h://...`；未写协议时默认按 `socks5h://` 解析
+                                        </p>
+                                        <textarea v-model="rawProxyListStr" class="w-full appearance-none bg-white border border-cyan-200 text-cyan-900 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-colors shadow-inner h-[160px] font-mono text-xs leading-relaxed placeholder:text-cyan-300" placeholder="http://user:pass@1.2.3.4:8080&#10;socks5://user:pass@1.2.3.5:1080&#10;1.2.3.6:1080:user:pass"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="proxy-intelligence-pool" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-l-4 border-l-indigo-500 bg-gradient-to-br from-indigo-50/30 to-white" v-if="config.clash_proxy_pool">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-indigo-100 pb-5 gap-4">
                                     <h3 class="text-xl md:text-2xl font-black text-indigo-700 tracking-tight flex items-center gap-2"><span>🌍</span> Clash 节点智能池</h3>

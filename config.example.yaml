@@ -162,6 +162,23 @@ clash_proxy_pool:
     - "China"
     - "回国"
 
+raw_proxy_pool:
+  # 独立于 Clash 的批量代理池；启用后优先使用这里的代理列表
+  # 支持 HTTP / HTTPS / SOCKS5 显式协议；未写协议时默认按 socks5h 解析
+  enable: false
+  proxy_list:
+    # 支持以下格式：
+    # - http://user:pass@host:8080
+    # - https://user:pass@host:8443
+    # - socks5://user:pass@host:1080
+    # - socks5h://user:pass@host:1080
+    # - host:port
+    # - host:port:user:pass
+    # - user:pass@host:port
+    - "http://user:pass@127.0.0.1:8080"
+    - "socks5://user:pass@127.0.0.1:1080"
+    - "127.0.0.1:1081:user:pass"
+
 warp_proxy_list:
   - "http://127.0.0.1:41001"
   - "http://127.0.0.1:41002"

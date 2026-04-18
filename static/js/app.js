@@ -1,5 +1,24 @@
 const { createApp } = Vue;
 
+function normalizeBooleanLike(value, defaultValue = false) {
+    if (value === true || value === false) {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+            return true;
+        }
+        if (['0', 'false', 'no', 'off', ''].includes(normalized)) {
+            return false;
+        }
+    }
+    if (typeof value === 'number') {
+        return value !== 0;
+    }
+    return defaultValue;
+}
+
 createApp({
     data() {
         return {
@@ -54,6 +73,7 @@ createApp({
             config: null,
             blacklistStr: "",
             warpListStr: "",
+            rawProxyListStr: "",
             accounts: [],
             selectedAccounts: [],
 			currentPage: 1,
@@ -384,6 +404,8 @@ createApp({
                 }
                 if(this.config.clash_proxy_pool && Array.isArray(this.config.clash_proxy_pool.blacklist)) {
                     this.blacklistStr = this.config.clash_proxy_pool.blacklist.join('\n');
+                } else {
+                    this.blacklistStr = '';
                 }
                 if (this.config.clash_proxy_pool.cluster_count !== undefined) {
                     this.clashPool.count = parseInt(this.config.clash_proxy_pool.cluster_count) || 5;
@@ -391,9 +413,21 @@ createApp({
                 if (this.config.clash_proxy_pool.sub_url !== undefined) {
                     this.clashPool.subUrl = this.config.clash_proxy_pool.sub_url;
                 }
+                if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
+                    this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
+                } else {
+                    this.config.raw_proxy_pool.enable = normalizeBooleanLike(this.config.raw_proxy_pool.enable, false);
+                    if (!Array.isArray(this.config.raw_proxy_pool.proxy_list)) {
+                        this.config.raw_proxy_pool.proxy_list = [];
+                    }
+                }
                 if(Array.isArray(this.config.warp_proxy_list)) {
                     this.warpListStr = this.config.warp_proxy_list.join('\n');
+                } else {
+                    this.config.warp_proxy_list = [];
+                    this.warpListStr = '';
                 }
+                this.rawProxyListStr = this.config.raw_proxy_pool.proxy_list.join('\n');
                 if (this.config.cluster_node_name === undefined) this.config.cluster_node_name = '';
                 if (this.config.cluster_master_url === undefined) this.config.cluster_master_url = '';
                 if (this.config.cluster_secret === undefined) this.config.cluster_secret = 'wenfxl666';
@@ -421,6 +455,11 @@ createApp({
                     this.config.local_microsoft.suffix_len_max = maxLen;
                 }
                 this.config.warp_proxy_list = this.warpListStr.split('\n').map(s => s.trim()).filter(s => s);
+                if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
+                    this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
+                }
+                this.config.raw_proxy_pool.enable = normalizeBooleanLike(this.config.raw_proxy_pool.enable, false);
+                this.config.raw_proxy_pool.proxy_list = this.rawProxyListStr.split('\n').map(s => s.trim()).filter(s => s);
                 const res = await this.authFetch('/api/config', {
                     method: 'POST', body: JSON.stringify(this.config)
                 });

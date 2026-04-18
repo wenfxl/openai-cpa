@@ -5,6 +5,7 @@ import yaml
 import random
 import string
 import shutil
+import urllib.parse
 from datetime import datetime
 from typing import Optional
 from utils.proxy_manager import reload_proxy_config
@@ -26,6 +27,102 @@ def format_docker_url(url: str) -> str:
         url = url.replace("127.0.0.1", "host.docker.internal")
         url = url.replace("localhost", "host.docker.internal")
     return url
+
+
+def normalize_raw_proxy_entry(entry: str) -> str:
+    value = str(entry or "").strip()
+    if not value or value.startswith("#"):
+        return ""
+
+    if "://" in value:
+        parsed = urllib.parse.urlparse(value)
+        scheme = (parsed.scheme or "").lower()
+        if scheme == "socks5":
+            scheme = "socks5h"
+        if scheme not in {"http", "https", "socks5h"}:
+            return ""
+        if not parsed.hostname:
+            return ""
+
+        if parsed.username is not None:
+            auth = urllib.parse.quote(urllib.parse.unquote(parsed.username), safe="")
+            if parsed.password is not None:
+                auth += ":" + urllib.parse.quote(urllib.parse.unquote(parsed.password), safe="")
+            auth += "@"
+        else:
+            auth = ""
+
+        default_port = 1080 if scheme == "socks5h" else 8080
+        return format_docker_url(f"{scheme}://{auth}{parsed.hostname}:{parsed.port or default_port}")
+
+    if "@" in value:
+        return normalize_raw_proxy_entry(f"socks5h://{value}")
+
+    parts = value.split(":")
+    if len(parts) == 2:
+        host, port = parts
+        host = host.strip()
+        port = port.strip()
+        if host and port:
+            return format_docker_url(f"socks5h://{host}:{port}")
+        return ""
+
+    if len(parts) >= 4:
+        host = parts[0].strip()
+        port = parts[1].strip()
+        username = parts[2].strip()
+        password = ":".join(parts[3:]).strip()
+        if host and port and username:
+            auth = urllib.parse.quote(urllib.parse.unquote(username), safe="")
+            if password:
+                auth += ":" + urllib.parse.quote(urllib.parse.unquote(password), safe="")
+            return format_docker_url(f"socks5h://{auth}@{host}:{port}")
+    return ""
+
+
+def normalize_raw_proxy_list(entries) -> list:
+    normalized = []
+    seen = set()
+    for entry in entries or []:
+        proxy = normalize_raw_proxy_entry(entry)
+        if proxy and proxy not in seen:
+            normalized.append(proxy)
+            seen.add(proxy)
+    return normalized
+
+
+def is_raw_proxy_pool_enabled() -> bool:
+    return _raw_proxy_enable and bool(RAW_PROXY_LIST)
+
+
+def is_clash_proxy_pool_enabled() -> bool:
+    return (not is_raw_proxy_pool_enabled()) and _clash_enable and _clash_pool_mode and bool(WARP_PROXY_LIST)
+
+
+def is_queue_proxy_pool_enabled() -> bool:
+    return is_raw_proxy_pool_enabled() or is_clash_proxy_pool_enabled()
+
+
+def pooled_proxy_requires_clash_switch() -> bool:
+    return is_clash_proxy_pool_enabled()
+
+
+def is_shared_clash_switch_enabled() -> bool:
+    return (not is_queue_proxy_pool_enabled()) and _clash_enable and not _clash_pool_mode
+
+
+def should_return_pooled_proxy(borrowed_generation: int) -> bool:
+    return borrowed_generation == PROXY_QUEUE_GENERATION
+
+
+def make_proxy_queue_item(proxy: str, generation: Optional[int] = None):
+    return (PROXY_QUEUE_GENERATION if generation is None else generation, proxy)
+
+
+def unpack_proxy_queue_item(item):
+    if isinstance(item, tuple) and len(item) == 2:
+        return item
+    return PROXY_QUEUE_GENERATION, item
 
 
 def deep_update_config(default_dict, user_dict):
@@ -187,7 +284,10 @@ _clash_pool_mode: bool = False
 CLASH_CLUSTER_COUNT: int = 5
 CLASH_SUB_URL: str = ""
 WARP_PROXY_LIST: list = []
+_raw_proxy_enable: bool = False
+RAW_PROXY_LIST: list = []
 PROXY_QUEUE: queue.Queue = queue.Queue()
+PROXY_QUEUE_GENERATION: int = 0
 AI_API_BASE: str = ""
 AI_API_KEY: str = ""
 AI_MODEL: str = "gpt-3.5-turbo"
@@ -222,7 +322,8 @@ def reload_all_configs(new_config_dict=None):
     global MIN_REMAINING_WEEKLY_PERCENT, REMOVE_ON_LIMIT_REACHED, REMOVE_DEAD_ACCOUNTS
     global CPA_THREADS, CHECK_INTERVAL_MINUTES, ENABLE_TOKEN_REVIVE
     global NORMAL_SLEEP_MIN, NORMAL_SLEEP_MAX, NORMAL_TARGET_COUNT
-    global _clash_enable, _clash_pool_mode, WARP_PROXY_LIST, PROXY_QUEUE
+    global _clash_enable, _clash_pool_mode, WARP_PROXY_LIST, PROXY_QUEUE, PROXY_QUEUE_GENERATION
+    global _raw_proxy_enable, RAW_PROXY_LIST
     global CLASH_CLUSTER_COUNT, CLASH_SUB_URL
     global ENABLE_SUB2API_MODE, SUB2API_URL, SUB2API_KEY
     global SUB2API_MIN_THRESHOLD, SUB2API_BATCH_COUNT, SUB2API_CHECK_INTERVAL, SUB2API_THREADS, SUB2API_TEST_MODEL
@@ -450,12 +551,24 @@ def reload_all_configs(new_config_dict=None):
     CLASH_CLUSTER_COUNT = int(_clash_conf.get("cluster_count") or 5)
     CLASH_SUB_URL = str(_clash_conf.get("sub_url") or "").strip()
     WARP_PROXY_LIST = _c.get("warp_proxy_list", [])
+    _raw_proxy_conf = _c.get("raw_proxy_pool", {})
+    _raw_proxy_enable = safe_bool(_raw_proxy_conf.get("enable", False), default=False)
+    RAW_PROXY_LIST = normalize_raw_proxy_list(_raw_proxy_conf.get("proxy_list", []))
+    if is_raw_proxy_pool_enabled():
+        _clash_enable = False
+        _clash_pool_mode = False
 
     with PROXY_QUEUE.mutex:
         PROXY_QUEUE.queue.clear()
-    if _clash_enable and _clash_pool_mode and WARP_PROXY_LIST:
+        PROXY_QUEUE.unfinished_tasks = 0
+        PROXY_QUEUE.all_tasks_done.notify_all()
+        PROXY_QUEUE_GENERATION += 1
+    if is_raw_proxy_pool_enabled():
+        for p in RAW_PROXY_LIST:
+            PROXY_QUEUE.put(make_proxy_queue_item(p))
+    elif is_clash_proxy_pool_enabled():
         for p in WARP_PROXY_LIST:
-            PROXY_QUEUE.put(p)
+            PROXY_QUEUE.put(make_proxy_queue_item(p))
     else:
         PROXY_QUEUE.put(DEFAULT_PROXY if DEFAULT_PROXY else None)
 

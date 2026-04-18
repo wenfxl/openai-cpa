@@ -880,6 +880,14 @@ def normal_main_loop(args, stop_event: threading.Event):
 
                 def _worker():
                     if stop_event.is_set(): return "stopped"
+                    if cfg.is_raw_proxy_pool_enabled():
+                        borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                        try:
+                            return run_and_refresh(p, args, False, skip_switch=True)
+                        finally:
+                            if cfg.should_return_pooled_proxy(borrowed_generation):
+                                cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                cfg.PROXY_QUEUE.task_done()
                     if cfg._clash_enable and cfg._clash_pool_mode:
                         p = cfg.PROXY_QUEUE.get()
                         try:
@@ -895,7 +903,15 @@ def normal_main_loop(args, stop_event: threading.Event):
                         if f.result() == "success":
                             success_count += 1
             else:
-                if cfg._clash_enable and cfg._clash_pool_mode:
+                if cfg.is_raw_proxy_pool_enabled():
+                    borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                    try:
+                        status = run_and_refresh(p, args, False, skip_switch=True)
+                    finally:
+                        if cfg.should_return_pooled_proxy(borrowed_generation):
+                            cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                            cfg.PROXY_QUEUE.task_done()
+                elif cfg._clash_enable and cfg._clash_pool_mode:
                     p = cfg.PROXY_QUEUE.get()
                     try:
                         status = run_and_refresh(p, args, False, skip_switch=False)
@@ -1034,6 +1050,14 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event):
 
                 def _cpa_worker():
                     if async_stop_event.is_set(): return "stopped"
+                    if cfg.is_raw_proxy_pool_enabled():
+                        borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                        try:
+                            return run_and_refresh(p, args, cpa_upload=True, skip_switch=True)
+                        finally:
+                            if cfg.should_return_pooled_proxy(borrowed_generation):
+                                cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                cfg.PROXY_QUEUE.task_done()
                     if cfg._clash_enable and cfg._clash_pool_mode:
                         p = cfg.PROXY_QUEUE.get()
                         try:
@@ -1069,7 +1093,15 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event):
                                 await asyncio.sleep(15)
                     else:
                         print(f"[{ts()}] [INFO] 单线程补货: {success_in_this_cycle}/{need_to_reg}")
-                        if cfg._clash_enable and cfg._clash_pool_mode:
+                        if cfg.is_raw_proxy_pool_enabled():
+                            borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                            try:
+                                status = await loop.run_in_executor(None, run_and_refresh, p, args, True, True)
+                            finally:
+                                if cfg.should_return_pooled_proxy(borrowed_generation):
+                                    cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                    cfg.PROXY_QUEUE.task_done()
+                        elif cfg._clash_enable and cfg._clash_pool_mode:
                             p = cfg.PROXY_QUEUE.get()
                             try:
                                 status = await loop.run_in_executor(None, run_and_refresh, p, args, True, False)
@@ -1184,6 +1216,14 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event):
 
                 def _sub2api_worker():
                     if async_stop_event.is_set(): return "stopped"
+                    if cfg.is_raw_proxy_pool_enabled():
+                        borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                        try:
+                            return _sub2api_run_wrapper(p, True)
+                        finally:
+                            if cfg.should_return_pooled_proxy(borrowed_generation):
+                                cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                cfg.PROXY_QUEUE.task_done()
                     if cfg._clash_enable and cfg._clash_pool_mode:
                         p = cfg.PROXY_QUEUE.get()
                         try:
@@ -1222,7 +1262,15 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event):
 
                     else:
                         print(f"[{ts()}] [INFO] 单线程补货: {success_in_this_cycle}/{need_to_reg}")
-                        if cfg._clash_enable and cfg._clash_pool_mode:
+                        if cfg.is_raw_proxy_pool_enabled():
+                            borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                            try:
+                                status = await loop.run_in_executor(None, _sub2api_run_wrapper, p, True)
+                            finally:
+                                if cfg.should_return_pooled_proxy(borrowed_generation):
+                                    cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                    cfg.PROXY_QUEUE.task_done()
+                        elif cfg._clash_enable and cfg._clash_pool_mode:
                             p = cfg.PROXY_QUEUE.get()
                             try:
                                 status = await loop.run_in_executor(None, _sub2api_run_wrapper, p, False)
