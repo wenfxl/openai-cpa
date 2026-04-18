@@ -7,6 +7,7 @@ createApp({
             isLoggedIn: !!localStorage.getItem('auth_token'),
             loginPassword: '',
             currentTab: window.location.hash.replace('#', '') || 'console',
+            isDarkMode: localStorage.getItem('ui_theme_mode') === 'dark',
 			showAccountsPlaintext: false,
             isRunning: false,
             tabs: [
@@ -143,6 +144,7 @@ createApp({
         };
     },
     mounted() {
+        this.applyTheme();
         if (this.isLoggedIn) {
             this.initApp();
         }
@@ -171,6 +173,16 @@ createApp({
         }
     },
     methods: {
+        applyTheme() {
+            const nextMode = this.isDarkMode ? 'dark' : 'light';
+            document.body.classList.toggle('theme-dark', this.isDarkMode);
+            localStorage.setItem('ui_theme_mode', nextMode);
+        },
+        toggleTheme() {
+            this.isDarkMode = !this.isDarkMode;
+            this.applyTheme();
+            this.showToast(this.isDarkMode ? '已切换为护眼模式' : '已切换为日间模式', 'info');
+        },
         showToast(message, type = 'info') {
             const id = this.toastId++;
             this.toasts.push({ id, message, type });
