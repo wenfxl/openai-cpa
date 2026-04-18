@@ -911,10 +911,28 @@
                                         <input type="text" v-model="config.local_microsoft.client_id" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-inner font-mono text-sm" placeholder="如果导入的账号自带clientid这里则空着，如果你不想填也可以空着">
                                     </div>
 
-                                    <div v-if="config.local_microsoft.enable_fission" class="space-y-4 pt-4 border-t-2 border-dashed border-slate-100 animate-fade-in">
+                                    <div v-if="config.local_microsoft.enable_fission || config.local_microsoft.pool_fission" class="space-y-4 pt-4 border-t-2 border-dashed border-slate-100 animate-fade-in">
                                         <div>
                                             <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">裂变主邮箱账号</label>
                                             <input type="text" v-model="config.local_microsoft.master_email" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-sm font-mono text-sm" placeholder="例如：example@outlook.com">
+                                        </div>
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">Alias 后缀生成模式</label>
+                                            <select v-model="config.local_microsoft.suffix_mode" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-sm text-sm">
+                                                <option value="fixed">fixed: hex (使用 min)</option>
+                                                <option value="range">range: hex (min~max)</option>
+                                                <option value="mystic">mystic: name+noun+bday</option>
+                                            </select>
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">Alias 最小长度 (8~32)</label>
+                                                <input type="number" min="8" max="32" v-model.number="config.local_microsoft.suffix_len_min" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-sm font-mono text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">Alias 最大长度 (8~32)</label>
+                                                <input type="number" min="8" max="32" v-model.number="config.local_microsoft.suffix_len_max" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-sm font-mono text-sm">
+                                            </div>
                                         </div>
                                         <div>
                                             <div class="flex justify-between items-end mb-1.5">

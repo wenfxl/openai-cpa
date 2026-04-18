@@ -2,7 +2,6 @@ import json
 import random
 import string
 import time
-import uuid
 import threading
 import imaplib
 import base64
@@ -22,24 +21,90 @@ class MailboxAbuseModeError(RuntimeError):
 
 
 class LocalMicrosoftService:
+    _MYSTIC_NAMES = [
+        "leo", "nova", "kai", "luna", "milo", "iris", "axel", "zara"
+    ]
+    _MYSTIC_NOUNS = [
+        "fox", "river", "comet", "lotus", "cloud", "ember", "aurora", "tiger"
+    ]
+
     def __init__(self, proxies: Optional[Dict[str, str]] = None):
         self.proxies = proxies
         self.token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
         self.graph_base_url = "https://graph.microsoft.com/v1.0/me"
 
-    def generate_suffix_v2(self):
-        return uuid.uuid4().hex[:8]
+    def _resolve_suffix_mode(self) -> str:
+        mode = str(getattr(cfg, "LOCAL_MS_SUFFIX_MODE", "fixed") or "fixed").strip().lower()
+        if mode not in {"fixed", "range", "mystic"}:
+            return "fixed"
+        return mode
+
+    def _resolve_suffix_bounds(self, user_part: str) -> tuple[int, int]:
+        try:
+            min_len = int(getattr(cfg, "LOCAL_MS_SUFFIX_LEN_MIN", 8) or 8)
+        except Exception:
+            min_len = 8
+        try:
+            max_len = int(getattr(cfg, "LOCAL_MS_SUFFIX_LEN_MAX", min_len) or min_len)
+        except Exception:
+            max_len = min_len
+
+        min_len = max(8, min(32, min_len))
+        max_len = max(8, min(32, max_len))
+        if max_len < min_len:
+            max_len = min_len
+
+        # RFC local-part max length is 64, include plus separator itself.
+        user_len = len(str(user_part or ""))
+        available = 64 - user_len - 1
+        if available <= 0:
+            return 0, 0
+
+        min_len = max(1, min(min_len, available))
+        max_len = max(min_len, min(max_len, available))
+        return min_len, max_len
+
+    def _random_hex(self, length: int) -> str:
+        return "".join(random.choices("0123456789abcdef", k=max(1, int(length))))
+
+    def _build_mystic_seed(self) -> str:
+        name = random.choice(self._MYSTIC_NAMES)
+        noun = random.choice(self._MYSTIC_NOUNS)
+        mmdd = f"{random.randint(1, 12):02d}{random.randint(1, 28):02d}"
+        yyyy = str(random.randint(1990, 2012))
+        return random.choice([
+            f"{name}{noun}{mmdd}",
+            f"{noun}{name}{mmdd}",
+            f"{name}{mmdd}{noun}",
+            f"{name}{noun}{yyyy}",
+        ]).lower()
+
+    def generate_suffix_v2(self, user_part: str = ""):
+        mode = self._resolve_suffix_mode()
+        min_len, max_len = self._resolve_suffix_bounds(user_part)
+        if max_len <= 0:
+            return ""
+        target_len = min_len if mode == "fixed" else random.randint(min_len, max_len)
+
+        if mode == "mystic":
+            suffix = "".join(ch for ch in self._build_mystic_seed() if ch.isalnum())
+            if len(suffix) < target_len:
+                suffix += "".join(random.choices(string.ascii_lowercase + string.digits, k=target_len - len(suffix)))
+            return suffix[:target_len]
+
+        return self._random_hex(target_len)
 
     def get_unused_mailbox(self) -> Optional[dict]:
         """核心逻辑"""
         if getattr(cfg, "LOCAL_MS_ENABLE_FISSION", False):
             master_email = getattr(cfg, "LOCAL_MS_MASTER_EMAIL", "").strip()
             if master_email and "@" in master_email:
-                random_suffix = self.generate_suffix_v2()
                 user_part, domain_part = master_email.split("@", 1)
+                random_suffix = self.generate_suffix_v2(user_part=user_part)
+                target_email = f"{user_part}+{random_suffix}@{domain_part}" if random_suffix else master_email
                 return {
                     "id": "manual_config",
-                    "email": f"{user_part}+{random_suffix}@{domain_part}",
+                    "email": target_email,
                     "master_email": master_email,
                     "is_raw_trial": False,
                     "client_id": getattr(cfg, "LOCAL_MS_CLIENT_ID", ""),
@@ -58,9 +123,9 @@ class LocalMicrosoftService:
                         target_email = master_email
                         db_manager.clear_retry_master_status(master_email)
                     else:
-                        random_suffix = self.generate_suffix_v2()
                         user_part, domain_part = master_email.split("@", 1)
-                        target_email = f"{user_part}+{random_suffix}@{domain_part}"
+                        random_suffix = self.generate_suffix_v2(user_part=user_part)
+                        target_email = f"{user_part}+{random_suffix}@{domain_part}" if random_suffix else master_email
 
                     return {
                         "id": mailbox_data["id"],

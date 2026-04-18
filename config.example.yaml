@@ -55,6 +55,9 @@ local_microsoft:
   master_email: ""
   client_id: ""
   refresh_token: ""
+  suffix_mode: "fixed"
+  suffix_len_min: 8
+  suffix_len_max: 8
   pool_fission: false
 
 # [模式 "freemail" 专属]

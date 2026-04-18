@@ -311,20 +311,46 @@ async def restart_system(token: str = Depends(verify_token)):
     except Exception as e:
         return {"status": "error", "message": f"重启异常: {str(e)}"}
 
+def _sanitize_local_microsoft_config(local_ms: Any) -> dict:
+    data = dict(local_ms) if isinstance(local_ms, dict) else {}
+    data.setdefault("enable_fission", False)
+    data.setdefault("pool_fission", False)
+    data.setdefault("master_email", "")
+    data.setdefault("client_id", "")
+    data.setdefault("refresh_token", "")
+
+    mode = str(data.get("suffix_mode", "fixed") or "fixed").strip().lower()
+    if mode not in {"fixed", "range", "mystic"}:
+        mode = "fixed"
+
+    try:
+        min_len = int(data.get("suffix_len_min", 8) or 8)
+    except Exception:
+        min_len = 8
+    try:
+        max_len = int(data.get("suffix_len_max", min_len) or min_len)
+    except Exception:
+        max_len = min_len
+
+    min_len = max(8, min(32, min_len))
+    max_len = max(8, min(32, max_len))
+    if max_len < min_len:
+        max_len = min_len
+
+    data["suffix_mode"] = mode
+    data["suffix_len_min"] = min_len
+    data["suffix_len_max"] = max_len
+    return data
+
+
 @router.get("/api/config")
 async def get_config(token: str = Depends(verify_token)):
     config_data = getattr(core_engine.cfg, '_c', {}).copy()
 
     if isinstance(config_data.get("sub2api_mode"), dict):
         config_data["sub2api_mode"].pop("min_remaining_weekly_percent", None)
-    config_data["web_password"] = getattr(core_engine.cfg, "WEB_PASSWORD", "admin")
-    if "local_microsoft" not in config_data:
-        config_data["local_microsoft"] = {
-            "enable_fission": False,
-            "master_email": "",
-            "client_id": "",
-            "refresh_token": ""
-        }
+    config_data["web_password"] = getattr(core_engine.cfg, "WEB_PASSWORD", config_data.get("web_password", "admin"))
+    config_data["local_microsoft"] = _sanitize_local_microsoft_config(config_data.get("local_microsoft"))
     return config_data
 
 
@@ -333,6 +359,7 @@ async def save_config(new_config: dict, token: str = Depends(verify_token)):
     try:
         if isinstance(new_config.get("sub2api_mode"), dict):
             new_config["sub2api_mode"].pop("min_remaining_weekly_percent", None)
+        new_config["local_microsoft"] = _sanitize_local_microsoft_config(new_config.get("local_microsoft"))
         reload_all_configs(new_config_dict=new_config)
 
         return {"status": "success", "message": "✅ 配置已成功保存并同步至云端！"}
@@ -1199,7 +1226,6 @@ def parse_sub2api_proxy(proxy_url: str):
         return proxy_dict
     except:
         return None
-
 @router.post("/api/accounts/export_all")
 async def export_all_accounts(token: str = Depends(verify_token)):
     data = db_manager.get_all_accounts_raw()

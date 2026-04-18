@@ -301,10 +301,26 @@ createApp({
                 if (!this.config.local_microsoft) {
                     this.config.local_microsoft = {
                         enable_fission: false,
+                        pool_fission: false,
                         master_email: '',
                         client_id: '',
-                        refresh_token: ''
+                        refresh_token: '',
+                        suffix_mode: 'fixed',
+                        suffix_len_min: 8,
+                        suffix_len_max: 8
                     };
+                }
+                if (this.config.local_microsoft.suffix_mode === undefined) {
+                    this.config.local_microsoft.suffix_mode = 'fixed';
+                }
+                if (this.config.local_microsoft.suffix_len_min === undefined) {
+                    this.config.local_microsoft.suffix_len_min = 8;
+                }
+                if (this.config.local_microsoft.suffix_len_max === undefined) {
+                    this.config.local_microsoft.suffix_len_max = 8;
+                }
+                if (this.config.local_microsoft.pool_fission === undefined) {
+                    this.config.local_microsoft.pool_fission = false;
                 }
                 if (this.config.sub2api_mode.test_model === undefined) {
                     this.config.sub2api_mode.test_model = 'gpt-5.2';
@@ -389,6 +405,20 @@ createApp({
                     this.config.clash_proxy_pool.blacklist = this.blacklistStr.split('\n').map(s => s.trim()).filter(s => s);
                     this.config.clash_proxy_pool.cluster_count = parseInt(this.clashPool.count) || 5;
                     this.config.clash_proxy_pool.sub_url = this.clashPool.subUrl;
+                }
+                if (this.config.local_microsoft) {
+                    const mode = String(this.config.local_microsoft.suffix_mode || 'fixed').toLowerCase();
+                    this.config.local_microsoft.suffix_mode = ['fixed', 'range', 'mystic'].includes(mode) ? mode : 'fixed';
+
+                    let minLen = parseInt(this.config.local_microsoft.suffix_len_min, 10);
+                    let maxLen = parseInt(this.config.local_microsoft.suffix_len_max, 10);
+                    if (Number.isNaN(minLen)) minLen = 8;
+                    if (Number.isNaN(maxLen)) maxLen = minLen;
+                    minLen = Math.max(8, Math.min(32, minLen));
+                    maxLen = Math.max(8, Math.min(32, maxLen));
+                    if (maxLen < minLen) maxLen = minLen;
+                    this.config.local_microsoft.suffix_len_min = minLen;
+                    this.config.local_microsoft.suffix_len_max = maxLen;
                 }
                 this.config.warp_proxy_list = this.warpListStr.split('\n').map(s => s.trim()).filter(s => s);
                 const res = await this.authFetch('/api/config', {
