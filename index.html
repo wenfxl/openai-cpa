@@ -410,6 +410,9 @@
                                     <button @click="showAccountsPlaintext = !showAccountsPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
                                         <span>{{ showAccountsPlaintext ? '🙈' : '👁️' }}</span> {{ showAccountsPlaintext ? '脱敏' : '明文' }}
                                     </button>
+                                    <button @click="toggleHideRegisterOnlyAccounts" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                        <span>{{ hideRegisterOnlyAccounts ? '✅' : '⚪' }}</span> {{ hideRegisterOnlyAccounts ? '已过滤仅注册成功' : '过滤仅注册成功' }}
+                                    </button>
 
                                     <div v-if="selectedAccounts.length > 0" class="flex flex-wrap items-center gap-2 bg-indigo-50/80 border border-indigo-100 p-1.5 rounded-xl shadow-sm transition-all duration-300">
                                         <span class="text-xs font-black text-indigo-700 px-2 border-r border-indigo-200">已选 {{ selectedAccounts.length }}</span>
@@ -440,7 +443,7 @@
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
                                         <tr>
-                                            <th class="px-5 md:px-8 py-4 text-left w-12"><input type="checkbox" @change="toggleAll" :checked="selectedAccounts.length === accounts.length && accounts.length > 0" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all"></th>
+                                            <th class="px-5 md:px-8 py-4 text-left w-12"><input type="checkbox" @change="toggleAll" :checked="selectedAccounts.length === filteredAccounts.length && filteredAccounts.length > 0" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all"></th>
                                             <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-16">#</th>
                                             <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">邮箱账号</th>
                                             <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">登录密码</th>
@@ -450,10 +453,10 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-slate-50">
-                                        <tr v-if="accounts.length === 0">
+                                        <tr v-if="filteredAccounts.length === 0">
                                             <td colspan="6" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无本地记录</td>
                                         </tr>
-                                        <tr v-for="(acc, index) in accounts" :key="index" class="hover:bg-indigo-50/40 transition duration-200" :class="{'bg-indigo-50/60': selectedAccounts.includes(acc)}">
+                                        <tr v-for="(acc, index) in filteredAccounts" :key="index" class="hover:bg-indigo-50/40 transition duration-200" :class="{'bg-indigo-50/60': selectedAccounts.includes(acc)}">
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap"><input type="checkbox" :value="acc" v-model="selectedAccounts" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all"></td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-400 font-mono font-medium">{{ index + 1 }}</td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
