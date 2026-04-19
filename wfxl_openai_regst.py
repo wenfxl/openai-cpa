@@ -10,6 +10,7 @@ import warnings
 import subprocess
 import socket
 import socks
+import itertools
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="trio")
 
 from fastapi import FastAPI
@@ -20,7 +21,7 @@ from contextlib import asynccontextmanager
 from utils import core_engine, db_manager
 from utils.config import reload_all_configs
 
-from global_state import engine, log_history
+from global_state import engine, log_history, append_log
 from routers import api_routes
 
 @asynccontextmanager
@@ -80,7 +81,7 @@ def _worker_push_thread():
             try:
                 while not core_engine.log_queue.empty():
                     msg = core_engine.log_queue.get_nowait()
-                    log_history.append(msg)
+                    append_log(msg)
             except: pass
 
             cf_dict = getattr(core_engine.cfg, '_c', {})
@@ -110,7 +111,7 @@ def _worker_push_thread():
                             try:
                                 while not core_engine.log_queue.empty():
                                     msg = core_engine.log_queue.get_nowait()
-                                    log_history.append(msg)
+                                    append_log(msg)
                             except: pass
 
                             s = core_engine.run_stats
@@ -134,7 +135,8 @@ def _worker_push_thread():
                             }
 
                             parsed_logs = []
-                            for raw in list(log_history)[-50:]:
+                            recent = list(itertools.islice(log_history, max(0, len(log_history) - 50), len(log_history)))
+                            for raw in recent:
                                 m = re.match(r"^\[(.*?)\]\s*\[(.*?)\]\s+(.*)$", raw.strip())
                                 if m: parsed_logs.append({"parsed": True, "time": m.group(1), "level": m.group(2).upper(), "text": m.group(3), "raw": raw})
                                 else: parsed_logs.append({"parsed": False, "raw": raw})

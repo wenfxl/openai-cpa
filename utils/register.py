@@ -1,4 +1,5 @@
 import base64
+import gc
 import hashlib
 import json
 import os
@@ -1310,7 +1311,8 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                 s.close()
             except:
                 pass
-        active_sessions.clear()
+        del active_sessions[:]
+        gc.collect()
 
 def refresh_oauth_token(refresh_token: str, proxies: Any = None) -> Tuple[bool, dict]:
     if not refresh_token:

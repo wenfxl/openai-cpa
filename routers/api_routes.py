@@ -22,7 +22,7 @@ from utils.integrations.sub2api_client import Sub2APIClient
 from utils.integrations.tg_notifier import send_tg_msg_async
 from utils.email_providers.gmail_oauth_handler import GmailOAuthHandler
 from curl_cffi import requests as cffi_requests
-from global_state import VALID_TOKENS, CLUSTER_NODES, NODE_COMMANDS, cluster_lock, log_history, engine, verify_token, worker_status
+from global_state import VALID_TOKENS, CLUSTER_NODES, NODE_COMMANDS, cluster_lock, log_history, engine, verify_token, worker_status, append_log
 import utils.config as cfg
 import utils.integrations.clash_manager as clash_manager
 router = APIRouter()
@@ -911,7 +911,7 @@ def cluster_upload_accounts(req: ClusterUploadAccountsReq):
     msg = f"[{core_engine.ts()}] [系统] 📦 成功从子控 [{req.node_name}] 提取并完美入库 {success_count} 个账号！"
     print(msg)
     try:
-        log_history.append(msg)
+        append_log(msg)
     except:
         pass
     return {"status": "success", "message": f"成功接收 {success_count} 个账号"}
