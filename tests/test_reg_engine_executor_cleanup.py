@@ -41,6 +41,20 @@ from utils.core_engine import RegEngine
 
 
 class RegEngineExecutorCleanupTests(unittest.TestCase):
+    def test_start_normal_reclaims_executor_after_natural_completion(self):
+        engine = RegEngine()
+        executor = Mock()
+        engine._executor = executor
+        args = SimpleNamespace()
+
+        with patch("utils.core_engine.normal_main_loop", side_effect=lambda *a, **kw: None):
+            engine.start_normal(args)
+            engine.current_thread.join(timeout=2)
+
+        self.assertFalse(engine.current_thread.is_alive())
+        executor.shutdown.assert_called_once_with(wait=False)
+        self.assertIsNone(engine._executor)
+
     def test_run_threads_reclaim_executor_after_natural_completion(self):
         cases = [
             ("_run_cpa_in_thread", "_cpa_wrapper"),

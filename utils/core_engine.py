@@ -1372,9 +1372,8 @@ class RegEngine:
         args.check_stop = lambda: self.thread_stop_event.is_set()
         self._ensure_executor()
         self.current_thread = threading.Thread(
-            target=normal_main_loop,
-            args=(args, self.thread_stop_event),
-            kwargs={"executor": self._executor},
+            target=self._run_normal_in_thread,
+            args=(args,),
             daemon=True,
         )
         self.current_thread.start()
@@ -1410,6 +1409,12 @@ class RegEngine:
         asyncio.set_event_loop(self.loop)
         try:
             self.loop.run_until_complete(self._cpa_wrapper(args))
+        finally:
+            self._finalize_thread_run()
+
+    def _run_normal_in_thread(self, args):
+        try:
+            normal_main_loop(args, self.thread_stop_event, executor=self._executor)
         finally:
             self._finalize_thread_run()
 
