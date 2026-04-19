@@ -18,7 +18,7 @@ from typing import List, Optional, Any
 from cloudflare import Cloudflare
 from utils import core_engine, db_manager
 from utils.config import reload_all_configs
-from utils.integrations.sub2api_client import Sub2APIClient
+from utils.integrations.sub2api_client import Sub2APIClient, build_sub2api_export_bundle, get_sub2api_push_settings
 from utils.integrations.tg_notifier import send_tg_msg_async
 from utils.email_providers.gmail_oauth_handler import GmailOAuthHandler
 from curl_cffi import requests as cffi_requests
@@ -505,9 +505,6 @@ def account_action(data: dict, token: str = Depends(verify_token)):
         elif action == "push_sub2api":
             if not getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False): return {"status": "error",
                                                                                    "message": "🚫 推送失败：未开启 Sub2API 模式！"}
-            proxy_obj = parse_sub2api_proxy(cfg.SUB2API_DEFAULT_PROXY)
-            if proxy_obj:
-                token_data["sub2api_proxy"] = proxy_obj
             client = Sub2APIClient(api_url=getattr(core_engine.cfg, 'SUB2API_URL', ''),
                                    api_key=getattr(core_engine.cfg, 'SUB2API_KEY', ''))
             success, resp = client.add_account(token_data)
@@ -524,25 +521,8 @@ async def export_sub2api_accounts(req: ExportReq, token: str = Depends(verify_to
         tokens = db_manager.get_tokens_by_emails(req.emails)
         if not tokens: return {"status": "error", "message": "未提取到Token"}
 
-        sub2api_settings = getattr(core_engine.cfg, '_c', {}).get("sub2api_mode", {})
-        proxy_obj = parse_sub2api_proxy(cfg.SUB2API_DEFAULT_PROXY)
-        accounts_list = []
-        for td in tokens:
-            acc = {
-                "name": str(td.get("email", "unknown"))[:64],
-                "platform": "openai", "type": "oauth",
-                "credentials": {"refresh_token": td.get("refresh_token", "")},
-                "concurrency": int(sub2api_settings.get("account_concurrency", 10)),
-                "priority": int(sub2api_settings.get("account_priority", 1)),
-                "rate_multiplier": float(sub2api_settings.get("account_rate_multiplier", 1.0)),
-                "extra": {"load_factor": int(sub2api_settings.get("account_load_factor", 10))}
-            }
-            if proxy_obj:
-                acc["proxy_key"] = proxy_obj["proxy_key"]
-            accounts_list.append(acc)
-        return {"status": "success",
-                "data": {"exported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "proxies": [proxy_obj] if proxy_obj else [],
-                         "accounts": accounts_list}}
+        bundle = build_sub2api_export_bundle(tokens, get_sub2api_push_settings(), rotate_missing_proxy=True)
+        return {"status": "success", "data": bundle}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

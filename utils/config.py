@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 from typing import Optional
 from utils.proxy_manager import reload_proxy_config
+from utils.integrations.sub2api_proxy import get_valid_sub2api_proxy_urls
 
 CONFIG_FILE_LOCK = threading.Lock()
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -151,6 +152,7 @@ SUB2API_ACCOUNT_RATE_MULTIPLIER: float = 1.0
 SUB2API_ACCOUNT_GROUP_IDS: list = []
 SUB2API_ENABLE_WS_MODE: bool = True
 SUB2API_DEFAULT_PROXY: str = ""
+SUB2API_DEFAULT_PROXY_POOL: list = []
 
 LUCKMAIL_PREFERRED_DOMAIN: str = ""
 LUCKMAIL_EMAIL_TYPE: str = ""
@@ -202,6 +204,37 @@ TMAILOR_CURRENT_TOKEN: str = ""
 REG_MODE: str = "protocol"
 DB_TYPE: str = "sqlite"
 MYSQL_CFG: dict = {}
+_sub2api_proxy_rotation_lock = threading.Lock()
+_sub2api_proxy_rotation_index = 0
+
+
+def reset_sub2api_proxy_rotation():
+    global _sub2api_proxy_rotation_index
+    with _sub2api_proxy_rotation_lock:
+        _sub2api_proxy_rotation_index = 0
+
+
+def _resolve_sub2api_proxy_pool(raw_value=None):
+    if raw_value is None:
+        if SUB2API_DEFAULT_PROXY_POOL:
+            return list(SUB2API_DEFAULT_PROXY_POOL)
+        raw_items = get_valid_sub2api_proxy_urls(SUB2API_DEFAULT_PROXY)
+    else:
+        raw_items = get_valid_sub2api_proxy_urls(raw_value)
+    return [format_docker_url(item) for item in raw_items if item]
+
+
+def get_next_sub2api_proxy_url(raw_value=None) -> str:
+    global _sub2api_proxy_rotation_index
+
+    proxy_pool = _resolve_sub2api_proxy_pool(raw_value)
+    if not proxy_pool:
+        return ""
+
+    with _sub2api_proxy_rotation_lock:
+        current_index = _sub2api_proxy_rotation_index % len(proxy_pool)
+        _sub2api_proxy_rotation_index = (_sub2api_proxy_rotation_index + 1) % len(proxy_pool)
+    return proxy_pool[current_index]
 
 def reload_all_configs(new_config_dict=None):
     global _c
@@ -229,6 +262,7 @@ def reload_all_configs(new_config_dict=None):
     global SUB2API_SAVE_TO_LOCAL
     global SUB2API_REMOVE_ON_LIMIT_REACHED, SUB2API_REMOVE_DEAD_ACCOUNTS, SUB2API_ENABLE_TOKEN_REVIVE
     global SUB2API_ACCOUNT_CONCURRENCY, SUB2API_ACCOUNT_LOAD_FACTOR, SUB2API_ACCOUNT_PRIORITY, SUB2API_DEFAULT_PROXY
+    global SUB2API_DEFAULT_PROXY_POOL
     global SUB2API_ACCOUNT_RATE_MULTIPLIER, SUB2API_ACCOUNT_GROUP_IDS, SUB2API_ENABLE_WS_MODE
     global LUCKMAIL_API_KEY, LUCKMAIL_PREFERRED_DOMAIN, LUCKMAIL_EMAIL_TYPE, LUCKMAIL_VARIANT_MODE, LUCKMAIL_REUSE_PURCHASED, LUCKMAIL_TAG_ID
     global HERO_SMS_ENABLED, HERO_SMS_API_KEY, HERO_SMS_BASE_URL, HERO_SMS_COUNTRY, HERO_SMS_SERVICE
@@ -438,7 +472,16 @@ def reload_all_configs(new_config_dict=None):
     SUB2API_ACCOUNT_RATE_MULTIPLIER = safe_float(_sub2api.get("account_rate_multiplier", 1.0), 1.0, minimum=0.0)
     SUB2API_ACCOUNT_GROUP_IDS = parse_group_ids(_sub2api.get("account_group_ids", ""))
     SUB2API_ENABLE_WS_MODE = safe_bool(_sub2api.get("enable_ws_mode", True), default=True)
-    SUB2API_DEFAULT_PROXY = _sub2api.get("default_proxy", "")
+    raw_sub2api_default_proxy = _sub2api.get("default_proxy", "")
+    if isinstance(raw_sub2api_default_proxy, list):
+        SUB2API_DEFAULT_PROXY = "\n".join(str(item).strip() for item in raw_sub2api_default_proxy if str(item).strip())
+    else:
+        SUB2API_DEFAULT_PROXY = str(raw_sub2api_default_proxy or "")
+    SUB2API_DEFAULT_PROXY_POOL = [
+        format_docker_url(item)
+        for item in get_valid_sub2api_proxy_urls(raw_sub2api_default_proxy)
+    ]
+    reset_sub2api_proxy_rotation()
     _normal = _c.get("normal_mode", {})
     NORMAL_SLEEP_MIN = _normal.get("sleep_min", 5)
     NORMAL_SLEEP_MAX = _normal.get("sleep_max", 30)

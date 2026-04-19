@@ -325,6 +325,9 @@ createApp({
                 if (this.config.sub2api_mode.test_model === undefined) {
                     this.config.sub2api_mode.test_model = 'gpt-5.2';
                 }
+                if (Array.isArray(this.config.sub2api_mode.default_proxy)) {
+                    this.config.sub2api_mode.default_proxy = this.config.sub2api_mode.default_proxy.join('\n');
+                }
                 if (this.config.sub2api_mode.default_proxy === undefined) {
                     this.config.sub2api_mode.default_proxy = '';
                 }
@@ -405,6 +408,13 @@ createApp({
                     this.config.clash_proxy_pool.blacklist = this.blacklistStr.split('\n').map(s => s.trim()).filter(s => s);
                     this.config.clash_proxy_pool.cluster_count = parseInt(this.clashPool.count) || 5;
                     this.config.clash_proxy_pool.sub_url = this.clashPool.subUrl;
+                }
+                if (this.config?.sub2api_mode) {
+                    this.config.sub2api_mode.default_proxy = String(this.config.sub2api_mode.default_proxy || '')
+                        .split(/\r?\n/)
+                        .map(s => s.trim())
+                        .filter(s => s)
+                        .join('\n');
                 }
                 if (this.config.local_microsoft) {
                     const mode = String(this.config.local_microsoft.suffix_mode || 'fixed').toLowerCase();
@@ -2112,9 +2122,7 @@ createApp({
                     const cpaFolder = zip.folder("cpa");
                     const sub2apiFolder = zip.folder("sub2api");
 
-                    const proxyUrl = this.config?.sub2api_mode?.default_proxy || "";
-                    const proxyObj = this.parseSub2ApiProxy(proxyUrl);
-                    const proxiesArray = proxyObj ? [proxyObj] : [];
+                    const proxyPool = this.buildSub2ApiProxyPool(this.config?.sub2api_mode?.default_proxy || "");
 
                     const validAccounts = allData.filter(acc => acc.token_data && acc.token_data.access_token);
 
@@ -2131,8 +2139,9 @@ createApp({
                         };
                         cpaFolder.file(`token_${prefix}_${domain}_${timestamp + index}.json`, JSON.stringify(cpaData, null, 4));
 
+                        const proxyObj = proxyPool.length ? proxyPool[index % proxyPool.length] : null;
                         const accountNode = {
-                            name: accEmail,
+                            name: accEmail.slice(0, 64),
                             platform: "openai",
                             type: "oauth",
                             credentials: { refresh_token: acc.token_data.refresh_token || "" },
@@ -2148,7 +2157,7 @@ createApp({
 
                         const sub2apiData = {
                             exported_at: new Date().toISOString(),
-                            proxies: proxiesArray,
+                            proxies: proxyObj ? [proxyObj] : [],
                             accounts: [accountNode]
                         };
                         sub2apiFolder.file(`sub2api_${prefix}_${domain}_${timestamp + index}.json`, JSON.stringify(sub2apiData, null, 4));
@@ -2278,6 +2287,25 @@ createApp({
             } catch (e) {
                 return null;
             }
+        },
+        buildSub2ApiProxyPool(rawValue) {
+            const rawItems = Array.isArray(rawValue)
+                ? rawValue
+                : String(rawValue || '').replace(/\r/g, '\n').split('\n');
+
+            const proxyPool = [];
+            const seen = new Set();
+            rawItems.forEach(item => {
+                const value = String(item || '').trim();
+                if (!value || seen.has(value)) return;
+                seen.add(value);
+
+                const proxyObj = this.parseSub2ApiProxy(value);
+                if (proxyObj) {
+                    proxyPool.push(proxyObj);
+                }
+            });
+            return proxyPool;
         },
     }
 }).mount('#app');

@@ -5,8 +5,103 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Tuple
 from utils import config as cfg
 from curl_cffi import requests as cffi_requests
+from utils.integrations.sub2api_proxy import parse_sub2api_proxy
 
 logger = logging.getLogger(__name__)
+
+
+def get_sub2api_push_settings() -> Dict[str, Any]:
+    def as_int(value: Any, default: int, minimum: int) -> int:
+        try:
+            return max(minimum, int(value))
+        except (TypeError, ValueError):
+            return default
+
+    def as_float(value: Any, default: float, minimum: float) -> float:
+        try:
+            return max(minimum, float(value))
+        except (TypeError, ValueError):
+            return default
+
+    raw_group_ids = getattr(cfg, "SUB2API_ACCOUNT_GROUP_IDS", [])
+    if isinstance(raw_group_ids, list):
+        group_ids = [int(item) for item in raw_group_ids if str(item).strip().isdigit()]
+    else:
+        group_ids = [int(item.strip()) for item in str(raw_group_ids or "").split(",") if item.strip().isdigit()]
+
+    return {
+        "concurrency": as_int(getattr(cfg, "SUB2API_ACCOUNT_CONCURRENCY", 10), 10, 1),
+        "load_factor": as_int(getattr(cfg, "SUB2API_ACCOUNT_LOAD_FACTOR", 10), 10, 1),
+        "priority": as_int(getattr(cfg, "SUB2API_ACCOUNT_PRIORITY", 1), 1, 1),
+        "rate_multiplier": as_float(getattr(cfg, "SUB2API_ACCOUNT_RATE_MULTIPLIER", 1.0), 1.0, 0.0),
+        "group_ids": group_ids,
+        "enable_ws": bool(getattr(cfg, "SUB2API_ENABLE_WS_MODE", True)),
+    }
+
+
+def _build_account_extra(settings: Dict[str, Any]) -> Dict[str, Any]:
+    extra = {"load_factor": settings["load_factor"]}
+    if settings["enable_ws"]:
+        extra["openai_oauth_responses_websockets_v2_enabled"] = True
+        extra["openai_oauth_responses_websockets_v2_mode"] = "passthrough"
+    return extra
+
+
+def _build_account_item(token_data: Dict[str, Any], settings: Dict[str, Any], proxy_obj: Dict[str, Any] | None) -> Dict[str, Any]:
+    account_item = {
+        "name": str(token_data.get("email", "unknown"))[:64],
+        "platform": "openai",
+        "type": "oauth",
+        "credentials": {
+            "access_token": token_data.get("access_token", ""),
+            "chatgpt_account_id": token_data.get("account_id", ""),
+            "client_id": token_data.get("client_id", ""),
+            "expires_at": int(time.time() + 864000),
+            "expires_in": 863999,
+            "model_mapping": {
+                "gpt-4o": "gpt-4o",
+                "gpt-4": "gpt-4",
+                "gpt-3.5-turbo": "gpt-3.5-turbo",
+            },
+            "organization_id": token_data.get("workspace_id", ""),
+            "refresh_token": token_data.get("refresh_token", ""),
+        },
+        "extra": _build_account_extra(settings),
+        "concurrency": settings["concurrency"],
+        "priority": settings["priority"],
+        "rate_multiplier": settings["rate_multiplier"],
+        "auto_pause_on_expired": True,
+    }
+    if settings["group_ids"]:
+        account_item["group_ids"] = settings["group_ids"]
+    if proxy_obj and "proxy_key" in proxy_obj:
+        account_item["proxy_key"] = proxy_obj["proxy_key"]
+    return account_item
+
+
+def build_sub2api_export_bundle(
+    token_items: List[Dict[str, Any]],
+    settings: Dict[str, Any] | None = None,
+    *,
+    rotate_missing_proxy: bool = False,
+) -> Dict[str, Any]:
+    push_settings = settings or get_sub2api_push_settings()
+    proxies_by_key: Dict[str, Dict[str, Any]] = {}
+    accounts: List[Dict[str, Any]] = []
+
+    for token_data in token_items:
+        proxy_obj = token_data.get("sub2api_proxy")
+        if proxy_obj is None and rotate_missing_proxy:
+            proxy_obj = parse_sub2api_proxy(cfg.get_next_sub2api_proxy_url())
+        if proxy_obj and proxy_obj.get("proxy_key"):
+            proxies_by_key[proxy_obj["proxy_key"]] = proxy_obj
+        accounts.append(_build_account_item(token_data, push_settings, proxy_obj))
+
+    return {
+        "exported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "proxies": list(proxies_by_key.values()),
+        "accounts": accounts,
+    }
 
 
 class Sub2APIClient:
@@ -43,45 +138,10 @@ class Sub2APIClient:
         return False, error_msg
 
     def _get_push_settings(self) -> Dict[str, Any]:
-        try:
-            import utils.config as cfg
-        except ImportError:
-            cfg = None
-
-        def as_int(value: Any, default: int, minimum: int) -> int:
-            try:
-                return max(minimum, int(value))
-            except (TypeError, ValueError):
-                return default
-        def as_float(value: Any, default: float, minimum: float) -> float:
-            try:
-                return max(minimum, float(value))
-            except (TypeError, ValueError):
-                return default
-
-        raw_group_ids = getattr(cfg, "SUB2API_ACCOUNT_GROUP_IDS", []) if cfg else []
-        if isinstance(raw_group_ids, list):
-            group_ids = [int(item) for item in raw_group_ids if str(item).strip().isdigit()]
-        else:
-            group_ids = [int(item.strip()) for item in str(raw_group_ids or "").split(",") if
-                         item.strip().isdigit()]
-
-        return {
-            "concurrency": as_int(getattr(cfg, "SUB2API_ACCOUNT_CONCURRENCY", 10) if cfg else 10, 10, 1),
-            "load_factor": as_int(getattr(cfg, "SUB2API_ACCOUNT_LOAD_FACTOR", 10) if cfg else 10, 10, 1),
-            "priority": as_int(getattr(cfg, "SUB2API_ACCOUNT_PRIORITY", 1) if cfg else 1, 1, 1),
-            "rate_multiplier": as_float(getattr(cfg, "SUB2API_ACCOUNT_RATE_MULTIPLIER", 1.0) if cfg else 1.0, 1.0,
-                                        0.0),
-            "group_ids": group_ids,
-            "enable_ws": bool(getattr(cfg, "SUB2API_ENABLE_WS_MODE", True) if cfg else True),
-        }
+        return get_sub2api_push_settings()
 
     def _build_account_extra(self, settings: Dict[str, Any]) -> Dict[str, Any]:
-        extra = {"load_factor": settings["load_factor"]}
-        if settings["enable_ws"]:
-            extra["openai_oauth_responses_websockets_v2_enabled"] = True
-            extra["openai_oauth_responses_websockets_v2_mode"] = "passthrough"
-        return extra
+        return _build_account_extra(settings)
 
     def _refresh_created_account(self, account_id: str) -> None:
         if not account_id:
@@ -112,45 +172,12 @@ class Sub2APIClient:
 
     def _import_account(self, token_data: Dict[str, Any], settings: Dict[str, Any]) -> Tuple[bool, str]:
         url = f"{self.api_url}/api/v1/admin/accounts/data"
-        exported_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        extra = self._build_account_extra(settings)
-        proxy_obj = token_data.get("sub2api_proxy")
-        account_item = {
-            "name": token_data.get("email", "unknown"),
-            "platform": "openai",
-            "type": "oauth",
-            "credentials": {
-                "access_token": token_data.get("access_token", ""),
-                "chatgpt_account_id": token_data.get("account_id", ""),
-                "client_id": token_data.get("client_id", ""),
-                "expires_at": int(time.time() + 864000),
-                "expires_in": 863999,
-                "model_mapping": {
-                    "gpt-4o": "gpt-4o",
-                    "gpt-4": "gpt-4",
-                    "gpt-3.5-turbo": "gpt-3.5-turbo",
-                },
-                "organization_id": token_data.get("workspace_id", ""),
-                "refresh_token": token_data.get("refresh_token", ""),
-            },
-            "extra": extra,
-            "concurrency": settings["concurrency"],
-            "priority": settings["priority"],
-            "rate_multiplier": settings["rate_multiplier"],
-            "auto_pause_on_expired": True,
-        }
-        if settings["group_ids"]:
-            account_item["group_ids"] = settings["group_ids"]
-
-        if proxy_obj and "proxy_key" in proxy_obj:
-            account_item["proxy_key"] = proxy_obj["proxy_key"]
+        bundle = build_sub2api_export_bundle([token_data], settings, rotate_missing_proxy=True)
         payload = {
             "data": {
                 "type": "sub2api-data",
                 "version": 1,
-                "exported_at": exported_at,
-                "proxies": [proxy_obj] if proxy_obj else [],
-                "accounts": [account_item],
+                **bundle,
             },
             "skip_default_group_bind": not bool(settings["group_ids"]),
         }
@@ -220,14 +247,19 @@ class Sub2APIClient:
 
     def add_account(self, token_data: Dict[str, Any]) -> Tuple[bool, str]:
         settings = self._get_push_settings()
-        refresh_token = token_data.get("refresh_token", "")
-        proxy_obj = token_data.get("sub2api_proxy")
+        working_token_data = dict(token_data)
+        refresh_token = working_token_data.get("refresh_token", "")
+        proxy_obj = working_token_data.get("sub2api_proxy")
+        if proxy_obj is None:
+            proxy_obj = parse_sub2api_proxy(cfg.get_next_sub2api_proxy_url())
+            if proxy_obj:
+                working_token_data["sub2api_proxy"] = proxy_obj
         if not refresh_token or proxy_obj:
-            return self._import_account(token_data, settings)
+            return self._import_account(working_token_data, settings)
 
         url = f"{self.api_url}/api/v1/admin/accounts"
         payload = {
-            "name": token_data.get("email", "unknown")[:64],
+            "name": working_token_data.get("email", "unknown")[:64],
             "platform": "openai",
             "type": "oauth",
             "credentials": {"refresh_token": refresh_token},
@@ -254,7 +286,7 @@ class Sub2APIClient:
             ok, result = self._handle_response(response, success_codes=(200, 201))
             if not ok:
                 logger.warning("Sub2API direct create failed, falling back to import endpoint: %s", result)
-                return self._import_account(token_data, settings)
+                return self._import_account(working_token_data, settings)
 
             account_id = result.get("data", {}).get("id") if isinstance(result, dict) else None
             if account_id:
@@ -262,7 +294,7 @@ class Sub2APIClient:
             return True, "Sub2API account created successfully"
         except Exception as exc:
             logger.warning("Sub2API direct create raised an exception, falling back to import: %s", exc)
-            return self._import_account(token_data, settings)
+            return self._import_account(working_token_data, settings)
 
     def update_account(self, account_id: str, update_data: Dict[str, Any]) -> Tuple[bool, Any]:
         url = f"{self.api_url}/api/v1/admin/accounts/{account_id}"

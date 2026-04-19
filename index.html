@@ -2207,11 +2207,12 @@
                                             </div>
                                         </div>
                                         <div class="col-span-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors mt-1">
-                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">专属代理</label>
-                                            <input type="text" v-model="config.sub2api_mode.default_proxy"
-                                                   class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm placeholder:text-slate-400"
-                                                   placeholder="格式: socks5://user:pass@1.1.1.1:1080 http://192.168.1.1:8080 https://user:pass@proxy.example.com:443 (支持 socks5/http/https)">
-                                            <p class="text-[11px] text-slate-400 font-medium mt-2">💡 填写后，推送时会一起提交给sub2api。</p>
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">专属代理池</label>
+                                            <textarea v-model="config.sub2api_mode.default_proxy"
+                                                      rows="4"
+                                                      class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm placeholder:text-slate-400 resize-y"
+                                                      placeholder="每行 1 个代理&#10;&#10;示例:&#10;socks5://user:pass@1.1.1.1:1080&#10;http://2.2.2.2:8080&#10;https://user:pass@proxy.example.com:443"></textarea>
+                                            <p class="text-[11px] text-slate-400 font-medium mt-2">💡 仅用于 Sub2API 推送与导出。0 行 = 不带代理，1 行 = 固定代理，2+ 行 = 按顺序轮转。</p>
                                         </div>
                                         <div class="col-span-2 bg-purple-50/50 p-5 md:p-6 rounded-2xl border border-purple-200 mt-2 space-y-6 shadow-sm">
                                             <h4 class="text-sm md:text-base font-black text-purple-800 flex items-center gap-2 pb-3 border-b border-purple-200/60 uppercase tracking-widest">
