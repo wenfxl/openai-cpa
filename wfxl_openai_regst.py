@@ -10,7 +10,6 @@ import warnings
 import subprocess
 import socket
 import socks
-import itertools
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="trio")
 
 from fastapi import FastAPI
@@ -135,7 +134,7 @@ def _worker_push_thread():
                             }
 
                             parsed_logs = []
-                            recent = list(itertools.islice(log_history, max(0, len(log_history) - 50), len(log_history)))
+                            recent = list(log_history)[-50:]
                             for raw in recent:
                                 m = re.match(r"^\[(.*?)\]\s*\[(.*?)\]\s+(.*)$", raw.strip())
                                 if m: parsed_logs.append({"parsed": True, "time": m.group(1), "level": m.group(2).upper(), "text": m.group(3), "raw": raw})
