@@ -219,23 +219,39 @@ def _extract_remaining_percent(window_info: Any) -> Optional[float]:
     return None
 
 
-def _deep_extract_weekly_pct(raw_usage: Any) -> Optional[float]:
-    """从 CPA 代理返回的原始用量数据中深度提取周限额剩余百分比。"""
+def _should_reenable_cpa_account(raw_usage: Any, threshold: int) -> Tuple[bool, str]:
+    """
+    Fail-closed 恢复判定：只有能明确确认额度高于阈值时才允许重新启用。
+    返回 (可否启用, 原因描述)。
+    """
     if not isinstance(raw_usage, dict):
-        return None
+        return False, "无法读取用量数据"
     payload = raw_usage
     body = raw_usage.get("body")
     if isinstance(body, str):
         try:
             payload = json.loads(body)
         except Exception:
-            pass
+            return False, "无法解析用量响应体"
     if not isinstance(payload, dict):
-        return None
+        return False, "用量数据格式异常"
     rate_limit = payload.get("rate_limit")
-    if isinstance(rate_limit, dict):
-        return _extract_remaining_percent(rate_limit.get("primary_window"))
-    return None
+    if not isinstance(rate_limit, dict):
+        return False, "缺少 rate_limit 数据"
+    if rate_limit.get("allowed") is False or rate_limit.get("limit_reached") is True:
+        return False, (
+            f"限额标记未恢复（allowed={rate_limit.get('allowed')}, "
+            f"limit_reached={rate_limit.get('limit_reached')}）"
+        )
+    pct = _extract_remaining_percent(rate_limit.get("primary_window"))
+    if pct is None:
+        return False, "无法确认剩余额度百分比（primary_window 缺失）"
+    effective = max(threshold, 1)
+    if pct < effective:
+        pct_s = _format_percent(pct)
+        detail = f"，低于阈值 {threshold}%" if threshold > 0 else ""
+        return False, f"周限额剩余 {pct_s}%{detail}"
+    return True, f"周限额剩余 {_format_percent(pct)}%"
 
 
 def _format_percent(value: float) -> str:
@@ -411,15 +427,11 @@ def process_account_worker(i: int, total: int, item: dict, args: Any) -> bool:
 
     if is_ok:
         if is_disabled:
-            weekly_pct = _deep_extract_weekly_pct(item.get("_raw_usage"))
-            threshold = cfg.MIN_REMAINING_WEEKLY_PERCENT
-            if weekly_pct is not None and weekly_pct < max(threshold, 1):
-                print(
-                    f"[{ts()}] [INFO] 测活: {mask_email(name)} 额度尚未恢复"
-                    f" (周限额剩余 {_format_percent(weekly_pct)}%"
-                    f"{'，低于阈值 ' + str(threshold) + '%' if threshold > 0 else ''}"
-                    f")，继续保持禁用状态。"
-                )
+            can_reenable, reason = _should_reenable_cpa_account(
+                item.get("_raw_usage"), cfg.MIN_REMAINING_WEEKLY_PERCENT
+            )
+            if not can_reenable:
+                print(f"[{ts()}] [INFO] 测活: {mask_email(name)} 额度尚未恢复（{reason}），继续保持禁用状态。")
                 return False
             print(f"[{ts()}] [INFO] 测活: {mask_email(name)} 额度已恢复且有效，准备启用...")
             ok = set_cpa_auth_file_status(cfg.CPA_API_URL, cfg.CPA_API_TOKEN, name, disabled=False)
