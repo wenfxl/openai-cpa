@@ -441,6 +441,11 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
         MAX_REG_RETRIES = 2
 
         for attempt in range(MAX_REG_RETRIES):
+            if active_sessions:
+                try:
+                    active_sessions[-1].close()
+                except Exception:
+                    pass
             s_reg = requests.Session(proxies=proxies, impersonate="chrome110")
             s_reg.headers.update({"Connection": "close"})
             s_reg.timeout = 30
@@ -895,6 +900,11 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                 for oauth_attempt in range(2):
                     if oauth_attempt == 1:
                         print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）首次遇到 add-phone 风控，正在重试...")
+                    if active_sessions:
+                        try:
+                            active_sessions[-1].close()
+                        except Exception:
+                            pass
                     s_log = requests.Session(proxies=proxies, impersonate="chrome110")
                     s_log.headers.update({"Connection": "close"})
                     s_log.timeout = 30
