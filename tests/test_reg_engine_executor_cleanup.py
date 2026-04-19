@@ -4,38 +4,38 @@ import types
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-if "curl_cffi" not in sys.modules:
-    sys.modules["curl_cffi"] = types.SimpleNamespace(
+# Stub heavy third-party and project dependencies so we can import
+# RegEngine without installing the full runtime stack.
+_stubs = {
+    "yaml": types.SimpleNamespace(
+        safe_load=lambda *a, **kw: {},
+        safe_dump=lambda *a, **kw: "",
+    ),
+    "curl_cffi": types.SimpleNamespace(
         requests=types.SimpleNamespace(),
         CurlMime=object,
-    )
-
-if "utils.email_providers.mail_service" not in sys.modules:
-    sys.modules["utils.email_providers.mail_service"] = types.SimpleNamespace(
+    ),
+    "utils.email_providers.mail_service": types.SimpleNamespace(
         mask_email=lambda value: value,
-    )
-
-if "utils.register" not in sys.modules:
-    sys.modules["utils.register"] = types.SimpleNamespace(
+    ),
+    "utils.register": types.SimpleNamespace(
         run=lambda *args, **kwargs: None,
         refresh_oauth_token=lambda *args, **kwargs: (False, {}),
-    )
-
-if "utils.proxy_manager" not in sys.modules:
-    sys.modules["utils.proxy_manager"] = types.SimpleNamespace(
+    ),
+    "utils.proxy_manager": types.SimpleNamespace(
         smart_switch_node=lambda *args, **kwargs: True,
         reload_proxy_config=lambda *args, **kwargs: None,
-    )
-
-if "utils.integrations.sub2api_client" not in sys.modules:
-    sys.modules["utils.integrations.sub2api_client"] = types.SimpleNamespace(
+    ),
+    "utils.integrations.sub2api_client": types.SimpleNamespace(
         Sub2APIClient=object,
-    )
-
-if "utils.integrations.tg_notifier" not in sys.modules:
-    sys.modules["utils.integrations.tg_notifier"] = types.SimpleNamespace(
+    ),
+    "utils.integrations.tg_notifier": types.SimpleNamespace(
         send_tg_msg_sync=lambda *args, **kwargs: None,
-    )
+    ),
+}
+for mod_name, stub in _stubs.items():
+    if mod_name not in sys.modules:
+        sys.modules[mod_name] = stub
 
 from utils.core_engine import RegEngine
 
