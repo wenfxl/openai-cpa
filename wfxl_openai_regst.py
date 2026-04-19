@@ -5,7 +5,6 @@ import time
 import asyncio
 import threading
 import uvicorn
-import re
 import warnings
 import subprocess
 import socket
@@ -19,6 +18,7 @@ from contextlib import asynccontextmanager
 
 from utils import core_engine, db_manager
 from utils.config import reload_all_configs
+from utils.log_stream_cache import RecentParsedLogCache
 
 from global_state import engine, log_history, append_log
 from routers import api_routes
@@ -59,6 +59,8 @@ class DummyArgs:
 
 def _worker_push_thread():
     last_role = None
+    log_cache = RecentParsedLogCache(limit=50)
+    push_interval = 1.0
 
     def _internal_start():
         try: reload_all_configs()
@@ -133,14 +135,12 @@ def _worker_push_thread():
                                 "mode": "CPA仓管" if getattr(core_engine.cfg, 'ENABLE_CPA_MODE', False) else ("Sub2Api" if getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False) else "常规量产")
                             }
 
-                            parsed_logs = []
-                            recent = list(log_history)[-50:]
-                            for raw in recent:
-                                m = re.match(r"^\[(.*?)\]\s*\[(.*?)\]\s+(.*)$", raw.strip())
-                                if m: parsed_logs.append({"parsed": True, "time": m.group(1), "level": m.group(2).upper(), "text": m.group(3), "raw": raw})
-                                else: parsed_logs.append({"parsed": False, "raw": raw})
+                            _, parsed_logs, changed = log_cache.refresh(log_history)
 
-                            await ws.send(json.dumps({"stats": stats_payload, "logs": parsed_logs}))
+                            if changed or is_running:
+                                await ws.send(json.dumps({"stats": stats_payload, "logs": parsed_logs}))
+                            else:
+                                await ws.send(json.dumps({"stats": stats_payload}))
 
                             resp_str = await ws.recv()
                             cmd = json.loads(resp_str).get("command", "none")
@@ -178,7 +178,7 @@ def _worker_push_thread():
                                         print(f"[{core_engine.ts()}] [ERROR] ❌ 账号上传总控失败: {e}")
                                 threading.Thread(target=_upload_task, daemon=True).start()
 
-                            await asyncio.sleep(0.5)
+                            await asyncio.sleep(push_interval if is_running else 3.0)
                 except Exception: pass
             await asyncio.sleep(3)
     asyncio.run(_ws_loop())
