@@ -1355,6 +1355,13 @@ class RegEngine:
             self._executor.shutdown(wait=False)
             self._executor = None
 
+    def _finalize_thread_run(self):
+        if self.loop is not None:
+            self.loop.close()
+            self.loop = None
+        self.async_stop_event = None
+        self._shutdown_executor()
+
     def start_normal(self, args):
         if self.is_running():
             return
@@ -1404,7 +1411,7 @@ class RegEngine:
         try:
             self.loop.run_until_complete(self._cpa_wrapper(args))
         finally:
-            self.loop.close()
+            self._finalize_thread_run()
 
     def _run_sub2api_in_thread(self, args):
         self.loop = asyncio.new_event_loop()
@@ -1413,7 +1420,7 @@ class RegEngine:
             self.async_stop_event = asyncio.Event()
             self.loop.run_until_complete(sub2api_main_loop(args, self.async_stop_event, executor=self._executor))
         finally:
-            self.loop.close()
+            self._finalize_thread_run()
             
     async def _cpa_wrapper(self, args):
         self.async_stop_event = asyncio.Event()
@@ -1459,7 +1466,7 @@ class RegEngine:
             self.async_stop_event = asyncio.Event()
             self.loop.run_until_complete(manual_check_main_loop(args, self.async_stop_event, executor=self._executor))
         finally:
-            self.loop.close()
+            self._finalize_thread_run()
             self._force_stopped = True
 
 if __name__ == "__main__":
