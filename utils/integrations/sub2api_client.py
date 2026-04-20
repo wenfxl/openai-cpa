@@ -254,12 +254,17 @@ class Sub2APIClient:
             proxy_obj = parse_sub2api_proxy(cfg.get_next_sub2api_proxy_url())
             if proxy_obj:
                 working_token_data["sub2api_proxy"] = proxy_obj
+
+        account_name = working_token_data.get("email", "unknown")[:64]
         if not refresh_token or proxy_obj:
-            return self._import_account(working_token_data, settings)
+            ok, msg = self._import_account(working_token_data, settings)
+            if ok and settings.get("group_ids"):
+                self._force_bind_groups(account_name, settings["group_ids"])
+            return ok, msg
 
         url = f"{self.api_url}/api/v1/admin/accounts"
         payload = {
-            "name": working_token_data.get("email", "unknown")[:64],
+            "name": account_name,
             "platform": "openai",
             "type": "oauth",
             "credentials": {"refresh_token": refresh_token},
@@ -285,16 +290,37 @@ class Sub2APIClient:
             )
             ok, result = self._handle_response(response, success_codes=(200, 201))
             if not ok:
-                logger.warning("Sub2API direct create failed, falling back to import endpoint: %s", result)
-                return self._import_account(working_token_data, settings)
+                import_ok, import_msg = self._import_account(working_token_data, settings)
+                if import_ok and settings.get("group_ids"):
+                    self._force_bind_groups(account_name, settings["group_ids"])
+                return import_ok, import_msg
 
             account_id = result.get("data", {}).get("id") if isinstance(result, dict) else None
             if account_id:
                 self._refresh_created_account(str(account_id))
             return True, "Sub2API account created successfully"
         except Exception as exc:
-            logger.warning("Sub2API direct create raised an exception, falling back to import: %s", exc)
-            return self._import_account(working_token_data, settings)
+            import_ok, import_msg = self._import_account(working_token_data, settings)
+            if import_ok and settings.get("group_ids"):
+                self._force_bind_groups(account_name, settings["group_ids"])
+            return import_ok, import_msg
+
+    def _force_bind_groups(self, account_name: str, group_ids: List[int]) -> None:
+        if not group_ids:
+            return
+        try:
+            fetch_ok, accounts_resp = self.get_accounts(page=1, page_size=50)
+            if not fetch_ok: return
+
+            items = accounts_resp.get("data", {}).get("items", []) if isinstance(accounts_resp, dict) else []
+            for item in items:
+                if item.get("name") == account_name:
+                    target_id = item.get("id")
+                    self.update_account(str(target_id), {"group_ids": group_ids})
+                    logger.info("强制分组绑定成功 (账号: %s, ID: %s, 分组: %s)", account_name, target_id, group_ids)
+                    break
+        except Exception as exc:
+            logger.error("强制绑定分组时发生异常: %s", exc)
 
     def update_account(self, account_id: str, update_data: Dict[str, Any]) -> Tuple[bool, Any]:
         url = f"{self.api_url}/api/v1/admin/accounts/{account_id}"
