@@ -330,19 +330,19 @@ def get_mailbox_for_pool_fission() -> dict:
             c = get_cursor(conn, as_dict=True)
             if DB_TYPE == "mysql":
                 execute_sql(c, "START TRANSACTION")
-                execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 LIMIT 1 FOR UPDATE")
+                execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts) LIMIT 1 FOR UPDATE")
             else:
                 execute_sql(c, "BEGIN EXCLUSIVE")
-                execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 LIMIT 1")
+                execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts) LIMIT 1")
 
             row = c.fetchone()
 
             if not row:
                 if DB_TYPE == "mysql":
                     execute_sql(c,
-                                "SELECT * FROM local_mailboxes WHERE status = 0 ORDER BY fission_count ASC LIMIT 1 FOR UPDATE")
+                                "SELECT * FROM local_mailboxes WHERE status = 0 AND email NOT IN (SELECT email FROM accounts) ORDER BY fission_count ASC LIMIT 1 FOR UPDATE")
                 else:
-                    execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 ORDER BY fission_count ASC LIMIT 1")
+                    execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND email NOT IN (SELECT email FROM accounts) ORDER BY fission_count ASC LIMIT 1")
                 row = c.fetchone()
 
             if row:
