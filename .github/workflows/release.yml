@@ -24,7 +24,7 @@ jobs:
             TAG_NAME="latest"
           fi
 
-          ZIP_NAME="Wenfxl-Codex-Manager-${TAG_NAME}.zip"
+          ZIP_NAME="Karma617-Codex-Manager-${TAG_NAME}.zip"
 
           zip -r $ZIP_NAME . \
             -x "*.git*" \
