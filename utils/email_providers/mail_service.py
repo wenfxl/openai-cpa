@@ -189,7 +189,23 @@ def _get_ai_data_package():
     return f"{letters}{digits}", False
 
 
+# def get_email_and_token(proxies: Any = None) -> tuple:
+#     """拦截器"""
+#     result = _raw_get_email_and_token(proxies)
+#     if result is None or not isinstance(result, tuple) or len(result) != 2:
+#         print("\n" + "=" * 50)
+#         print(f"[{cfg.ts()}] _raw_get_email_and_token 违规返回了单值: {result}")
+#         print(f"[{cfg.ts()}] 当前系统的 cfg.EMAIL_API_MODE 是: '{getattr(cfg, 'EMAIL_API_MODE', '未知')}'")
+#
+#         import traceback
+#         print("以下是问题时的调用路径：")
+#         traceback.print_stack()
+#         print("=" * 50 + "\n")
+#         return None, None
+#     return result
+
 def get_email_and_token(proxies: Any = None) -> tuple:
+# def _raw_get_email_and_token(proxies: Any = None) -> tuple:
     """兼容五种邮箱模式的地址创建，返回 (email, token_or_id)。"""
     if getattr(cfg, 'GLOBAL_STOP', False): return None, None
     _thread_data.last_attempt_email = None
@@ -541,6 +557,10 @@ def get_email_and_token(proxies: Any = None) -> tuple:
                 print(f"[{cfg.ts()}] [ERROR] Freemail 邮箱创建异常: {e}")
                 time.sleep(2)
         return None, None
+
+    if mode == "Gmail_OAuth":
+        print(f"[{cfg.ts()}] [INFO] Gmail_OAuth成功生成临时域名邮箱: {email_str}")
+        return email_str, ""
 
     if mode == "imap":
         print(f"[{cfg.ts()}] [INFO] imap成功生成临时域名邮箱: {email_str}")

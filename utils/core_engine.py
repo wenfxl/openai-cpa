@@ -1427,10 +1427,13 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                 pass
 
         except Exception as e:
+            # import traceback
+            # err_trace = traceback.format_exc()
             print(f"[{ts()}] [ERROR] Sub2API 循环发生致命异常: {e}")
+            # for line in err_trace.split('\n'):
+            #     if line.strip():
+            #         print(f"[{ts()}] [ERROR] 堆栈追踪 -> {line.strip()}")
             print(f"[{ts()}] [INFO] 触发安全保护，系统已自动停止运行。")
-            import traceback
-            traceback.print_exc()
             async_stop_event.set()
             break
 
