@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   codex-web:
-    image: wenfxl/wenfxl-codex-manager:latest
-    container_name: wenfxl_codex_manager
+    image: karma617/Karma617-codex-manager:latest
+    container_name: karma617_codex_manager
     ports:
       - "8000:8000"
     restart: always
