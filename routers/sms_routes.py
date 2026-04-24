@@ -36,3 +36,25 @@ def api_get_smsbower_prices(req: SMSPriceReq, token: str = Depends(verify_token)
     proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
     rows = _smsbower_prices_by_service(req.service, proxies={"http": proxy_url, "https": proxy_url} if proxy_url else None, force_refresh=False)
     return {"status": "success", "prices": rows} if rows else {"status": "error", "message": "无法获取价格或当前服务无库存"}
+
+@router.get('/api/fivesim/balance')
+def api_get_fivesim_balance(token: str = Depends(verify_token)):
+    from utils.integrations.fivesim_sms import fivesim_get_balance
+    from utils import core_engine
+    proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    balance, err = fivesim_get_balance(proxies=proxies)
+    if balance >= 0:
+        return {"status": "success", "balance": f"{balance:.2f}"}
+    return {"status": "error", "message": err}
+
+@router.post('/api/fivesim/prices')
+def api_get_fivesim_prices(req: SMSPriceReq, token: str = Depends(verify_token)):
+    from utils.integrations.fivesim_sms import _fivesim_prices_by_service
+    from utils import core_engine
+    proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    rows = _fivesim_prices_by_service(req.service, proxies=proxies, force_refresh=False)
+    if rows:
+        return {"status": "success", "prices": rows}
+    return {"status": "error", "message": "无法获取价格或当前服务无库存"}
