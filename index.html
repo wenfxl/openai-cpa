@@ -1753,7 +1753,15 @@
                                         <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-orange-200 shadow-sm cursor-pointer hover:bg-orange-50 transition-colors group">
                                             <input type="checkbox" v-model="config.hero_sms.reuse_phone" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-orange-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
-                                            <span class="ml-4 text-sm font-black text-orange-900 tracking-wide">启用号码二次复用机制 <span class="text-xs font-medium text-orange-600/80 block mt-0.5">(省钱模式)</span></span>
+                                            <div class="ml-4 flex flex-col justify-center">
+                                                <span class="text-sm font-black text-orange-900 tracking-wide flex items-center gap-2">
+                                                    启用号码复用机制
+                                                    <span v-if="config.hero_sms.reuse_phone" class="inline-flex items-center gap-1 bg-orange-50/80 border border-orange-200 px-2 py-0.5 rounded text-xs font-mono shadow-sm">
+                                                        最多 <input type="number" v-model.number="config.hero_sms.reuse_max" class="w-10 bg-white border border-orange-200 text-center outline-none font-bold text-orange-700 rounded" min="1"> 次
+                                                    </span>
+                                                </span>
+                                                <span class="text-xs font-medium text-orange-600/80 mt-0.5">(开启后可在指定次数内反复拿号)</span>
+                                            </div>
                                         </label>
                                         <label class="relative inline-flex items-center p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:bg-rose-100/50 transition-colors group">
                                             <input type="checkbox" v-model="config.hero_sms.verify_on_register" class="sr-only peer">
@@ -1883,7 +1891,15 @@
                                         <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors group">
                                             <input type="checkbox" v-model="config.smsbower.reuse_phone" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
-                                            <span class="ml-4 text-sm font-black text-indigo-900 tracking-wide">启用号码二次复用机制 <span class="text-xs font-medium text-indigo-600/80 block mt-0.5">(省钱模式)</span></span>
+                                            <div class="ml-4 flex flex-col justify-center">
+                                                <span class="text-sm font-black text-indigo-900 tracking-wide flex items-center gap-2">
+                                                    启用号码复用机制
+                                                    <span v-if="config.smsbower.reuse_phone" class="inline-flex items-center gap-1 bg-indigo-50/80 border border-indigo-200 px-2 py-0.5 rounded text-xs font-mono shadow-sm">
+                                                        最多 <input type="number" v-model.number="config.smsbower.reuse_max" class="w-10 bg-white border border-indigo-200 text-center outline-none font-bold text-indigo-700 rounded" min="1"> 次
+                                                    </span>
+                                                </span>
+                                                <span class="text-xs font-medium text-indigo-600/80 mt-0.5">(开启后可在指定次数内反复拿号)</span>
+                                            </div>
                                         </label>
                                         <label class="relative inline-flex items-center p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:bg-rose-100/50 transition-colors group">
                                             <input type="checkbox" v-model="config.smsbower.verify_on_register" class="sr-only peer">
@@ -2006,7 +2022,15 @@
                                         <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-teal-50 transition-colors group">
                                             <input type="checkbox" v-model="config.fivesim.reuse_phone" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-teal-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
-                                            <span class="ml-4 text-sm font-black text-teal-900 tracking-wide">启用号码二次复用机制 <span class="text-xs font-medium text-teal-600/80 block mt-0.5">(省钱模式)</span></span>
+                                            <div class="ml-4 flex flex-col justify-center">
+                                                <span class="text-sm font-black text-teal-900 tracking-wide flex items-center gap-2">
+                                                    启用号码复用机制
+                                                    <span v-if="config.fivesim.reuse_phone" class="inline-flex items-center gap-1 bg-teal-50/80 border border-teal-200 px-2 py-0.5 rounded text-xs font-mono shadow-sm">
+                                                        最多 <input type="number" v-model.number="config.fivesim.reuse_max" class="w-10 bg-white border border-teal-200 text-center outline-none font-bold text-teal-700 rounded" min="1"> 次
+                                                    </span>
+                                                </span>
+                                                <span class="text-xs font-medium text-teal-600/80 mt-0.5">(开启后可在指定次数内反复拿号)</span>
+                                            </div>
                                         </label>
                                         <label class="relative inline-flex items-center p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:bg-rose-100/50 transition-colors group">
                                             <input type="checkbox" v-model="config.fivesim.verify_on_register" class="sr-only peer">

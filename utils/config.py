@@ -441,7 +441,9 @@ def reload_all_configs(new_config_dict=None):
     global FIVESIM_AUTO_PICK_COUNTRY, FIVESIM_VERIFY_ON_REGISTER, FIVESIM_REUSE_PHONE
     global FIVESIM_MAX_PRICE, FIVESIM_MIN_PRICE, FIVESIM_MIN_BALANCE
     global FIVESIM_MAX_TRIES, FIVESIM_POLL_TIMEOUT_SEC
-
+    global SMSBOWER_REUSE_PHONE, SMSBOWER_REUSE_MAX
+    global HERO_SMS_REUSE_PHONE, HERO_SMS_REUSE_MAX
+    global FIVESIM_REUSE_PHONE, FIVESIM_REUSE_MAX
 
     base_yaml_config = init_config()
 
@@ -707,6 +709,7 @@ def reload_all_configs(new_config_dict=None):
     HERO_SMS_AUTO_PICK_COUNTRY = _hero_sms_conf.get("auto_pick_country", False)
     HERO_SMS_REUSE_PHONE = _hero_sms_conf.get("reuse_phone", True)
     HERO_SMS_VERIFY_ON_REGISTER = _hero_sms_conf.get("verify_on_register", False)
+    HERO_SMS_REUSE_MAX = safe_int(_hero_sms_conf.get("reuse_max", 2), default=2)
 
     try:
         HERO_SMS_MAX_PRICE = float(_hero_sms_conf.get("max_price", 2.0))
@@ -742,6 +745,7 @@ def reload_all_configs(new_config_dict=None):
     SMSBOWER_MAX_TRIES = safe_int(_smsbower.get("max_tries", 3), default=3)
     SMSBOWER_POLL_TIMEOUT_SEC = safe_int(_smsbower.get("poll_timeout_sec", 120), default=120)
     SMSBOWER_MIN_PRICE = safe_float(_smsbower.get("min_price", 0.05), default=0.05)
+    SMSBOWER_REUSE_MAX = safe_int(_smsbower.get("reuse_max", 2), default=2)
 
     _fivesim = _c.get("fivesim", {})
     FIVESIM_ENABLED = safe_bool(_fivesim.get("enabled", False), default=False)
@@ -756,6 +760,7 @@ def reload_all_configs(new_config_dict=None):
     FIVESIM_MIN_BALANCE = safe_float(_fivesim.get("min_balance", 10.0), default=10.0)
     FIVESIM_MAX_TRIES = safe_int(_fivesim.get("max_tries", 3), default=3)
     FIVESIM_POLL_TIMEOUT_SEC = safe_int(_fivesim.get("poll_timeout_sec", 180), default=180)
+    FIVESIM_REUSE_MAX = safe_int(_fivesim.get("reuse_max", 2), default=2)
 
 
     _ai = _c.get("ai_service", {})

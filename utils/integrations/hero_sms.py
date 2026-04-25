@@ -90,7 +90,8 @@ def _hero_sms_price_cache_ttl_sec() -> int: return 90
 
 def _hero_sms_reuse_ttl_sec() -> int: return 1200
 
-def _hero_sms_reuse_max_uses() -> int: return 2
+def _hero_sms_reuse_max_uses() -> int:
+    return int(getattr(cfg, 'HERO_SMS_REUSE_MAX', 2))
 
 def _hero_sms_mark_ready_enabled() -> bool: return True
 

@@ -94,7 +94,8 @@ def _smsbower_price_cache_ttl_sec() -> int: return 90
 
 def _smsbower_reuse_ttl_sec() -> int: return 1200
 
-def _smsbower_reuse_max_uses() -> int: return 2
+def _smsbower_reuse_max_uses() -> int:
+    return int(getattr(cfg, 'SMSBOWER_REUSE_MAX', 2))
 
 def _smsbower_mark_ready_enabled() -> bool: return True
 

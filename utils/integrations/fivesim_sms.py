@@ -113,6 +113,7 @@ def _sync_fivesim_reuse():
 
 def _fivesim_reuse_get(service: str, country: str) -> tuple[str, int]:
     now = time.time()
+    max_uses = int(getattr(cfg, 'FIVESIM_REUSE_MAX', 2))
     with _FIVESIM_REUSE_LOCK:
         phone = str(_FIVESIM_REUSE_STATE.get("phone") or "").strip()
         state_svc = str(_FIVESIM_REUSE_STATE.get("service") or "").strip()
@@ -120,7 +121,7 @@ def _fivesim_reuse_get(service: str, country: str) -> tuple[str, int]:
         uses = int(_FIVESIM_REUSE_STATE.get("uses") or 0)
         updated = float(_FIVESIM_REUSE_STATE.get("updated_at") or 0.0)
 
-        if phone and state_svc == service and state_country == country and uses < 2 and (now - updated) < 1200:
+        if phone and state_svc == service and state_country == country and uses < max_uses and (now - updated) < 1200:
             return phone, uses
     return "", 0
 
