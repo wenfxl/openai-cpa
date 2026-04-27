@@ -1,6 +1,7 @@
 import sqlite3
 import pymysql
 import json
+import datetime
 import os
 from typing import Any
 from utils.config import DB_TYPE, MYSQL_CFG
@@ -101,6 +102,14 @@ def init_db():
             execute_sql(c, 'ALTER TABLE local_mailboxes ADD COLUMN retry_master INTEGER DEFAULT 0;')
         except Exception:
             pass
+
+        try:
+            execute_sql(c, 'ALTER TABLE accounts ADD COLUMN is_active INTEGER DEFAULT 1;')
+            execute_sql(c, 'ALTER TABLE accounts ADD COLUMN push_platform VARCHAR(50) DEFAULT NULL;')
+            execute_sql(c, 'ALTER TABLE accounts ADD COLUMN push_time VARCHAR(50) DEFAULT NULL;')
+        except Exception:
+            pass
+
     print(f"[{cfg.ts()}] [系统] 数据库模块初始化完成 (引擎: {DB_TYPE.upper()})")
 
 
@@ -179,7 +188,7 @@ def delete_accounts_by_emails(emails: list) -> bool:
         return False
 
 
-def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", search: str = None) -> dict:
+def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", search: str = None, status_filter: str = "all") -> dict:
     try:
         with get_db_conn() as conn:
             c = get_cursor(conn)
@@ -193,9 +202,17 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term])
 
+            if status_filter == "active":
+                conditions.append("is_active = 1 AND push_platform IS NOT NULL AND push_platform != ''")
+            elif status_filter == "disabled":
+                conditions.append("is_active = 0 AND push_platform IS NOT NULL AND push_platform != ''")
+            elif status_filter == "unpushed":
+                conditions.append("(push_platform IS NULL OR push_platform = '')")
+
             where_clause = ""
             if conditions:
                 where_clause = " WHERE " + " AND ".join(conditions)
+
             count_sql = f"SELECT COUNT(1) FROM accounts{where_clause}"
             if params:
                 execute_sql(c, count_sql, tuple(params))
@@ -204,7 +221,7 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
             total = c.fetchone()[0]
 
             offset = (page - 1) * page_size
-            data_sql = f"SELECT email, password, created_at, token_data FROM accounts{where_clause} ORDER BY id DESC LIMIT ? OFFSET ?"
+            data_sql = f"SELECT email, password, created_at, token_data, is_active, push_platform, push_time FROM accounts{where_clause} ORDER BY id DESC LIMIT ? OFFSET ?"
 
             data_params = tuple(params + [page_size, offset])
             execute_sql(c, data_sql, data_params)
@@ -216,7 +233,10 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                     "password": r[1],
                     "created_at": r[2],
                     "status": "有凭证" if '"access_token"' in str(r[3] or "") else (
-                        "仅注册成功" if '"仅注册成功"' in str(r[3] or "") else "未知")
+                        "仅注册成功" if '"仅注册成功"' in str(r[3] or "") else "未知"),
+                    "is_active": r[4] if r[4] is not None else 1,
+                    "push_platform": r[5],
+                    "push_time": r[6]
                 }
                 for r in rows
             ]
@@ -429,7 +449,7 @@ def clear_retry_master_status(email: str):
             c = get_cursor(conn)
             execute_sql(c, "UPDATE local_mailboxes SET retry_master = 0 WHERE email = ?", (email,))
     except Exception as e:
-        print(f"[{ts()}] [DB_ERROR] 清除 {email} 的 retry_master 状态失败: {e}")
+        print(f"[{cfg.ts()}] [DB_ERROR] 清除 {email} 的 retry_master 状态失败: {e}")
 
 def get_all_accounts_raw() -> list:
     """获取账号库所有原始数据"""
@@ -479,3 +499,156 @@ def clear_all_mailboxes() -> bool:
             execute_sql(c, "DELETE FROM local_mailboxes")
             return True
     except: return False
+
+def update_account_status(emails: list, is_active: int):
+    if not emails: return
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            placeholders = ','.join(['?'] * len(emails))
+            execute_sql(c, f"UPDATE accounts SET is_active = ? WHERE email IN ({placeholders})", tuple([is_active] + emails))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 更新活跃状态失败: {e}")
+
+
+def update_account_push_info(emails: list, platform: str, mode: str = "overwrite"):
+    if not emails: return
+    try:
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        target_platform = platform.strip().upper()
+
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            for email in emails:
+                new_val = target_platform
+
+                if mode == "sync":
+                    execute_sql(c, "SELECT push_platform FROM accounts WHERE email = ?", (email,))
+                    row = c.fetchone()
+                    current_raw = row[0] if row and row[0] else ""
+
+                    if current_raw:
+                        parts = [p.strip().upper() for p in current_raw.split(',') if p.strip()]
+                        p_set = set(parts)
+                        p_set.add(target_platform)
+                        new_val = ",".join(sorted(list(p_set)))
+                    else:
+                        new_val = target_platform
+
+                execute_sql(c, """
+                    UPDATE accounts 
+                    SET push_platform = ?, push_time = COALESCE(push_time, ?) 
+                    WHERE email = ?
+                """, (new_val, now_str, email))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 更新推送状态失败: {e}")
+
+
+def get_inventory_stats() -> dict:
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            execute_sql(c, """
+                SELECT 
+                    COUNT(1) as total,
+                    SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 1 THEN 1 ELSE 0 END) as active_count,
+                    SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 0 THEN 1 ELSE 0 END) as disabled_count,
+                    SUM(CASE WHEN push_platform IS NULL OR push_platform = '' THEN 1 ELSE 0 END) as unpushed_count,
+                    SUM(CASE WHEN push_platform LIKE '%CPA%' THEN 1 ELSE 0 END) as cpa_total,
+                    SUM(CASE WHEN push_platform LIKE '%CPA%' AND is_active = 1 THEN 1 ELSE 0 END) as cpa_active,
+                    SUM(CASE WHEN push_platform LIKE '%CPA%' AND is_active = 0 THEN 1 ELSE 0 END) as cpa_disabled,
+                    SUM(CASE WHEN push_platform LIKE '%SUB2API%' THEN 1 ELSE 0 END) as sub_total,
+                    SUM(CASE WHEN push_platform LIKE '%SUB2API%' AND is_active = 1 THEN 1 ELSE 0 END) as sub_active,
+                    SUM(CASE WHEN push_platform LIKE '%SUB2API%' AND is_active = 0 THEN 1 ELSE 0 END) as sub_disabled,
+                    SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') THEN 1 ELSE 0 END) as cloud_total
+                FROM accounts
+            """)
+            row = c.fetchone()
+            r = [x or 0 for x in row] if row else [0] * 11
+
+            return {
+                "local": {
+                    "total": r[0],
+                    "active": r[1],
+                    "disabled": r[2],
+                    "unpushed": r[3]
+                },
+                "cloud": {
+                    "total": r[10],
+                    "enabled": r[1],
+                    "cpa": r[4],
+                    "cpa_active": r[5],
+                    "cpa_disabled": r[6],
+                    "sub2api": r[7],
+                    "sub2api_active": r[8],
+                    "sub2api_disabled": r[9]
+                }
+            }
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取统计数据失败: {e}")
+        return {
+            "local": {"total": 0, "active": 0, "disabled": 0, "unpushed": 0},
+            "cloud": {"total": 0, "enabled": 0, "cpa": 0, "cpa_active": 0, "cpa_disabled": 0, "sub2api": 0,
+                      "sub2api_active": 0, "sub2api_disabled": 0}
+        }
+
+def update_account_status_by_truncated_name(truncated_name: str, is_active: int):
+    if not truncated_name or truncated_name == "unknown": return
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "UPDATE accounts SET is_active = ? WHERE SUBSTR(email, 1, 64) = ?", (is_active, truncated_name))
+    except Exception as e:
+        print(f"[ERROR] 按截断名称更新活跃状态失败: {e}")
+
+
+def remove_account_push_platform(identifier: str, platform: str, exact_match: bool = True):
+    if not identifier: return
+    target_platform = platform.strip().upper()
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            if exact_match:
+                execute_sql(c, "SELECT email, push_platform FROM accounts WHERE email = ?", (identifier,))
+            else:
+                execute_sql(c, "SELECT email, push_platform FROM accounts WHERE SUBSTR(email, 1, 64) = ?",
+                            (identifier,))
+
+            rows = c.fetchall()
+            for row in rows:
+                db_email = row[0]
+                current_raw = row[1] if row[1] else ""
+
+                parts = [p.strip().upper() for p in current_raw.split(',') if p.strip()]
+                if target_platform in parts:
+                    parts.remove(target_platform)
+                    new_val = ",".join(sorted(list(set(parts)))) if parts else ""
+                    execute_sql(c, "UPDATE accounts SET push_platform = ?, is_active = 0 WHERE email = ?",
+                                (new_val, db_email))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 剥离推送平台记录失败: {e}")
+
+def get_account_full_info(email: str) -> dict:
+    try:
+        with get_db_conn(as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            execute_sql(c, "SELECT password, token_data, push_platform FROM accounts WHERE email = ?", (email,))
+            row = c.fetchone()
+            if row:
+                res = dict(row)
+                res['token_data'] = json.loads(res['token_data']) if res['token_data'] else {}
+                return res
+            return None
+    except Exception as e:
+        print(f"[ERROR] 获取账号全量信息失败: {e}")
+        return None
+
+def update_account_token_only(email: str, token_json_str: str) -> bool:
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "UPDATE accounts SET token_data = ? WHERE email = ?", (token_json_str, email))
+            return True
+    except Exception as e:
+        print(f"[ERROR] 仅更新 Token 失败: {e}")
+        return False
