@@ -654,5 +654,5 @@ def try_verify_phone_via_smsbower(session: requests.Session, *, proxies: Any, hi
         except:
             pass
         if lock_acquired: _SMSBOWER_VERIFY_LOCK.release()
-def handle_smsbower_verification(session, proxies, hint_url=""):
-    return try_verify_phone_via_smsbower(session, proxies=proxies, hint_url=hint_url)
+def handle_smsbower_verification(session, proxies, hint_url="", device_id: str = "", user_agent: str = "", run_ctx: dict = None, proxy: Optional[str] = None):
+    return try_verify_phone_via_smsbower(session, proxies=proxies, hint_url=hint_url, device_id=device_id, user_agent=user_agent, run_ctx=run_ctx, proxy=proxy)
