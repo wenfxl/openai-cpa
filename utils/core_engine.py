@@ -1544,6 +1544,7 @@ class RegEngine:
         self.loop              = None
         self._force_stopped    = False
         self._executor         = None
+        self.maintenance_thread = None
 
     def _ensure_executor(self, max_workers=None):
         if self._executor is None:
@@ -1571,6 +1572,9 @@ class RegEngine:
         cfg.POOL_EXHAUSTED = False
         self.thread_stop_event.clear()
         args.check_stop = lambda: self.thread_stop_event.is_set()
+        self._start_maintenance_if_needed()
+
+
         self._ensure_executor()
         self.current_thread = threading.Thread(
             target=self._run_normal_in_thread,
@@ -1586,6 +1590,8 @@ class RegEngine:
         cfg.GLOBAL_STOP = False
         cfg.POOL_EXHAUSTED = False
         self.thread_stop_event.clear()
+        self._start_maintenance_if_needed()
+
         self._ensure_executor()
         self.current_thread = threading.Thread(
             target=self._run_cpa_in_thread, args=(args,), daemon=True
@@ -1599,6 +1605,8 @@ class RegEngine:
         cfg.GLOBAL_STOP = False
         cfg.POOL_EXHAUSTED = False
         self.thread_stop_event.clear()
+        self._start_maintenance_if_needed()
+
         self._ensure_executor()
         self.current_thread = threading.Thread(
             target=self._run_sub2api_in_thread, args=(args,), daemon=True
@@ -1678,6 +1686,56 @@ class RegEngine:
         finally:
             self._finalize_thread_run()
             self._force_stopped = True
+
+    def _start_maintenance_if_needed(self):
+        if getattr(cfg, 'TEAM_MODE_ENABLE', False):
+            if self.maintenance_thread is None or not self.maintenance_thread.is_alive():
+                self.maintenance_thread = threading.Thread(
+                    target=self._run_maintenance_loop,
+                    daemon=True
+                )
+                self.maintenance_thread.start()
+
+    def _run_maintenance_loop(self):
+        from utils.auth_core import sys_node_bulk_silent
+        for _ in range(5):
+            if self.thread_stop_event.is_set(): return
+            time.sleep(1)
+        print(f"[{cfg.ts()}] [系统] 🛡️ 智能清洁进程已启动，即将执行全局清洗。")
+        is_first_run = True
+        while not self.thread_stop_event.is_set() and not getattr(cfg, 'GLOBAL_STOP', False):
+            raw_proxy_item = None
+            clash_proxy_item = None
+            borrowed_generation = None
+            proxy_url = getattr(cfg, 'DEFAULT_PROXY', None)
+            try:
+                if cfg.is_raw_proxy_pool_enabled():
+                    raw_proxy_item = cfg.PROXY_QUEUE.get()
+                    borrowed_generation, p_url = cfg.unpack_proxy_queue_item(raw_proxy_item)
+                    proxy_url = p_url
+                elif getattr(cfg, '_clash_enable', False) and getattr(cfg, '_clash_pool_mode', False):
+                    clash_proxy_item = cfg.PROXY_QUEUE.get()
+                    proxy_url = clash_proxy_item[-1] if isinstance(clash_proxy_item, tuple) else clash_proxy_item
+                if proxy_url and not proxy_url.startswith(("http://", "https://", "socks4://", "socks5://")):
+                    proxy_url = f"http://{proxy_url}"
+                proxies_dict = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+                sys_node_bulk_silent(proxies=proxies_dict, force_all=is_first_run)
+                is_first_run = False
+            except Exception as e:
+                pass
+            finally:
+                if raw_proxy_item is not None:
+                    if cfg.should_return_pooled_proxy(borrowed_generation):
+                        cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(proxy_url, borrowed_generation))
+                    cfg.PROXY_QUEUE.task_done()
+                elif clash_proxy_item is not None:
+                    cfg.PROXY_QUEUE.put(clash_proxy_item)
+                    cfg.PROXY_QUEUE.task_done()
+            for _ in range(180):
+                if self.thread_stop_event.is_set() or getattr(cfg, 'GLOBAL_STOP', False):
+                    print(f"[{cfg.ts()}] [系统] 收到停止信号，智能清洁线程安全退出。")
+                    return
+                time.sleep(1)
 
 if __name__ == "__main__":
     main()

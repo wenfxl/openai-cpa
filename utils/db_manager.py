@@ -760,3 +760,14 @@ def get_random_team_account() -> dict:
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 随机提取 Team 账号失败: {e}")
         return None
+
+def get_all_team_accounts() -> list:
+    try:
+        with get_db_conn(as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            execute_sql(c, "SELECT id, email, access_token FROM team_accounts WHERE status = 1")
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取所有 Team 账号失败: {e}")
+        return []
