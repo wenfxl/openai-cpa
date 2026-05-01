@@ -26,6 +26,11 @@ class ClashUpdateReq(BaseModel): sub_url: str; target: str = "all"
 class TestTgReq(BaseModel):token: str; chat_id: str
 class GmailCredentialsReq(BaseModel):content: str
 
+class CFDeployWorkerReq(BaseModel):api_email: str; api_key: str; worker_name: str; webhook_url: str; webhook_secret: str
+class CFZoneBaseReq(BaseModel):domains: str; api_email: str; api_key: str
+class CFSetupRoutingReq(CFZoneBaseReq):worker_name: str
+
+
 @router.post("/api/config/add_wildcard_dns")
 async def add_wildcard_dns(req: CFSyncExistingReq, token: str = Depends(verify_token)):
     try:
@@ -269,3 +274,263 @@ async def test_tg_notification(req: TestTgReq, token: str = Depends(verify_token
             return {"status": "error", "message": f"TG 接口报错: {data.get('description', '未知错误')}"}
     except Exception as e:
         return {"status": "error", "message": f"网络通信异常，请检查代理: {str(e)}"}
+
+
+@router.post("/api/cloudflare/add_zones")
+async def cloudflare_add_zones(req: CFZoneBaseReq, token: str = Depends(verify_token)):
+    try:
+        domain_list = [d.strip() for d in req.domains.split(",") if d.strip()]
+        if not domain_list:
+            return {"status": "error", "message": "没有找到有效的域名"}
+
+        headers = {
+            "X-Auth-Email": req.api_email,
+            "X-Auth-Key": req.api_key,
+            "Content-Type": "application/json"
+        }
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+        client_kwargs = {"timeout": 30.0, "proxy": proxy_url} if proxy_url else {"timeout": 30.0}
+
+        results = []
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            acc_resp = await client.get("https://api.cloudflare.com/client/v4/accounts", headers=headers)
+            acc_data = acc_resp.json()
+            if not acc_data.get("success") or not acc_data.get("result"):
+                return {"status": "error", "message": f"无法获取 CF Account ID，请检查 API 凭证: {acc_data.get('errors')}"}
+
+            account_id = acc_data["result"][0]["id"]
+            for domain in domain_list:
+                print(f"[{core_engine.ts()}] [CF 托管] 正在检查域名状态: {domain}")
+                check_resp = await client.get(f"https://api.cloudflare.com/client/v4/zones?name={domain}",
+                                              headers=headers)
+                check_data = check_resp.json()
+                if check_data.get("success") and len(check_data.get("result", [])) > 0:
+                    zone_info = check_data["result"][0]
+                    results.append({
+                        "domain": domain,
+                        "status": zone_info.get("status"),
+                        "name_servers": zone_info.get("name_servers", []),
+                        "msg": "✅ 域名已托管，无需重复操作"
+                    })
+                    print(f"[{core_engine.ts()}] [CF 托管] ✅ [{domain}] 已经在 CF 账号中，无需重复添加。")
+                    continue
+
+                print(f"[{core_engine.ts()}] [CF 托管] 正在为 [{domain}] 申请托管及 NS 分配...")
+                payload = {
+                    "name": domain,
+                    "account": {"id": account_id},
+                    "type": "full",
+                    "jump_start": True
+                }
+                add_resp = await client.post("https://api.cloudflare.com/client/v4/zones", headers=headers,
+                                             json=payload)
+                add_data = add_resp.json()
+
+                if add_data.get("success"):
+                    zone_info = add_data["result"]
+                    results.append({
+                        "domain": domain,
+                        "status": zone_info.get("status"),
+                        "name_servers": zone_info.get("name_servers", []),
+                        "msg": "成功添加到 CF"
+                    })
+                    print(f"[{core_engine.ts()}] [CF 托管] 🎉 [{domain}] 托管成功！等待用户修改 NS。")
+                else:
+                    err_msg = str(add_data.get("errors", "未知错误"))
+                    results.append({"domain": domain, "status": "error", "name_servers": [], "msg": err_msg})
+                    print(f"[{core_engine.ts()}] [CF 托管] ❌ [{domain}] 托管失败: {err_msg}")
+
+                await asyncio.sleep(0.5)
+
+        return {"status": "success", "data": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/api/cloudflare/enable_email")
+async def cloudflare_enable_email(req: CFZoneBaseReq, token: str = Depends(verify_token)):
+    try:
+        domain_list = [d.strip() for d in req.domains.split(",") if d.strip()]
+        headers = {"X-Auth-Email": req.api_email, "X-Auth-Key": req.api_key, "Content-Type": "application/json"}
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+        client_kwargs = {"timeout": 30.0, "proxy": proxy_url} if proxy_url else {"timeout": 30.0}
+
+        results = []
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            for domain in domain_list:
+                print(f"[{core_engine.ts()}] [CF 邮件] 正在校验 NS 状态: {domain}")
+                zone_resp = await client.get(f"https://api.cloudflare.com/client/v4/zones?name={domain}",
+                                             headers=headers)
+                zone_data = zone_resp.json()
+
+                if not zone_data.get("success") or not zone_data.get("result"):
+                    results.append({"domain": domain, "status": "error", "name_servers": [], "msg": "未在CF找到该域名"})
+                    print(f"[{core_engine.ts()}] [CF 邮件] ❌ [{domain}] 未在当前 CF 账号中找到。")
+                    continue
+
+                zone_info = zone_data["result"][0]
+                zone_id, ns_status = zone_info["id"], zone_info.get("status")
+
+                if ns_status != "active":
+                    results.append(
+                        {"domain": domain, "status": ns_status, "name_servers": [], "msg": "NS 暂未生效，CF 尚未接管该域名"})
+                    print(f"[{core_engine.ts()}] [CF 邮件] ⚠️ [{domain}] NS 尚未生效 (Pending)，跳过邮件激活。")
+                    continue
+
+                print(f"[{core_engine.ts()}] [CF 邮件] NS 已生效，正在尝试激活企业邮局...")
+                email_resp = await client.post(
+                    f"https://api.cloudflare.com/client/v4/zones/{zone_id}/email/routing/enable", headers=headers)
+                email_data = email_resp.json()
+                if email_resp.status_code == 200 and email_data.get("success"):
+                    results.append({"domain": domain, "status": "active", "name_servers": [], "msg": "✅ CF 邮件服务已成功激活"})
+                    print(f"[{core_engine.ts()}] [CF 邮件] 🎉 [{domain}] 邮件服务激活成功。")
+                else:
+                    err_msg = str(email_data.get("errors", []))
+                    results.append(
+                        {"domain": domain, "status": "error", "name_servers": [], "msg": f"❌ 激活失败: {err_msg}"})
+                    print(f"[{core_engine.ts()}] [CF 邮件] ❌ [{domain}] 激活失败: {err_msg}")
+
+                await asyncio.sleep(0.5)
+
+        return {"status": "success", "data": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/api/cloudflare/deploy_worker")
+async def cloudflare_deploy_worker(req: CFDeployWorkerReq, token: str = Depends(verify_token)):
+    WORKER_RAW_URL = "https://raw.githubusercontent.com/wenfxl/openai-cpa-email/refs/heads/master/worker.js"
+    try:
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+        client_kwargs = {"timeout": 30.0, "proxy": proxy_url} if proxy_url else {"timeout": 30.0}
+
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            headers = {"X-Auth-Email": req.api_email, "X-Auth-Key": req.api_key}
+
+            print(f"[{core_engine.ts()}] [CF Worker] 正在连接 Cloudflare 获取 Account ID...")
+            acc_resp = await client.get("https://api.cloudflare.com/client/v4/accounts", headers=headers)
+            if not acc_resp.json().get("success"):
+                return {"status": "error", "message": "无法获取 CF Account ID"}
+            account_id = acc_resp.json()["result"][0]["id"]
+
+            print(f"[{core_engine.ts()}] [CF Worker] 正在检查 Worker [{req.worker_name}] 是否已存在...")
+            check_worker = await client.get(
+                f"https://api.cloudflare.com/client/v4/accounts/{account_id}/workers/scripts/{req.worker_name}",
+                headers=headers)
+            if check_worker.status_code == 200:
+                print(f"[{core_engine.ts()}] [CF Worker] ✅ Worker [{req.worker_name}] 已经存在，安全跳过覆盖部署。")
+                return {"status": "success", "message": f"✅ Worker [{req.worker_name}] 已存在，无需重复部署"}
+
+            print(f"[{core_engine.ts()}] [CF Worker] 正在从 Github 拉取最新源码...")
+            code_resp = await client.get(WORKER_RAW_URL)
+            if code_resp.status_code != 200:
+                print(f"[{core_engine.ts()}] [CF Worker] ❌ 获取 Github 源码失败")
+                return {"status": "error", "message": "获取 Github 源码失败"}
+
+            metadata = {
+                "main_module": "worker.js",
+                "compatibility_date": "2024-03-01",
+                "bindings": [
+                    {"name": "EMAIL_WEBHOOK_URL", "type": "plain_text", "text": req.webhook_url},
+                    {"name": "EMAIL_WEBHOOK_TIMEOUT_MS", "type": "plain_text", "text": "10000"},
+                    {"name": "EMAIL_WEBHOOK_SECRET", "type": "secret_text", "text": req.webhook_secret}
+                ]
+            }
+
+            files = {
+                "metadata": (None, json.dumps(metadata), "application/json"),
+                "worker.js": ("worker.js", code_resp.text, "application/javascript+module")
+            }
+            print(f"[{core_engine.ts()}] [CF Worker] 正在注入环境变量并推送至边缘节点...")
+            deploy_resp = await client.put(
+                f"https://api.cloudflare.com/client/v4/accounts/{account_id}/workers/scripts/{req.worker_name}",
+                headers=headers, files=files)
+
+            if deploy_resp.status_code == 200 and deploy_resp.json().get("success"):
+                print(f"[{core_engine.ts()}] [CF Worker] 🎉 部署成功！环境变量已就位。")
+                return {"status": "success", "message": "✅ 部署并绑定环境变量成功"}
+            else:
+                err_msg = str(deploy_resp.json().get("errors", "未知错误"))
+                print(f"[{core_engine.ts()}] [CF Worker] ❌ 部署失败: {err_msg}")
+                return {"status": "error", "message": err_msg}
+    except Exception as e:
+        print(f"[{core_engine.ts()}] [CF Worker] ❌ 发生异常: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/api/cloudflare/setup_catch_all")
+async def cloudflare_setup_catch_all(req: CFSetupRoutingReq, token: str = Depends(verify_token)):
+    try:
+        domain_list = [d.strip() for d in req.domains.split(",") if d.strip()]
+        headers = {"X-Auth-Email": req.api_email, "X-Auth-Key": req.api_key, "Content-Type": "application/json"}
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+        client_kwargs = {"timeout": 30.0, "proxy": proxy_url} if proxy_url else {"timeout": 30.0}
+
+        results = []
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            for domain in domain_list:
+                print(f"[{core_engine.ts()}] [CF 路由] 正在校验域名状态: {domain}")
+                zone_resp = await client.get(f"https://api.cloudflare.com/client/v4/zones?name={domain}",
+                                             headers=headers)
+                zone_data = zone_resp.json()
+
+                if not zone_data.get("success") or not zone_data.get("result"):
+                    results.append({"domain": domain, "status": "error", "name_servers": [], "msg": "未找到域名"})
+                    print(f"[{core_engine.ts()}] [CF 路由] ❌ [{domain}] 未在账号中找到。")
+                    continue
+
+                zone_info = zone_data["result"][0]
+                zone_id, ns_status = zone_info["id"], zone_info.get("status")
+
+                if ns_status != "active":
+                    results.append({"domain": domain, "status": ns_status, "name_servers": [], "msg": "NS 暂未生效，无法配置路由"})
+                    print(f"[{core_engine.ts()}] [CF 路由] ⚠️ [{domain}] NS 未生效，跳过配置。")
+                    continue
+
+                print(f"[{core_engine.ts()}] [CF 路由] 正在获取当前 Catch-All 规则...")
+                catch_all_resp = await client.get(
+                    f"https://api.cloudflare.com/client/v4/zones/{zone_id}/email/routing/rules/catch_all",
+                    headers=headers)
+
+                if catch_all_resp.status_code == 200:
+                    ca_data = catch_all_resp.json()
+                    if ca_data.get("success") and ca_data.get("result"):
+                        rule = ca_data["result"]
+                        if rule.get("enabled"):
+                            actions = rule.get("actions", [])
+                            if actions and actions[0].get("type") == "worker" and req.worker_name in actions[0].get(
+                                    "value", []):
+                                results.append({"domain": domain, "status": "active", "name_servers": [],
+                                                "msg": f"✅ Catch-All 规则已指向: {req.worker_name}，无需重复操作"})
+                                print(
+                                    f"[{core_engine.ts()}] [CF 路由] ✅ [{domain}] 规则已经完美指向 Worker [{req.worker_name}]，跳过修改。")
+                                continue
+
+                print(f"[{core_engine.ts()}] [CF 路由] 正在将 Catch-All 指向 Worker: {req.worker_name}")
+                catch_all_payload = {
+                    "actions": [{"type": "worker", "value": [req.worker_name]}],
+                    "matchers": [{"type": "catch_all"}],
+                    "enabled": True,
+                    "name": f"Catch-All to {req.worker_name}"
+                }
+
+                route_resp = await client.put(
+                    f"https://api.cloudflare.com/client/v4/zones/{zone_id}/email/routing/rules/catch_all",
+                    headers=headers, json=catch_all_payload)
+
+                if route_resp.json().get("success"):
+                    results.append({"domain": domain, "status": "active", "name_servers": [],
+                                    "msg": f"✅ 成功! Catch-All 已指向: {req.worker_name}"})
+                    print(f"[{core_engine.ts()}] [CF 路由] 🎉 [{domain}] 成功绑定邮件转发至 Worker!")
+                else:
+                    err_msg = route_resp.text
+                    results.append({"domain": domain, "status": "active", "name_servers": [],
+                                    "msg": f"❌ 路由配置失败: {err_msg}"})
+                    print(f"[{core_engine.ts()}] [CF 路由] ❌ [{domain}] 配置失败: {err_msg}")
+
+                await asyncio.sleep(0.5)
+
+        return {"status": "success", "data": results}
+    except Exception as e:
+        print(f"[{core_engine.ts()}] [CF 路由] ❌ 发生异常: {str(e)}")
+        return {"status": "error", "message": str(e)}

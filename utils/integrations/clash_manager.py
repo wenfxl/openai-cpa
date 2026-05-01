@@ -11,7 +11,6 @@ import requests
 import yaml
 
 import utils.config as cfg
-
 BASE_PATH = os.path.join(os.getcwd(), "data", "mihomo-pool")
 os.makedirs(BASE_PATH, exist_ok=True)
 
@@ -29,7 +28,7 @@ def get_client():
     try:
         return docker.from_env()
     except Exception as e:
-        print(f"[!] Docker 连接失败: {e}")
+        print(f"[{cfg.ts()}] [DOCKER] Docker 连接失败，非docker环境忽略该提示: {e}")
         return None
 
 

@@ -125,7 +125,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                     signup_json = signup_resp.json()
                     continue_url = signup_json.get("continue_url", "")
                     if "log-in" in continue_url or "/email-verification" in continue_url:
-                        print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）该邮箱被标记为已注册！准备走【无密码邮箱验证码】接管登录...")
+                        print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）该邮箱无需密码注册！准备走【无密码通道】进行接管...")
                         is_takeover = True
                         login_ctx = reg_ctx.copy() if reg_ctx else {}
                         sentinel_login = generate_payload(did=did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
@@ -150,7 +150,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                             except Exception as e:
                                 print(f"[{cfg.ts()}] [WARNING] LuckMail 可用性检测异常(忽略并继续): {e}")
 
-                        print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）老帐号触发初次发信...")
+                        print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）无密码通道注册发信...")
                         sentinel_login_resp = _post_with_retry(
                             s_reg,
                             "https://auth.openai.com/api/accounts/passwordless/send-otp",
@@ -158,7 +158,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                         )
 
                         if sentinel_login_resp.status_code != 200:
-                            print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）邮件发送异常, 返回: {sentinel_login_resp.status_code}")
+                            print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）无密码通道邮件发送异常, 返回: {sentinel_login_resp.status_code}")
                             return None, None
 
                         login_code = ""
@@ -166,7 +166,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                         for resend_attempt in range(max(1, cfg.MAX_OTP_RETRIES)):
                             if getattr(cfg, 'GLOBAL_STOP', False): return None, None
                             if resend_attempt > 0:
-                                print(f"\n[{cfg.ts()}] [INFO] 正在请求重新发送登录验证码 {resend_attempt}/{cfg.MAX_OTP_RETRIES}...")
+                                print(f"\n[{cfg.ts()}] [INFO] 无密码通道正在请求重新发送登录验证码 {resend_attempt}/{cfg.MAX_OTP_RETRIES}...")
                                 try:
                                     sentinel_resend = generate_payload(did=did, flow="authorize_continue", proxy=proxy,
                                                                        user_agent=current_ua, impersonate="chrome110",
@@ -185,13 +185,13 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                                     )
                                     time.sleep(3)
                                 except Exception as e:
-                                    print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）重新发送请求异常: {e}")
+                                    print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）无密码通道重新发送请求异常: {e}")
 
                             login_code = get_oai_code(email, jwt=email_jwt, proxies=proxies,
                                                       processed_mail_ids=processed_mails)
 
                             if not login_code:
-                                print(f"[{cfg.ts()}] [WARNING] 本轮未拉取到验证码，准备重发...")
+                                print(f"[{cfg.ts()}] [WARNING] {mask_email(email)}无密码通道本轮未拉取到验证码，准备重发...")
                                 continue
 
                             login_sentinel_otp = generate_payload(did=did, flow="authorize_continue", proxy=proxy,
@@ -212,20 +212,20 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                             )
 
                             if code_resp.status_code == 200:
-                                print(f"[{cfg.ts()}] [SUCCESS] （{mask_email(email)}）接管验证通过！")
+                                print(f"[{cfg.ts()}] [SUCCESS] （{mask_email(email)}）无密码通道接管验证通过！")
                                 password = "Takeover_NoPassword"
                                 break
                             else:
                                 err_json = code_resp.json()
                                 print(
-                                    f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）接管验证失败: {code_resp.status_code}")
-                                print(f"[{cfg.ts()}] [INFO] 准备请求新的验证码并重试...")
+                                    f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）无密码通道接管验证失败: {code_resp.status_code}")
+                                print(f"[{cfg.ts()}] [INFO]（{mask_email(email)}）无密码通道准备请求新的验证码并重试...")
                                 login_code = ""
                                 continue
 
                         if not login_code and (code_resp is None or code_resp.status_code != 200):
                             print(
-                                f"[{cfg.ts()}] [ERROR] 验证码重试达上限 ({cfg.MAX_OTP_RETRIES} 次)，丢弃当前 {mask_email(email)} 邮箱。")
+                                f"[{cfg.ts()}] [ERROR] 无密码通道验证码重试达上限 ({cfg.MAX_OTP_RETRIES} 次)，丢弃当前 {mask_email(email)} 邮箱。")
                             return None, None
 
                         code_url = str(code_resp.json().get("continue_url") or "").strip()
@@ -644,7 +644,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                                 return None, None
                         except Exception as e:
                             print(f"[{cfg.ts()}] [WARNING] LuckMail 可用性检测异常(忽略并继续): {e}")
-                    print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）老帐号OAuth无密码登录发信...")
+                    print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）无密码通道OAuth登录发信...")
                     # sentinel_login_resp = _post_with_retry(
                     #     s_log,
                     #     "https://auth.openai.com/api/accounts/passwordless/send-otp",
@@ -661,7 +661,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                         if getattr(cfg, 'GLOBAL_STOP', False): return None, None
                         if login_code_attempt > 0:
                             print(
-                                f"\n[{cfg.ts()}] [INFO] 老帐号OAuth 阶段未收到验证码或验证失败，正在重试 {login_code_attempt}/{cfg.MAX_OTP_RETRIES}...")
+                                f"\n[{cfg.ts()}] [INFO] （{mask_email(email)}）无密码通道OAuth 阶段未收到验证码或验证失败，正在重试 {login_code_attempt}/{cfg.MAX_OTP_RETRIES}...")
                             try:
                                 login_code_resend = generate_payload(did=log_did, flow="authorize_continue",
                                                                      proxy=proxy, user_agent=current_ua,
@@ -680,12 +680,12 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                                 )
                                 time.sleep(2)
                             except Exception as e:
-                                print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）重新发送请求异常: {e}")
+                                print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）无密码通道重新发送请求异常: {e}")
 
                         login_code_oauth = get_oai_code(email, jwt=email_jwt, proxies=proxies,
                                                         processed_mail_ids=processed_mails)
                         if not login_code_oauth:
-                            print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）本轮未拉取到验证码，准备重发...")
+                            print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）无密码通道本轮未拉取到验证码，准备重发...")
                             continue
 
                         login_sentinel_otp = generate_payload(did=log_did, flow="authorize_continue", proxy=proxy,
@@ -706,7 +706,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                         )
 
                         if login_code_resp.status_code == 200:
-                            print(f"[{cfg.ts()}] [SUCCESS] （{mask_email(email)}）老帐号OAuth 阶段验证码通过！")
+                            print(f"[{cfg.ts()}] [SUCCESS] （{mask_email(email)}）无密码通道OAuth阶段验证码通过！")
                             password = "Takeover_NoPassword"
                             break
                         else:
@@ -715,14 +715,14 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                             except:
                                 err_json = {}
                             print(
-                                f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）老帐号OAuth 阶段验证失败: {login_code_resp.status_code}")
-                            print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）准备请求新的验证码并重试...")
+                                f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）无密码通道OAuth 阶段验证失败: {login_code_resp.status_code}")
+                            print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）无密码通道准备请求新的验证码并重试...")
                             login_code_oauth = ""
                             continue
 
                     if not login_code_oauth and (login_code_resp is None or login_code_resp.status_code != 200):
                         print(
-                            f"[{cfg.ts()}] [ERROR] 重试次数达上限 ({cfg.MAX_OTP_RETRIES} 次)，丢弃当前 {mask_email(email)} 邮箱，放弃接管。")
+                            f"[{cfg.ts()}] [ERROR] 无密码通道重试次数达上限 ({cfg.MAX_OTP_RETRIES} 次)，丢弃当前 {mask_email(email)} 邮箱，放弃接管。")
                         return None, None
 
                     login_code_url = str(login_code_resp.json().get("continue_url") or "").strip()

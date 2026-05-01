@@ -298,7 +298,7 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
                                     "codex_7d_used_percent": extra.get("codex_7d_used_percent", 0)}
                     })
         except Exception as e:
-            print(f"[DEBUG] 拉取 Sub2API 数据异常，将跳过: {e}")
+            print(f"[{cfg.ts()}] [SUB2API] 拉取 Sub2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
 
     if "cpa" in type_list and getattr(cfg, 'CPA_API_URL', None) and getattr(cfg, 'CPA_API_TOKEN', None):
         try:
@@ -315,8 +315,7 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
                                           "status": "disabled" if item.get("disabled", False) else "active",
                                           "details": {}, "last_check": "-"})
         except Exception as e:
-            print(f"[DEBUG] 拉取 CPA 数据异常，将跳过: {e}")
-
+            print(f"[{cfg.ts()}] [CPA] 拉取 CPA 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
     if "image2api" in type_list and getattr(cfg, 'ENABLE_IMAGE2API_MODE', False):
         try:
             from utils.integrations.image2api_client import Image2APIClient
@@ -338,7 +337,7 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
                         }
                     })
         except Exception as e:
-            print(f"[DEBUG] 拉取 Image2API 数据异常: {e}")
+            print(f"[{cfg.ts()}] [IMAGE2API] 拉取 Image2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
 
     try:
         cpa_emails = [x["credential"] for x in combined_data if x["account_type"] == "cpa"]
@@ -593,8 +592,7 @@ async def exchange_outlook_oauth_code(req: OutlookExchangeReq, token: str = Depe
                                 (req.client_id, refresh_token, req.email)
                                 )
             except Exception as e:
-                print(f"[ERROR] 数据库更新 OAuth Token 失败: {e}")
-
+                print(f"[{cfg.ts()}] [ERROR] 数据库更新 OAuth Token 失败: {e}")
             return {"status": "success", "message": f"授权成功！已为 {req.email} 绑定永久 Token。", "refresh_token": refresh_token}
         else:
             return {"status": "error", "message": f"获取失败: {data.get('error_description', data)}"}
