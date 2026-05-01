@@ -189,6 +189,18 @@ def _do_smart_switch(proxy_url=None):
             print(f"[{ts()}] [ERROR] {display_name} 过滤后无可用节点，请检查黑名单。")
             return False
 
+        nodes_with_delay = []
+        try:
+            for node_name in valid_nodes:
+                history = proxies_data.get(node_name, {}).get("history", [])
+                if not history:
+                    continue
+                delay = history[-1].get("delay", 0)
+                if isinstance(delay, (int, float)) and delay > 0:
+                    nodes_with_delay.append((node_name, float(delay)))
+        except Exception:
+            nodes_with_delay = []
+
         if FASTEST_MODE:
             print(f"\n[{ts()}] [代理池] {display_name} 开启优选模式，并发测速 {len(valid_nodes)} 个节点...")
             
@@ -243,9 +255,14 @@ def _do_smart_switch(proxy_url=None):
             except Exception as e:
                 print(f"[{ts()}] [代理池] {display_name} 优选模式异常: {e}，回退到随机抽卡模式...")
 
+        random_candidates = [name for name, _ in sorted(nodes_with_delay, key=lambda item: item[1])]
+        if not random_candidates:
+            random_candidates = list(valid_nodes)
+            print(f"[{ts()}] [代理池] {display_name} 未发现带有效延迟记录的节点，回退为全量候选抽卡。")
+
         max_retries = 10
         for i in range(1, max_retries + 1):
-            selected_node = random.choice(valid_nodes)
+            selected_node = random.choice(random_candidates)
             
             print(f"\n[{ts()}] [代理池] {display_name} 尝试切换节点: [{clean_for_log(selected_node)}] ({i}/{max_retries})")
             

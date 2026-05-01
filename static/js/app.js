@@ -122,6 +122,12 @@ createApp({
             toastId: 0,
             confirmModal: { show: false, message: '', resolve: null },
             updateInfo: { hasUpdate: false, version: '', url: '', changelog: '' },
+            gitSync: {
+                status: null,
+                loading: false,
+                actionLoading: null,
+                outputTail: []
+            },
             sub2apiGroups: [],
             gmailOAuth: {
                 authUrl: '',
@@ -168,7 +174,9 @@ createApp({
                 target: 'all',
                 count: 5,
                 instances: [],
-                groups: []
+                groups: [],
+                mode: '',
+                message: ''
             },
             gmail_oauth_mode: {
                 master_email: '',
@@ -361,6 +369,7 @@ createApp({
             this.fetchMailboxes();
             this.startStatsPolling();
             this.checkUpdate();
+            this.fetchGitStatus(false);
             this.fetchInventoryStats();
             if (this.config && this.config.reg_mode === 'extension') {
                 this.listenToExtension();
@@ -724,6 +733,9 @@ createApp({
             }
             if (tabId === 'team_accounts') {
                 this.fetchTeamAccounts();
+            }
+            if (tabId === 'concurrency' && !this.gitSync.status) {
+                this.fetchGitStatus(false);
             }
         },
         async exportSelectedAccounts() {
@@ -1677,6 +1689,60 @@ createApp({
                 window.open(this.updateInfo.url, '_blank');
             }
         },
+        async fetchGitStatus(showToast = false) {
+            this.gitSync.loading = true;
+            try {
+                const res = await this.authFetch('/api/system/git_status');
+                const data = await res.json();
+                if (data.data) {
+                    this.gitSync.status = data.data;
+                }
+                if (showToast) {
+                    this.showToast(data.message || 'Git 状态已刷新', data.status || 'info');
+                }
+            } catch (e) {
+                if (showToast) this.showToast('Git 状态读取失败', 'error');
+            } finally {
+                this.gitSync.loading = false;
+            }
+        },
+        async runGitUpdate(action, restartAfter = false) {
+            const labels = {
+                fetch: '抓取远端状态',
+                reset_hard: '强制同步并重启'
+            };
+            let prompt = `确定执行「${labels[action] || action}」吗？`;
+            if (action === 'reset_hard') {
+                prompt += '\n\n⚠️ 这会直接以 origin/main 覆盖当前本地代码冲突。';
+            }
+            if (restartAfter) {
+                prompt += '\n\n操作完成后会自动重启当前项目。';
+            }
+            const confirmed = await this.customConfirm(prompt);
+            if (!confirmed) return;
+
+            this.gitSync.actionLoading = action;
+            try {
+                const res = await this.authFetch('/api/system/git_update', {
+                    method: 'POST',
+                    body: JSON.stringify({ action, restart_after: restartAfter })
+                });
+                const data = await res.json();
+                if (data.data) {
+                    this.gitSync.outputTail = data.data.output_tail || [];
+                    if (data.data.after) {
+                        this.gitSync.status = data.data.after;
+                    }
+                }
+                this.showToast(data.message || 'Git 操作已完成', data.status || 'info');
+                if (data.data && data.data.restart_scheduled) return;
+                await this.fetchGitStatus(false);
+            } catch (e) {
+                this.showToast('Git 操作执行失败', 'error');
+            } finally {
+                this.gitSync.actionLoading = null;
+            }
+        },
         async getGmailAuthUrl() {
             this.gmailOAuth.isGenerating = true;
             try {
@@ -2529,6 +2595,8 @@ createApp({
                 if (d.status === 'success') {
                     this.clashPool.instances = d.data.instances;
                     this.clashPool.groups = d.data.groups;
+                    this.clashPool.mode = d.data.mode || '';
+                    this.clashPool.message = d.data.message || '';
                     if (this.clashPool.instances.length > 0) {
                         this.clashPool.count = this.clashPool.instances.length;
                     }

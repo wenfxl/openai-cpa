@@ -2362,7 +2362,7 @@
                                     <h3 class="text-xl md:text-2xl font-black text-sky-700 tracking-tight flex items-center gap-2"><span>⚡</span> Clash 实例集群中控</h3>
                                     <div class="flex gap-2 w-full sm:w-auto">
                                         <button @click="syncClusterToPool"
-                                                :disabled="!config.clash_proxy_pool.pool_mode"
+                                                :disabled="!config.clash_proxy_pool.pool_mode || clashPool.mode !== 'docker_pool'"
                                                 class="flex-1 sm:flex-none text-xs bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 active:scale-95 transition-all shadow-lg shadow-purple-500/20 font-black flex items-center justify-center gap-2">
                                             <span>🔗</span> 同步至独享池模式独立端口池列队
                                         </button>
@@ -2372,12 +2372,17 @@
                                     </div>
                                 </div>
 
+                                <div v-if="clashPool.message" class="mb-6 bg-sky-50 border border-sky-200 rounded-2xl px-4 py-4 text-sm text-sky-800 font-medium">
+                                    <div class="font-black mb-1">当前模式：{{ clashPool.mode || 'unknown' }}</div>
+                                    <div>{{ clashPool.message }}</div>
+                                </div>
+
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
                                     <div class="bg-sky-50/50 p-5 rounded-2xl border border-sky-100 shadow-inner">
                                         <label class="block text-xs text-sky-900 font-black uppercase tracking-wider mb-3">集群规模 (端口 4100x/4200x)</label>
                                         <div class="flex gap-3">
                                             <input type="number" v-model="clashPool.count" class="w-24 appearance-none bg-white border border-sky-200 text-slate-800 rounded-xl py-3 px-4 focus:outline-none focus:border-sky-500 transition-colors shadow-sm text-center font-black text-lg">
-                                            <button @click="handleClashDeploy" class="flex-1 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 active:scale-95 transition-all shadow-md text-sm md:text-base">同步实例</button>
+                                            <button @click="handleClashDeploy" :disabled="clashPool.mode && clashPool.mode !== 'docker_pool'" class="flex-1 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 active:scale-95 transition-all shadow-md text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed">同步实例</button>
                                         </div>
                                     </div>
                                     <div class="bg-sky-50/50 p-5 rounded-2xl border border-sky-100 shadow-inner">
@@ -2428,7 +2433,7 @@
                                         </div>
                                         <div v-if="!clashPool.instances.length" class="text-center text-slate-400 py-10 text-sm font-bold bg-slate-50/50">
                                             <span class="text-2xl block mb-2 grayscale opacity-50">🔌</span>
-                                            暂无容器实例运行，请先配置集群规模并同步
+                                            {{ clashPool.mode === 'docker_pool' ? '暂无容器实例运行，请先配置集群规模并同步' : '当前模式不使用容器实例列表' }}
                                         </div>
                                     </div>
                                 </div>
@@ -3283,6 +3288,72 @@
                             </div>
                         </div>
                         <div v-show="currentTab === 'concurrency'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-emerald-500 bg-gradient-to-br from-emerald-50/20 to-white lg:col-span-2">
+                                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-emerald-700 flex items-center gap-2 tracking-tight"><span>🌿</span> Git 仓库更新</h3>
+                                        <p class="text-[12px] text-slate-500 font-medium mt-2">以当前项目的 `origin/main` 为准。远端有冲突时可直接强制覆盖，并自动重启项目。</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button @click="fetchGitStatus(true)" :disabled="gitSync.loading || !!gitSync.actionLoading" class="text-sm bg-white border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl hover:bg-emerald-50 active:scale-95 transition-all shadow-sm font-black disabled:opacity-50 flex items-center gap-2">
+                                            <span v-if="gitSync.loading" class="animate-spin">⏳</span>
+                                            <span v-else>🔄</span> 刷新状态
+                                        </button>
+                                        <button @click="runGitUpdate('fetch', false)" :disabled="gitSync.loading || !!gitSync.actionLoading" class="text-sm bg-white border border-slate-200 text-slate-700 px-4 py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm font-black disabled:opacity-50 flex items-center gap-2">
+                                            <span v-if="gitSync.actionLoading === 'fetch'" class="animate-spin">⏳</span>
+                                            <span v-else>📡</span> 抓取远端
+                                        </button>
+                                        <button @click="runGitUpdate('reset_hard', true)" :disabled="gitSync.loading || !!gitSync.actionLoading" class="text-sm bg-rose-600 text-white px-4 py-3 rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/20 font-black disabled:opacity-50 flex items-center gap-2">
+                                            <span v-if="gitSync.actionLoading === 'reset_hard'" class="animate-spin">⏳</span>
+                                            <span v-else>🧨</span> 强制同步并重启
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-if="gitSync.status" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                                    <div class="bg-white border border-slate-200 rounded-2xl px-4 py-4 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">当前分支</div>
+                                        <div class="text-sm font-black text-slate-800 mt-2">{{ gitSync.status.branch || 'HEAD' }}</div>
+                                        <div class="mt-2 text-[11px] text-slate-400 font-mono break-all">{{ gitSync.status.tracking || '未配置上游分支' }}</div>
+                                    </div>
+                                    <div class="bg-white border border-slate-200 rounded-2xl px-4 py-4 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">远端差异</div>
+                                        <div class="mt-2 flex items-center gap-3 text-sm font-black">
+                                            <span class="text-emerald-600">Ahead {{ gitSync.status.ahead || 0 }}</span>
+                                            <span class="text-rose-600">Behind {{ gitSync.status.behind || 0 }}</span>
+                                        </div>
+                                        <div class="mt-2 text-[11px] font-bold" :class="gitSync.status.is_clean ? 'text-emerald-600' : 'text-amber-700'">
+                                            {{ gitSync.status.is_clean ? '工作区干净' : `工作区有 ${gitSync.status.dirty_count || 0} 处未提交改动` }}
+                                        </div>
+                                    </div>
+                                    <div class="bg-white border border-slate-200 rounded-2xl px-4 py-4 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">当前提交</div>
+                                        <div class="text-sm font-black text-slate-800 mt-2">{{ gitSync.status.current_commit || '-' }}</div>
+                                        <div class="mt-2 text-[11px] text-slate-400 font-mono break-all">{{ gitSync.status.tracking_commit || '-' }}</div>
+                                    </div>
+                                    <div class="bg-white border border-slate-200 rounded-2xl px-4 py-4 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">远端地址</div>
+                                        <div class="text-[12px] font-bold text-slate-700 mt-2 break-all">{{ gitSync.status.remote_url || '未配置 origin' }}</div>
+                                    </div>
+                                </div>
+
+                                <div v-if="gitSync.status" class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-inner">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">最近提交</div>
+                                        <div class="mt-2 text-sm font-black text-slate-800">{{ gitSync.status.last_commit?.subject || '暂无' }}</div>
+                                        <div class="mt-2 text-[11px] text-slate-400 font-mono">{{ gitSync.status.last_commit?.full || '-' }}</div>
+                                        <div class="mt-1 text-[11px] text-slate-400">{{ gitSync.status.last_commit?.date || '-' }}</div>
+                                    </div>
+                                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-inner">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider">命令输出</div>
+                                        <div class="mt-2 max-h-40 overflow-auto rounded-xl bg-slate-950 px-4 py-3 text-[11px] font-mono text-slate-200">
+                                            <div v-if="!(gitSync.outputTail && gitSync.outputTail.length)" class="text-slate-500">暂无执行输出</div>
+                                            <div v-for="(line, idx) in gitSync.outputTail" :key="`git-tail-${idx}`" class="break-all">{{ line }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-indigo-500 bg-gradient-to-br from-indigo-50/20 to-white lg:col-span-2">
                                 <h3 class="text-lg md:text-xl font-black text-indigo-700 mb-6 flex items-center gap-2 tracking-tight"><span>🗄️</span> 数据库存储引擎 <span class="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded border border-rose-100 ml-2">修改后需点左下角重启项目后生效</span></h3>
 

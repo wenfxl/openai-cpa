@@ -30,6 +30,9 @@ class LoginData(BaseModel): password: str
 class ClusterUploadAccountsReq(BaseModel): node_name: str; secret: str; accounts: list
 class ClusterReportReq(BaseModel): node_name: str; secret: str; stats: dict; logs: list
 class ClusterControlReq(BaseModel): node_name: str; action: str
+class GitSyncReq(BaseModel):
+    action: str
+    restart_after: bool = False
 
 class ExtResultReq(BaseModel):
     status: str
@@ -42,6 +45,120 @@ class ExtResultReq(BaseModel):
     code_verifier: Optional[str] = ""
     expected_state: Optional[str] = ""
     error_type: Optional[str] = "failed"
+
+
+def _run_local_command(command: list[str], timeout: int = 60, cwd: Optional[str] = None) -> dict:
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd or BASE_DIR,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=max(5, int(timeout or 60)),
+            check=False,
+        )
+    except subprocess.TimeoutExpired as e:
+        output = "\n".join(part for part in [(e.stdout or "").strip(), (e.stderr or "").strip()] if part).strip()
+        return {"ok": False, "returncode": -1, "stdout": e.stdout or "", "stderr": e.stderr or "", "output": output, "error": "命令执行超时"}
+    except Exception as e:
+        return {"ok": False, "returncode": -1, "stdout": "", "stderr": "", "output": "", "error": str(e)}
+
+    output = "\n".join(part for part in [(completed.stdout or "").strip(), (completed.stderr or "").strip()] if part).strip()
+    return {
+        "ok": completed.returncode == 0,
+        "returncode": int(completed.returncode),
+        "stdout": completed.stdout or "",
+        "stderr": completed.stderr or "",
+        "output": output,
+        "error": "" if completed.returncode == 0 else output or f"命令执行失败 (exit {completed.returncode})",
+    }
+
+
+def _tail_lines(text: str, limit: int = 15) -> list[str]:
+    lines = [str(line or "").rstrip() for line in str(text or "").splitlines() if str(line or "").strip()]
+    return lines[-limit:] if limit > 0 else lines
+
+
+def _detect_git_tracking(branch: str) -> str:
+    tracking_result = _run_local_command(
+        ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        timeout=15,
+    )
+    if tracking_result.get("ok"):
+        return str((tracking_result.get("stdout") or "").strip())
+    branch_text = str(branch or "").strip()
+    return f"origin/{branch_text}" if branch_text else "origin/main"
+
+
+def _get_git_sync_status() -> dict:
+    git_dir = os.path.join(BASE_DIR, ".git")
+    if not os.path.isdir(git_dir):
+        return {"ok": False, "is_git_repo": False, "message": "当前项目目录不是 Git 仓库。"}
+
+    branch_result = _run_local_command(["git", "branch", "--show-current"], timeout=15)
+    branch = str((branch_result.get("stdout") or "").strip())
+    tracking = _detect_git_tracking(branch)
+    remote_result = _run_local_command(["git", "remote", "get-url", "origin"], timeout=15)
+    current_commit_result = _run_local_command(["git", "rev-parse", "--short", "HEAD"], timeout=15)
+    tracking_commit_result = _run_local_command(["git", "rev-parse", "--short", tracking], timeout=15)
+    status_result = _run_local_command(["git", "status", "--porcelain"], timeout=15)
+    count_result = _run_local_command(["git", "rev-list", "--left-right", "--count", f"{tracking}...HEAD"], timeout=15)
+    last_commit_result = _run_local_command(["git", "log", "-1", "--pretty=format:%H%n%s%n%ad", "--date=iso"], timeout=15)
+
+    ahead = 0
+    behind = 0
+    if count_result.get("ok"):
+        raw_counts = str((count_result.get("stdout") or "").strip()).split()
+        if len(raw_counts) >= 2:
+            try:
+                behind = int(raw_counts[0])
+                ahead = int(raw_counts[1])
+            except Exception:
+                ahead = 0
+                behind = 0
+
+    last_commit_lines = str(last_commit_result.get("stdout") or "").splitlines()
+    last_commit = {
+        "full": last_commit_lines[0].strip() if len(last_commit_lines) > 0 else "",
+        "subject": last_commit_lines[1].strip() if len(last_commit_lines) > 1 else "",
+        "date": last_commit_lines[2].strip() if len(last_commit_lines) > 2 else "",
+    }
+
+    dirty_lines = [line for line in str(status_result.get("stdout") or "").splitlines() if line.strip()]
+    return {
+        "ok": True,
+        "is_git_repo": True,
+        "branch": branch or "HEAD",
+        "tracking": tracking,
+        "remote_url": str((remote_result.get("stdout") or "").strip()),
+        "current_commit": str((current_commit_result.get("stdout") or "").strip()),
+        "tracking_commit": str((tracking_commit_result.get("stdout") or "").strip()),
+        "ahead": ahead,
+        "behind": behind,
+        "is_clean": len(dirty_lines) == 0,
+        "dirty_count": len(dirty_lines),
+        "dirty_preview": dirty_lines[:12],
+        "last_commit": last_commit,
+        "message": "Git 状态已读取。",
+    }
+
+
+def _schedule_restart_after_delay(delay_sec: float = 1.5) -> None:
+    def _do_restart():
+        time.sleep(max(0.2, float(delay_sec or 1.5)))
+        print(f"[{core_engine.ts()}] [系统] 🔄 正在执行重启命令...")
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            subprocess.Popen([sys.executable] + sys.argv)
+            os._exit(0)
+        except Exception as e:
+            print(f"[{core_engine.ts()}] [系统] ❌ 重启失败: {e}")
+            os._exit(1)
+
+    threading.Thread(target=_do_restart, daemon=True).start()
 
 
 def _sanitize_local_microsoft_config(local_ms: Any) -> dict:
@@ -228,6 +345,82 @@ async def restart_system(token: str = Depends(verify_token)):
         return {"status": "success", "message": "指令已下发，系统即将重启..."}
     except Exception as e:
         return {"status": "error", "message": f"重启异常: {str(e)}"}
+
+
+@router.get("/api/system/git_status")
+async def get_git_status(token: str = Depends(verify_token)):
+    data = _get_git_sync_status()
+    return {
+        "status": "success" if data.get("ok") else "warning",
+        "message": data.get("message") or ("Git 状态已读取。" if data.get("ok") else "Git 状态读取失败。"),
+        "data": data,
+    }
+
+
+@router.post("/api/system/git_update")
+async def git_update(req: GitSyncReq, token: str = Depends(verify_token)):
+    action = str(req.action or "").strip().lower()
+    if action not in {"fetch", "reset_hard"}:
+        return {"status": "error", "message": "不支持的 Git 操作。"}
+
+    if action != "fetch" and engine.is_running():
+        return {"status": "warning", "message": "请先停止当前运行任务，再执行 Git 更新。"}
+
+    before = _get_git_sync_status()
+    if not before.get("is_git_repo"):
+        return {"status": "error", "message": before.get("message") or "当前项目目录不是 Git 仓库。", "data": before}
+
+    commands: list[list[str]] = [["git", "fetch", "origin", "--prune"]]
+    tracking = str(before.get("tracking") or "") or "origin/main"
+    if action == "reset_hard":
+        commands.append(["git", "reset", "--hard", tracking])
+        commands.append(["git", "clean", "-fd"])
+
+    output_chunks: list[str] = []
+    for command in commands:
+        result = _run_local_command(command, timeout=180)
+        rendered = " ".join(command)
+        chunk = f"$ {rendered}"
+        if result.get("output"):
+            chunk += "\n" + str(result.get("output") or "").strip()
+        output_chunks.append(chunk)
+        if not result.get("ok"):
+            after_failed = _get_git_sync_status()
+            return {
+                "status": "error",
+                "message": result.get("error") or f"命令失败: {rendered}",
+                "data": {
+                    "before": before,
+                    "after": after_failed,
+                    "action": action,
+                    "restart_scheduled": False,
+                    "output_tail": _tail_lines("\n\n".join(output_chunks)),
+                },
+            }
+
+    after = _get_git_sync_status()
+    restart_scheduled = False
+    message = {
+        "fetch": "远端状态已刷新。",
+        "reset_hard": f"已强制同步到 {tracking}，本地冲突已直接覆盖。",
+    }.get(action, "Git 操作已完成。")
+
+    if req.restart_after:
+        restart_scheduled = True
+        message += " 系统将自动重启以加载最新代码。"
+        _schedule_restart_after_delay()
+
+    return {
+        "status": "success",
+        "message": message,
+        "data": {
+            "before": before,
+            "after": after,
+            "action": action,
+            "restart_scheduled": restart_scheduled,
+            "output_tail": _tail_lines("\n\n".join(output_chunks)),
+        },
+    }
 
 
 @router.get("/api/config")
