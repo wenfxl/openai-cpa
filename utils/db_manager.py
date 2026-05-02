@@ -3,13 +3,14 @@ import pymysql
 import json
 import datetime
 import os
+import threading
 from typing import Any
 from utils.config import DB_TYPE, MYSQL_CFG
 from utils import config as cfg
 
 os.makedirs("data", exist_ok=True)
 DB_PATH = "data/data.db"
-
+_team_db_lock = threading.Lock()
 
 class get_db_conn:
     """抹平 SQLite 和 MySQL 连接差异"""
@@ -748,15 +749,16 @@ def clear_all_team_accounts() -> bool:
 
 def get_random_team_account() -> dict:
     try:
-        with get_db_conn(as_dict=True) as conn:
-            c = get_cursor(conn, as_dict=True)
-            order_clause = "RAND()" if DB_TYPE == "mysql" else "RANDOM()"
-            sql = f"SELECT id, email, access_token FROM team_accounts WHERE status = 1 ORDER BY {order_clause} LIMIT 1"
-            execute_sql(c, sql)
-            row = c.fetchone()
-            if row:
-                return dict(row)
-            return None
+        with _team_db_lock:
+            with get_db_conn(as_dict=True) as conn:
+                c = get_cursor(conn, as_dict=True)
+                order_clause = "RAND()" if DB_TYPE == "mysql" else "RANDOM()"
+                sql = f"SELECT id, email, access_token FROM team_accounts WHERE status = 1 ORDER BY {order_clause} LIMIT 1"
+                execute_sql(c, sql)
+                row = c.fetchone()
+                if row:
+                    return dict(row)
+                return None
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 随机提取 Team 账号失败: {e}")
         return None
