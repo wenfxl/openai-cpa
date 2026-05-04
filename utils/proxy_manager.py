@@ -76,6 +76,12 @@ def clean_for_log(text: str) -> str:
     )
     return emoji_pattern.sub('', text).strip()
 
+
+def normalize_group_name(text: str) -> str:
+    cleaned = clean_for_log(str(text or "")).lower()
+    cleaned = re.sub(r'[\s\-_]+', '', cleaned)
+    return cleaned
+
 def get_display_name(proxy_url: str) -> str:
     """统一日志脱敏：将 URL 转换为 [X号机] 或隐藏域名"""
     if not proxy_url:
@@ -170,8 +176,16 @@ def _do_smart_switch(proxy_url=None):
         proxies_data = resp.json().get('proxies', {})
 
         actual_group_name = None
+        target_group_name = normalize_group_name(PROXY_GROUP_NAME)
         for key in proxies_data.keys():
-            if PROXY_GROUP_NAME in key and isinstance(proxies_data[key], dict) and 'all' in proxies_data[key]:
+            if not (isinstance(proxies_data[key], dict) and 'all' in proxies_data[key]):
+                continue
+            key_name = normalize_group_name(key)
+            if (
+                PROXY_GROUP_NAME == key
+                or (target_group_name and target_group_name in key_name)
+                or (key_name and key_name in target_group_name)
+            ):
                 actual_group_name = key
                 break
                 
