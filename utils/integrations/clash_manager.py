@@ -349,7 +349,8 @@ def _merge_runtime_groups(config_groups: list[dict], target: str = "all") -> lis
 
     merged = []
     for group in config_groups:
-        runtime = proxy_map.get(group.get("name", ""))
+        runtime_name = resolve_group_name(proxy_map, group.get("name", ""))
+        runtime = proxy_map.get(runtime_name) if runtime_name else None
         item = dict(group)
         if isinstance(runtime, dict):
             nodes = runtime.get("all")
@@ -359,6 +360,8 @@ def _merge_runtime_groups(config_groups: list[dict], target: str = "all") -> lis
             item["current"] = str(runtime.get("now") or "")
             if runtime.get("type"):
                 item["type"] = runtime.get("type")
+            if runtime_name:
+                item["runtime_name"] = runtime_name
         merged.append(item)
     return merged
 
@@ -411,7 +414,8 @@ def test_group_latency(group_name: str, target: str = "all") -> tuple[bool, dict
         return False, "策略组不能为空。"
     try:
         proxy_map = _fetch_controller_proxies(target)
-        runtime = proxy_map.get(group_name)
+        runtime_name = resolve_group_name(proxy_map, group_name)
+        runtime = proxy_map.get(runtime_name) if runtime_name else None
         if not isinstance(runtime, dict):
             return False, f"未找到策略组 [{group_name}]。"
         nodes = runtime.get("all")
@@ -463,7 +467,7 @@ def test_group_latency(group_name: str, target: str = "all") -> tuple[bool, dict
         _persist_tested_nodes(group_name, healthy_nodes)
 
         return True, {
-            "group_name": group_name,
+            "group_name": runtime_name or group_name,
             "test_url": delay_url,
             "results": results,
             "healthy_nodes": healthy_nodes,
