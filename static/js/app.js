@@ -595,6 +595,9 @@ createApp({
                 if (this.config.clash_proxy_pool.sub_url !== undefined) {
                     this.clashPool.subUrl = this.config.clash_proxy_pool.sub_url;
                 }
+                if (!Array.isArray(this.config.clash_proxy_pool.sub_urls)) {
+                    this.config.clash_proxy_pool.sub_urls = [];
+                }
                 if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
                     this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
                 } else {
@@ -621,6 +624,11 @@ createApp({
                     this.config.clash_proxy_pool.blacklist = this.blacklistStr.split('\n').map(s => s.trim()).filter(s => s);
                     this.config.clash_proxy_pool.cluster_count = parseInt(this.clashPool.count) || 5;
                     this.config.clash_proxy_pool.sub_url = this.clashPool.subUrl;
+                    this.config.clash_proxy_pool.sub_urls = (this.clashPool.subscriptions || []).map(sub => ({
+                        id: sub.id,
+                        name: sub.name,
+                        url: sub.url
+                    }));
                 }
                 if (this.config?.sub2api_mode) {
                     this.config.sub2api_mode.default_proxy = String(this.config.sub2api_mode.default_proxy || '')
@@ -2621,6 +2629,14 @@ createApp({
                     this.clashPool.subscriptions = d.data.subscriptions?.items || [];
                     this.clashPool.selectedSubscriptionId = d.data.subscriptions?.selected_id || '';
                     this.clashPool.subUrl = d.data.subscriptions?.selected_url || this.clashPool.subUrl;
+                    if (this.config?.clash_proxy_pool) {
+                        this.config.clash_proxy_pool.sub_url = this.clashPool.subUrl;
+                        this.config.clash_proxy_pool.sub_urls = this.clashPool.subscriptions.map(sub => ({
+                            id: sub.id,
+                            name: sub.name,
+                            url: sub.url
+                        }));
+                    }
                     this.clashPool.latencyMap = {};
                     this.clashPool.latencyTestUrl = '';
                     if (this.clashPool.activeGroup) {
