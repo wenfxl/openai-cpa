@@ -2563,6 +2563,56 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="bg-sky-50/40 p-5 rounded-2xl border border-sky-100 shadow-inner mb-6">
+                                    <div class="flex flex-col lg:flex-row gap-4">
+                                        <div class="flex-1">
+                                            <label class="block text-xs text-sky-900 font-black uppercase tracking-wider mb-3">订阅列表</label>
+                                            <div class="max-h-56 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                                <div v-for="sub in clashPool.subscriptions" :key="sub.id"
+                                                     class="bg-white border rounded-xl px-4 py-3 shadow-sm transition-all"
+                                                     :class="clashPool.selectedSubscriptionId === sub.id ? 'border-sky-400 shadow-sky-100 bg-sky-50/40' : 'border-slate-200'">
+                                                    <div class="flex items-start justify-between gap-3">
+                                                        <div class="min-w-0">
+                                                            <div class="font-black text-sm text-slate-800 truncate">{{ sub.name || '未命名订阅' }}</div>
+                                                            <div class="text-[11px] text-slate-500 font-mono mt-1 break-all">{{ sub.url }}</div>
+                                                        </div>
+                                                        <div class="flex gap-2 shrink-0">
+                                                            <button @click="selectClashSubscription(sub)"
+                                                                    :disabled="clashPool.actionLoading === ('sub-select:' + sub.id)"
+                                                                    class="px-3 py-1.5 text-xs font-black rounded-lg border shadow-sm transition-all"
+                                                                    :class="clashPool.selectedSubscriptionId === sub.id ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'">
+                                                                {{ clashPool.selectedSubscriptionId === sub.id ? '已选中' : '选中' }}
+                                                            </button>
+                                                            <button @click="deleteClashSubscription(sub)"
+                                                                    :disabled="clashPool.actionLoading === ('sub-del:' + sub.id)"
+                                                                    class="px-3 py-1.5 text-xs font-black rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm transition-all">
+                                                                删除
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div v-if="!clashPool.subscriptions.length" class="text-xs text-slate-400 font-bold py-6 text-center bg-white rounded-xl border border-dashed border-slate-200">
+                                                    暂无订阅，请先添加
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="lg:w-[360px]">
+                                            <label class="block text-xs text-sky-900 font-black uppercase tracking-wider mb-3">添加订阅</label>
+                                            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                                                <input type="text" v-model="clashPool.newSubName" placeholder="订阅名称（可选）"
+                                                       class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:border-sky-500 transition-colors shadow-sm text-sm font-medium">
+                                                <textarea v-model="clashPool.newSubUrl" placeholder="请输入订阅链接"
+                                                          class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:border-sky-500 transition-colors shadow-sm text-sm font-mono h-24 resize-none"></textarea>
+                                                <button @click="addClashSubscription"
+                                                        :disabled="clashPool.actionLoading === 'sub-add'"
+                                                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-sky-600 text-white font-black text-sm hover:bg-sky-700 active:scale-95 transition-all shadow-md disabled:opacity-50">
+                                                    <span :class="{'animate-spin': clashPool.actionLoading === 'sub-add'}">➕</span>
+                                                    添加并选中
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col mb-8 overflow-hidden">
                                     <div class="grid grid-cols-12 bg-slate-50 text-slate-500 border-b border-slate-200 px-5 py-4 text-xs md:text-sm uppercase tracking-wider font-black shrink-0">

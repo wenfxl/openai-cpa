@@ -26,6 +26,9 @@ class ClashUpdateReq(BaseModel): sub_url: str; target: str = "all"
 class ClashRuntimeReq(BaseModel): action: str
 class ClashSwitchReq(BaseModel): group_name: str; proxy_name: str; target: str = "all"
 class ClashDelayReq(BaseModel): group_name: str; target: str = "all"
+class ClashSubscriptionAddReq(BaseModel): name: str = ""; url: str; make_selected: bool = False
+class ClashSubscriptionSelectReq(BaseModel): subscription_id: str
+class ClashSubscriptionDeleteReq(BaseModel): subscription_id: str
 class TestTgReq(BaseModel):token: str; chat_id: str
 class GmailCredentialsReq(BaseModel):content: str
 
@@ -269,6 +272,21 @@ async def post_clash_delay(req: ClashDelayReq, token: str = Depends(verify_token
     if success:
         return {"status": "success", "data": result, "message": f"已完成策略组 [{req.group_name}] 节点延迟测试"}
     return {"status": "error", "message": str(result)}
+
+@router.post("/api/clash/subscriptions/add")
+async def post_clash_subscription_add(req: ClashSubscriptionAddReq, token: str = Depends(verify_token)):
+    success, msg = clash_manager.add_subscription(req.name, req.url, req.make_selected)
+    return {"status": "success" if success else "error", "message": msg}
+
+@router.post("/api/clash/subscriptions/select")
+async def post_clash_subscription_select(req: ClashSubscriptionSelectReq, token: str = Depends(verify_token)):
+    success, msg = clash_manager.select_subscription(req.subscription_id)
+    return {"status": "success" if success else "error", "message": msg}
+
+@router.post("/api/clash/subscriptions/delete")
+async def post_clash_subscription_delete(req: ClashSubscriptionDeleteReq, token: str = Depends(verify_token)):
+    success, msg = clash_manager.delete_subscription(req.subscription_id)
+    return {"status": "success" if success else "error", "message": msg}
 
 
 @router.post("/api/notify/test_tg")

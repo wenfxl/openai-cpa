@@ -173,6 +173,10 @@ createApp({
                 loading: false,
                 actionLoading: '',
                 subUrl: '',
+                subscriptions: [],
+                selectedSubscriptionId: '',
+                newSubName: '',
+                newSubUrl: '',
                 target: 'all',
                 count: 5,
                 instances: [],
@@ -2614,6 +2618,9 @@ createApp({
                     this.clashPool.groups = d.data.groups;
                     this.clashPool.mode = d.data.mode || '';
                     this.clashPool.message = d.data.message || '';
+                    this.clashPool.subscriptions = d.data.subscriptions?.items || [];
+                    this.clashPool.selectedSubscriptionId = d.data.subscriptions?.selected_id || '';
+                    this.clashPool.subUrl = d.data.subscriptions?.selected_url || this.clashPool.subUrl;
                     this.clashPool.latencyMap = {};
                     this.clashPool.latencyTestUrl = '';
                     if (this.clashPool.activeGroup) {
@@ -2668,6 +2675,69 @@ createApp({
                 this.fetchClashPool();
             } catch (e) { this.showToast('网络错误', 'error'); }
             this.clashPool.loading = false;
+        },
+        async addClashSubscription() {
+            if (!this.clashPool.newSubUrl) return this.showToast('请输入订阅链接', 'warning');
+            this.clashPool.actionLoading = 'sub-add';
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/add', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: this.clashPool.newSubName,
+                        url: this.clashPool.newSubUrl,
+                        make_selected: true
+                    })
+                });
+                const d = await res.json();
+                this.showToast(d.message, d.status);
+                if (d.status === 'success') {
+                    this.clashPool.newSubName = '';
+                    this.clashPool.newSubUrl = '';
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('新增订阅失败', 'error');
+            } finally {
+                this.clashPool.actionLoading = '';
+            }
+        },
+        async selectClashSubscription(subscription) {
+            this.clashPool.actionLoading = `sub-select:${subscription.id}`;
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/select', {
+                    method: 'POST',
+                    body: JSON.stringify({ subscription_id: subscription.id })
+                });
+                const d = await res.json();
+                this.showToast(d.message, d.status);
+                if (d.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('选择订阅失败', 'error');
+            } finally {
+                this.clashPool.actionLoading = '';
+            }
+        },
+        async deleteClashSubscription(subscription) {
+            const confirmed = await this.customConfirm(`确定删除订阅【${subscription.name}】吗？`);
+            if (!confirmed) return;
+            this.clashPool.actionLoading = `sub-del:${subscription.id}`;
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ subscription_id: subscription.id })
+                });
+                const d = await res.json();
+                this.showToast(d.message, d.status);
+                if (d.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('删除订阅失败', 'error');
+            } finally {
+                this.clashPool.actionLoading = '';
+            }
         },
         fillProxyGroup(name) {
             if (this.config && this.config.clash_proxy_pool) {

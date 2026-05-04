@@ -6,6 +6,7 @@ import subprocess
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from uuid import uuid4
 
 import docker
 import requests
@@ -50,8 +51,120 @@ def _persist_sub_url(url: str) -> None:
     if not isinstance(clash_conf, dict):
         clash_conf = {}
     clash_conf["sub_url"] = str(url or "").strip()
+    clash_conf["sub_urls"] = _normalize_subscriptions(clash_conf.get("sub_urls", []), clash_conf["sub_url"])
     config_data["clash_proxy_pool"] = clash_conf
     cfg.reload_all_configs(new_config_dict=config_data)
+
+
+def _normalize_subscriptions(raw_items, selected_url: str = "") -> list[dict]:
+    items = []
+    seen = set()
+    source = raw_items if isinstance(raw_items, list) else []
+    for item in source:
+        if isinstance(item, str):
+            url = item.strip()
+            name = url
+            item_id = uuid4().hex[:8]
+        elif isinstance(item, dict):
+            url = str(item.get("url") or "").strip()
+            name = str(item.get("name") or item.get("label") or url or "未命名订阅").strip()
+            item_id = str(item.get("id") or uuid4().hex[:8]).strip()
+        else:
+            continue
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        items.append({"id": item_id, "name": name or url, "url": url})
+
+    selected_url = str(selected_url or "").strip()
+    if selected_url and selected_url not in seen:
+        items.insert(0, {"id": uuid4().hex[:8], "name": "当前订阅", "url": selected_url})
+    return items
+
+
+def get_subscription_state() -> dict:
+    config_data = _read_runtime_config()
+    clash_conf = config_data.get("clash_proxy_pool", {}) if isinstance(config_data.get("clash_proxy_pool"), dict) else {}
+    selected_url = str(clash_conf.get("sub_url") or "").strip()
+    subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), selected_url)
+    selected_id = ""
+    for item in subscriptions:
+        if item["url"] == selected_url:
+            selected_id = item["id"]
+            break
+    return {
+        "selected_id": selected_id,
+        "selected_url": selected_url,
+        "items": subscriptions,
+    }
+
+
+def add_subscription(name: str, url: str, make_selected: bool = False) -> tuple[bool, str]:
+    url = str(url or "").strip()
+    name = str(name or "").strip() or url
+    if not url:
+        return False, "订阅链接不能为空。"
+    config_data = _read_runtime_config()
+    clash_conf = config_data.get("clash_proxy_pool", {}) if isinstance(config_data.get("clash_proxy_pool"), dict) else {}
+    subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), clash_conf.get("sub_url", ""))
+    for item in subscriptions:
+        if item["url"] == url:
+            item["name"] = name
+            if make_selected:
+                clash_conf["sub_url"] = url
+            clash_conf["sub_urls"] = subscriptions
+            config_data["clash_proxy_pool"] = clash_conf
+            cfg.reload_all_configs(new_config_dict=config_data)
+            return True, "订阅已存在，已更新名称。"
+    subscriptions.append({"id": uuid4().hex[:8], "name": name, "url": url})
+    clash_conf["sub_urls"] = subscriptions
+    if make_selected or not str(clash_conf.get("sub_url") or "").strip():
+        clash_conf["sub_url"] = url
+    config_data["clash_proxy_pool"] = clash_conf
+    cfg.reload_all_configs(new_config_dict=config_data)
+    return True, "订阅已添加。"
+
+
+def delete_subscription(subscription_id: str) -> tuple[bool, str]:
+    sub_id = str(subscription_id or "").strip()
+    if not sub_id:
+        return False, "订阅标识不能为空。"
+    config_data = _read_runtime_config()
+    clash_conf = config_data.get("clash_proxy_pool", {}) if isinstance(config_data.get("clash_proxy_pool"), dict) else {}
+    selected_url = str(clash_conf.get("sub_url") or "").strip()
+    subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), selected_url)
+    removed = None
+    remained = []
+    for item in subscriptions:
+        if item["id"] == sub_id:
+            removed = item
+        else:
+            remained.append(item)
+    if not removed:
+        return False, "未找到要删除的订阅。"
+    clash_conf["sub_urls"] = remained
+    if selected_url == removed["url"]:
+        clash_conf["sub_url"] = remained[0]["url"] if remained else ""
+    config_data["clash_proxy_pool"] = clash_conf
+    cfg.reload_all_configs(new_config_dict=config_data)
+    return True, "订阅已删除。"
+
+
+def select_subscription(subscription_id: str) -> tuple[bool, str]:
+    sub_id = str(subscription_id or "").strip()
+    if not sub_id:
+        return False, "订阅标识不能为空。"
+    config_data = _read_runtime_config()
+    clash_conf = config_data.get("clash_proxy_pool", {}) if isinstance(config_data.get("clash_proxy_pool"), dict) else {}
+    subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), clash_conf.get("sub_url", ""))
+    for item in subscriptions:
+        if item["id"] == sub_id:
+            clash_conf["sub_url"] = item["url"]
+            clash_conf["sub_urls"] = subscriptions
+            config_data["clash_proxy_pool"] = clash_conf
+            cfg.reload_all_configs(new_config_dict=config_data)
+            return True, f"已选中订阅 [{item['name']}]"
+    return False, "未找到要选中的订阅。"
 
 
 def _persist_tested_nodes(group_name: str, healthy_nodes: list[str]) -> None:
@@ -412,6 +525,7 @@ def _build_local_gui_status() -> dict:
     running = _probe_local_ports(api_port, proxy_port, str(clash_conf.get("secret") or "").strip())
     return {
         "mode": "local_gui",
+        "subscriptions": get_subscription_state(),
         "instances": [
             {
                 "name": "local-gui",
@@ -437,6 +551,7 @@ def _build_single_core_status() -> dict:
     running = _probe_local_ports(_extract_port_from_url(api_url, 9097), _extract_port_from_url(proxy_url, 7897), secret)
     return {
         "mode": "linux_single_core",
+        "subscriptions": get_subscription_state(),
         "instances": [
             {
                 "name": "mihomo-local",
@@ -536,6 +651,7 @@ def get_pool_status():
     instances.sort(key=lambda x: int(x["name"].split("_")[1]) if "_" in x["name"] else 999)
     return {
         "mode": "docker_pool",
+        "subscriptions": get_subscription_state(),
         "instances": instances,
         "groups": _merge_runtime_groups(_collect_groups_from_config(os.path.join(BASE_PATH, "clash_1", "config.yaml"))),
         "message": "当前为 Docker 集群模式。网页可直接调度 Mihomo 容器实例。",
