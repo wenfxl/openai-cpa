@@ -3459,7 +3459,6 @@ createApp({
                 }
             } catch (e) { this.showToast('请求异常', 'error'); } finally { this.cfTools.isDeploying = false; }
         },
-
         async handleCFCatchAll() {
             if (!this.config.mail_domains) return this.showToast('发信域名池为空', 'warning');
             if (!this.cfTools.workerName) return this.showToast('请输入目标 Worker 项目名', 'warning');

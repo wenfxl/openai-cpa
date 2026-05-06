@@ -514,7 +514,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                     if getattr(cfg, 'TEAM_MODE_ENABLE', False):
                         print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）即将进入团队静默流程")
                         time.sleep(random.uniform(0.1, 0.5))
-                        is_alloc, sys_handle_a, sys_handle_b = sys_node_allocate(data, proxies)
+                        is_alloc, sys_handle_a, sys_handle_b = sys_node_allocate(s_reg, did, data, proxies)
                 time.sleep(wait_time)
 
                 workspace_hint_url = ""
