@@ -918,11 +918,22 @@ def _should_remove_sub2api_account(item: dict) -> bool:
     )
     return False
 
+def _is_selected_sub2api_account(item: dict) -> bool:
+    configured_group_ids = set(getattr(cfg, "SUB2API_ACCOUNT_GROUP_IDS", []) or [])
+    if not configured_group_ids:
+        return True
+
+    account_group_ids = set(_extract_sub2api_group_ids(item))
+    return bool(account_group_ids & configured_group_ids)
+
 def process_sub2api_worker(i: int, total: int, item: dict, client: Any, args: Any) -> bool:
     """Sub2API 测活 Worker（使用 Sub2API /test SSE 接口）"""
     if hasattr(args, 'check_stop') and args.check_stop(): return False
     name = item.get("name", "unknown")
     account_id = item.get("id")
+    if not _is_selected_sub2api_account(item):
+        print(f"[{ts()}] [INFO] Sub2API测活: {mask_email(name)} 未命中选中分组，跳过巡检")
+        return False
     result, reason = client.test_account(account_id)
 
     if result == "ok":
@@ -1174,19 +1185,20 @@ async def perform_sub2api_check(args, async_stop_event, loop, client, executor=N
         print(f"[{ts()}] [ERROR] 获取 Sub2API 全量库存失败: {account_list}")
         return 0, 0
 
-    total_files = len(account_list)
+    selected_accounts = [item for item in account_list if _is_selected_sub2api_account(item)]
+    total_files = len(selected_accounts)
 
     if executor is not None:
         futures = [
             loop.run_in_executor(executor, process_sub2api_worker, i, total_files, item, client, args)
-            for i, item in enumerate(account_list, 1)
+            for i, item in enumerate(selected_accounts, 1)
         ]
         results = await asyncio.gather(*futures)
     else:
         with ThreadPoolExecutor(max_workers=cfg.SUB2API_THREADS) as _ex:
             futures = [
                 loop.run_in_executor(_ex, process_sub2api_worker, i, total_files, item, client, args)
-                for i, item in enumerate(account_list, 1)
+                for i, item in enumerate(selected_accounts, 1)
             ]
             results = await asyncio.gather(*futures)
 
@@ -1396,19 +1408,20 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     except asyncio.TimeoutError: pass
                     continue
 
-                total_files = len(account_list)
+                selected_accounts = [item for item in account_list if _is_selected_sub2api_account(item)]
+                total_files = len(selected_accounts)
 
                 if executor is not None:
                     futures = [
                         loop.run_in_executor(executor, process_sub2api_worker, i, total_files, item, client, args)
-                        for i, item in enumerate(account_list, 1)
+                        for i, item in enumerate(selected_accounts, 1)
                     ]
                     results = await asyncio.gather(*futures)
                 else:
                     with ThreadPoolExecutor(max_workers=cfg.SUB2API_THREADS) as _ex:
                         futures = [
                             loop.run_in_executor(_ex, process_sub2api_worker, i, total_files, item, client, args)
-                            for i, item in enumerate(account_list, 1)
+                            for i, item in enumerate(selected_accounts, 1)
                         ]
                         results = await asyncio.gather(*futures)
 
