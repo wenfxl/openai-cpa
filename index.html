@@ -14,9 +14,15 @@
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .data-tab-page {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
         .data-panel {
-            height: calc(100dvh - 11rem);
-            min-height: 560px;
+            height: 100%;
+            min-height: 0;
         }
         .data-table-scroll {
             flex: 1 1 auto;
@@ -25,25 +31,34 @@
             overscroll-behavior: contain;
         }
         .inventory-stats-grid {
-            gap: 0.9rem;
+            gap: 0.55rem;
         }
         .inventory-stats-grid > div {
-            min-height: 96px;
-            padding: 0.95rem 1rem;
+            min-height: 64px;
+            padding: 0.55rem 0.7rem;
         }
         .inventory-stats-grid > div .inventory-stat-title {
-            font-size: 10px;
-            margin-bottom: 0.3rem;
+            font-size: 8px;
+            margin-bottom: 0.12rem;
             line-height: 1.15;
         }
         .inventory-stats-grid > div .inventory-stat-value {
-            font-size: 2rem;
+            font-size: 1.35rem;
             line-height: 1;
         }
         .inventory-stats-grid > div .inventory-stat-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            font-size: 1rem;
+            width: 1.65rem;
+            height: 1.65rem;
+            font-size: 0.72rem;
+        }
+        .inventory-stats-grid > div .inventory-stat-subrow {
+            margin-top: 0.3rem;
+            gap: 0.3rem;
+        }
+        .inventory-stats-grid > div .inventory-stat-chip {
+            font-size: 9px;
+            padding: 0.1rem 0.35rem;
+            line-height: 1.1;
         }
         .data-table-scroll thead th {
             position: sticky;
@@ -54,18 +69,18 @@
         }
         @media (max-width: 768px) {
             .data-panel {
-                height: calc(100dvh - 9.75rem);
+                height: calc(100dvh - 8.8rem);
                 min-height: 470px;
             }
             .inventory-stats-grid {
-                gap: 0.75rem;
+                gap: 0.5rem;
             }
             .inventory-stats-grid > div {
-                min-height: 88px;
-                padding: 0.85rem 0.9rem;
+                min-height: 60px;
+                padding: 0.5rem 0.6rem;
             }
             .inventory-stats-grid > div .inventory-stat-value {
-                font-size: 1.7rem;
+                font-size: 1.2rem;
             }
         }
         ::-webkit-scrollbar {
@@ -173,7 +188,7 @@
                     <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
                             :class="['whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 md:gap-3 px-4 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl transition-all duration-300',
                                      currentTab === tab.id ? 'bg-white text-indigo-600 shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-200/60' : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent']">
-                        <span class="text-base" :class="currentTab === tab.id ? 'scale-110 transition-transform drop-shadow-sm' : ''">{{ tab.icon }}</span>
+                        <span v-html="tab.icon" class="text-base flex items-center justify-center" :class="currentTab === tab.id ? 'scale-110 transition-transform drop-shadow-sm' : ''"></span>
                         {{ tab.name }}
                     </button>
                     <div class="flex md:hidden items-center gap-2 pl-2 ml-1 border-l border-slate-200/60 shrink-0">
@@ -276,8 +291,8 @@
                     </div>
                 </header>
 
-                <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 relative">
-                    <div class="w-full xl:max-w-[85%] mx-auto pb-28">
+                <div :class="['flex-1 p-4 md:p-8 bg-slate-50 relative min-h-0', ['accounts','mailboxes','cloud','team_accounts'].includes(currentTab) ? 'overflow-hidden' : 'overflow-y-auto']">
+                    <div :class="['w-full xl:max-w-[85%] mx-auto min-h-0', ['accounts','mailboxes','cloud','team_accounts'].includes(currentTab) ? 'h-full flex flex-col' : 'pb-28']">
 
                         <button v-show="['email', 'proxy', 'relay', 'concurrency', 'sms', 'notify', 'cluster'].includes(currentTab)" @click="saveConfig"
                                 class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-50 px-5 md:px-8 py-3 md:py-4 bg-indigo-600 text-white text-sm md:text-base font-black rounded-full shadow-2xl hover:bg-indigo-700 hover:shadow-indigo-500/40 active:scale-95 transition-all flex items-center gap-2.5 ring-4 ring-indigo-600/20 backdrop-blur-md border border-indigo-500">
@@ -472,7 +487,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div v-show="currentTab === 'accounts'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col data-panel">
+                        <div v-show="currentTab === 'accounts'" class="data-tab-page">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col data-panel">
                             <div class="px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col gap-4 bg-slate-50/50">
                                 <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full">
                                     <div class="flex items-center gap-3">
@@ -530,11 +546,11 @@
                                 </div>
                             </div>
 
-                            <div class="px-5 py-4 md:px-8 bg-slate-50/50 border-b border-slate-100">
+                            <div class="px-5 py-3 md:px-8 bg-slate-50/50 border-b border-slate-100">
                                 <div class="inventory-stats-grid grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 w-full">
 
                                     <div @click="filterLocalAccounts('all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-slate-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-slate-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-slate-400 uppercase tracking-widest">账号总数</div>
                                             <div class="inventory-stat-value font-black text-slate-800">{{ inventoryStats?.local?.total || 0 }}</div>
@@ -543,7 +559,7 @@
                                     </div>
 
                                     <div @click="filterLocalAccounts('unpushed')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-amber-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-amber-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-amber-500 uppercase tracking-widest">未推送库存</div>
                                             <div class="inventory-stat-value font-black text-amber-600">{{ inventoryStats?.local?.unpushed || 0 }}</div>
@@ -552,7 +568,7 @@
                                     </div>
 
                                     <div @click="filterLocalAccounts('pushed')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-violet-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-violet-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-violet-500/90 uppercase tracking-widest">已推送库存</div>
                                             <div class="inventory-stat-value font-black text-violet-600">{{ inventoryStats?.local?.pushed || 0 }}</div>
@@ -561,7 +577,7 @@
                                     </div>
 
                                     <div @click="filterLocalAccounts('active')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-emerald-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-emerald-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-emerald-500/80 uppercase tracking-widest">活跃状态</div>
                                             <div class="inventory-stat-value font-black text-emerald-600">{{ inventoryStats?.local?.active || 0 }}</div>
@@ -570,7 +586,7 @@
                                     </div>
 
                                     <div @click="filterLocalAccounts('disabled')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-rose-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-rose-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-rose-400 uppercase tracking-widest">已禁用</div>
                                             <div class="inventory-stat-value font-black text-rose-600">{{ inventoryStats?.local?.disabled || 0 }}</div>
@@ -579,7 +595,7 @@
                                     </div>
 
                                     <div @click="filterLocalAccounts('credential')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-cyan-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-cyan-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-cyan-500/90 uppercase tracking-widest">完整凭证</div>
                                             <div class="inventory-stat-value font-black text-cyan-600">{{ inventoryStats?.local?.credential || 0 }}</div>
@@ -588,7 +604,7 @@
                                     </div>
 
                                     <div @click="filterLocalAccounts('image2api')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-pink-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-pink-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
                                         <div class="z-10">
                                             <div class="inventory-stat-title font-black text-pink-500/90 uppercase tracking-widest">Image2API</div>
                                             <div class="inventory-stat-value font-black text-pink-600">{{ inventoryStats?.local?.image2api || 0 }}</div>
@@ -720,8 +736,10 @@
                                 </div>
                             </div>
                         </div>
+                        </div>
 
-                        <div v-show="currentTab === 'mailboxes'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative flex flex-col data-panel">
+                        <div v-show="currentTab === 'mailboxes'" class="data-tab-page">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative flex flex-col data-panel">
 
                             <div v-if="showImportMailboxModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
@@ -851,6 +869,7 @@
                                     <button @click="changeMailboxPage(mailboxPage + 1)" :disabled="mailboxPage >= mailboxTotalPages" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">下一页</button>
                                 </div>
                             </div>
+                        </div>
                         </div>
 
                         <div v-show="currentTab === 'email'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
@@ -2787,7 +2806,8 @@
                             </div>
                         </div>
 
-                        <div v-show="currentTab === 'cloud'" class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200 overflow-hidden flex flex-col data-panel">
+                        <div v-show="currentTab === 'cloud'" class="data-tab-page">
+                        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200 overflow-hidden flex flex-col data-panel">
                             <div class="px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-50/50 min-h-[80px]">
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                     <div class="flex items-center gap-3">
@@ -2848,64 +2868,73 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="p-5 md:px-8 bg-slate-50/50 border-b border-slate-100">
-                                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 w-full">
-                                    <div @click="filterByCard('all', 'active')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-emerald-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
-                                        <div class="text-[10px] font-black text-emerald-500/80 mb-1 uppercase tracking-widest z-10 relative">云端启用</div>
-                                        <div class="text-2xl font-black text-emerald-600 z-10 relative">{{ inventoryStats?.cloud?.enabled || 0 }}</div>
+                            <div class="px-5 py-3 md:px-8 bg-slate-50/50 border-b border-slate-100">
+                                <div class="inventory-stats-grid grid grid-cols-2 lg:grid-cols-5 w-full">
+                                    <div @click="filterByCard('all', 'active')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-emerald-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="z-10">
+                                            <div class="inventory-stat-title font-black text-emerald-500/80 uppercase tracking-widest">云端启用</div>
+                                            <div class="inventory-stat-value font-black text-emerald-600">{{ inventoryStats?.cloud?.enabled || 0 }}</div>
+                                        </div>
+                                        <div class="inventory-stat-icon rounded-full bg-emerald-50 flex items-center justify-center shadow-inner border border-emerald-100 z-10">✅</div>
                                     </div>
 
-                                    <div @click="filterByCard('cpa', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-indigo-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
-                                        <div>
-                                            <div class="text-[10px] font-black text-indigo-400 mb-1 uppercase tracking-widest z-10 relative">CPA 平台</div>
-                                            <div class="text-2xl font-black text-indigo-600 z-10 relative">{{ inventoryStats?.cloud?.cpa || 0 }}</div>
+                                    <div @click="filterByCard('cpa', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-indigo-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="z-10 min-w-0">
+                                            <div class="inventory-stat-title font-black text-indigo-400 uppercase tracking-widest">CPA 平台</div>
+                                            <div class="inventory-stat-value font-black text-indigo-600">{{ inventoryStats?.cloud?.cpa || 0 }}</div>
+                                            <div class="inventory-stat-subrow flex flex-wrap z-10 relative">
+                                                <span @click.stop="filterByCard('cpa', 'active')" class="inventory-stat-chip cursor-pointer hover:bg-emerald-100 transition-colors font-bold bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.cpa_active || 0 }}
+                                                </span>
+                                                <span @click.stop="filterByCard('cpa', 'disabled')" class="inventory-stat-chip cursor-pointer hover:bg-rose-100 transition-colors font-bold bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.cpa_disabled || 0 }}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div class="flex gap-2 mt-2.5 z-10 relative">
-                                            <span @click.stop="filterByCard('cpa', 'active')" class="cursor-pointer hover:bg-emerald-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.cpa_active || 0 }} 存活
-                                            </span>
-                                            <span @click.stop="filterByCard('cpa', 'disabled')" class="cursor-pointer hover:bg-rose-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.cpa_disabled || 0 }} 失效
-                                            </span>
-                                        </div>
+                                        <div class="inventory-stat-icon rounded-full bg-indigo-50 flex items-center justify-center shadow-inner border border-indigo-100 z-10">💠</div>
                                     </div>
 
-                                    <div @click="filterByCard('sub2api', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-purple-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
-                                        <div>
-                                            <div class="text-[10px] font-black text-purple-400 mb-1 uppercase tracking-widest z-10 relative">Sub2API</div>
-                                            <div class="text-2xl font-black text-purple-600 z-10 relative">{{ inventoryStats?.cloud?.sub2api || 0 }}</div>
+                                    <div @click="filterByCard('sub2api', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-purple-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="z-10 min-w-0">
+                                            <div class="inventory-stat-title font-black text-purple-400 uppercase tracking-widest">Sub2API</div>
+                                            <div class="inventory-stat-value font-black text-purple-600">{{ inventoryStats?.cloud?.sub2api || 0 }}</div>
+                                            <div class="inventory-stat-subrow flex flex-wrap z-10 relative">
+                                                <span @click.stop="filterByCard('sub2api', 'active')" class="inventory-stat-chip cursor-pointer hover:bg-emerald-100 transition-colors font-bold bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.sub2api_active || 0 }}
+                                                </span>
+                                                <span @click.stop="filterByCard('sub2api', 'disabled')" class="inventory-stat-chip cursor-pointer hover:bg-rose-100 transition-colors font-bold bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.sub2api_disabled || 0 }}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div class="flex gap-2 mt-2.5 z-10 relative">
-                                            <span @click.stop="filterByCard('sub2api', 'active')" class="cursor-pointer hover:bg-emerald-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.sub2api_active || 0 }} 存活
-                                            </span>
-                                            <span @click.stop="filterByCard('sub2api', 'disabled')" class="cursor-pointer hover:bg-rose-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.sub2api_disabled || 0 }} 失效
-                                            </span>
-                                        </div>
+                                        <div class="inventory-stat-icon rounded-full bg-purple-50 flex items-center justify-center shadow-inner border border-purple-100 z-10">🛸</div>
                                     </div>
-                                    <div @click="filterByCard('image2api', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-pink-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
-                                        <div>
-                                            <div class="text-[10px] font-black text-pink-400 mb-1 uppercase tracking-widest z-10 relative">Image2API</div>
-                                            <div class="text-2xl font-black text-pink-600 z-10 relative">{{ inventoryStats?.cloud?.image2api || 0 }}</div>
+                                    <div @click="filterByCard('image2api', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-pink-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="z-10 min-w-0">
+                                            <div class="inventory-stat-title font-black text-pink-400 uppercase tracking-widest">Image2API</div>
+                                            <div class="inventory-stat-value font-black text-pink-600">{{ inventoryStats?.cloud?.image2api || 0 }}</div>
+                                            <div class="inventory-stat-subrow flex flex-wrap z-10 relative">
+                                                <span @click.stop="filterByCard('image2api', 'active')" class="inventory-stat-chip cursor-pointer hover:bg-emerald-100 transition-colors font-bold bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.image2api_active || 0 }}
+                                                </span>
+                                                <span @click.stop="filterByCard('image2api', 'disabled')" class="inventory-stat-chip cursor-pointer hover:bg-rose-100 transition-colors font-bold bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.image2api_disabled || 0 }}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div class="flex gap-2 mt-2.5 z-10 relative">
-                                            <span @click.stop="filterByCard('image2api', 'active')" class="cursor-pointer hover:bg-emerald-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.image2api_active || 0 }} 存活
-                                            </span>
-                                            <span @click.stop="filterByCard('image2api', 'disabled')" class="cursor-pointer hover:bg-rose-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.image2api_disabled || 0 }} 失效
-                                            </span>
-                                        </div>
+                                        <div class="inventory-stat-icon rounded-full bg-pink-50 flex items-center justify-center shadow-inner border border-pink-100 z-10">🖼️</div>
                                     </div>
-                                    <div @click="filterByCard('all', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-blue-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
-                                        <div class="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-widest z-10 relative">总计推送</div>
-                                        <div class="text-2xl font-black text-blue-600 z-10 relative">{{ inventoryStats?.cloud?.total || 0 }}</div>
+                                    <div @click="filterByCard('all', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
+                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-blue-100 to-transparent opacity-45 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                        <div class="z-10">
+                                            <div class="inventory-stat-title font-black text-blue-400 uppercase tracking-widest">总计推送</div>
+                                            <div class="inventory-stat-value font-black text-blue-600">{{ inventoryStats?.cloud?.total || 0 }}</div>
+                                        </div>
+                                        <div class="inventory-stat-icon rounded-full bg-blue-50 flex items-center justify-center shadow-inner border border-blue-100 z-10">☁️</div>
                                     </div>
                                 </div>
                             </div>
@@ -3097,8 +3126,10 @@
                                 </div>
                             </div>
                         </div>
+                        </div>
 
-                        <div v-show="currentTab === 'team_accounts'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative animate-fade-in flex flex-col data-panel">
+                        <div v-show="currentTab === 'team_accounts'" class="data-tab-page">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative animate-fade-in flex flex-col data-panel">
                             <div v-if="showImportTeamModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
                                     <h3 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span>📥</span> 批量导入 Team Token</h3>
@@ -3172,6 +3203,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
                         </div>
 
                         <div v-show="currentTab === 'relay'" v-if="config" class="space-y-5 md:space-y-8">
