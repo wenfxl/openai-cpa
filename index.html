@@ -962,6 +962,20 @@
                                                 </button>
                                             </div>
 
+                                            <div class="bg-rose-50/50 p-4 md:p-5 rounded-xl border border-rose-100 shadow-sm flex flex-col hover:bg-rose-50/80 transition-colors md:col-span-2">
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <span class="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-wider">危险操作</span>
+                                                    <span class="text-sm font-bold text-rose-900">批量删除 CF 托管域名</span>
+                                                </div>
+                                                <p class="text-xs text-rose-700/80 mb-4 flex-1 font-medium leading-relaxed">
+                                                    ⚠️ 将删除“发信域名池”里所有已托管到 CF 的域名，以及它们的 DNS / 邮件路由配置。请先确认不再需要这些域名。
+                                                </p>
+                                                <button @click="handleCFDeleteHosting" :disabled="cfTools.isDeletingHosting" class="w-full py-2.5 bg-rose-600 text-white text-sm font-bold rounded-lg hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
+                                                    <span v-if="cfTools.isDeletingHosting" class="animate-spin text-base">🗑️</span>
+                                                    <span v-else class="text-base">🧨</span> 批量删除托管域名
+                                                </button>
+                                            </div>
+
                                             <div class="bg-blue-50/40 p-4 md:p-5 rounded-xl border border-blue-100 shadow-sm flex flex-col hover:bg-blue-50/80 transition-colors">
                                                 <div class="flex items-center gap-2 mb-2">
                                                     <span class="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-wider">通用步骤 2</span>

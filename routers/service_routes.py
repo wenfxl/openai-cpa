@@ -385,6 +385,74 @@ async def cloudflare_add_zones(req: CFZoneBaseReq, token: str = Depends(verify_t
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/api/cloudflare/delete_zones")
+async def cloudflare_delete_zones(req: CFZoneBaseReq, token: str = Depends(verify_token)):
+    try:
+        domain_list = [d.strip() for d in req.domains.split(",") if d.strip()]
+        if not domain_list:
+            return {"status": "error", "message": "没有找到有效的域名"}
+
+        headers = {
+            "X-Auth-Email": req.api_email,
+            "X-Auth-Key": req.api_key,
+            "Content-Type": "application/json"
+        }
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+        client_kwargs = {"timeout": 30.0, "proxy": proxy_url} if proxy_url else {"timeout": 30.0}
+
+        results = []
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            for domain in domain_list:
+                print(f"[{core_engine.ts()}] [CF 托管删除] 正在检查域名状态: {domain}")
+                zone_resp = await client.get(
+                    f"https://api.cloudflare.com/client/v4/zones?name={domain}",
+                    headers=headers
+                )
+                zone_data = zone_resp.json()
+
+                if not zone_data.get("success") or not zone_data.get("result"):
+                    results.append({
+                        "domain": domain,
+                        "status": "error",
+                        "name_servers": [],
+                        "msg": "未在 CF 账号中找到该域名"
+                    })
+                    print(f"[{core_engine.ts()}] [CF 托管删除] ❌ [{domain}] 未在账号中找到。")
+                    continue
+
+                zone_info = zone_data["result"][0]
+                zone_id = zone_info["id"]
+                delete_resp = await client.delete(
+                    f"https://api.cloudflare.com/client/v4/zones/{zone_id}",
+                    headers=headers
+                )
+                delete_data = delete_resp.json()
+
+                if delete_resp.status_code == 200 and delete_data.get("success"):
+                    results.append({
+                        "domain": domain,
+                        "status": "deleted",
+                        "name_servers": zone_info.get("name_servers", []),
+                        "msg": "✅ 已从 CF 删除托管域名"
+                    })
+                    print(f"[{core_engine.ts()}] [CF 托管删除] 🎉 [{domain}] 删除成功。")
+                else:
+                    err_msg = str(delete_data.get("errors", []))
+                    results.append({
+                        "domain": domain,
+                        "status": "error",
+                        "name_servers": zone_info.get("name_servers", []),
+                        "msg": f"❌ 删除失败: {err_msg}"
+                    })
+                    print(f"[{core_engine.ts()}] [CF 托管删除] ❌ [{domain}] 删除失败: {err_msg}")
+
+                await asyncio.sleep(0.5)
+
+        return {"status": "success", "data": results}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @router.post("/api/cloudflare/enable_email")
 async def cloudflare_enable_email(req: CFZoneBaseReq, token: str = Depends(verify_token)):
     try:

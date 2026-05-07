@@ -231,6 +231,7 @@ createApp({
                 workerName: 'openai-cpa',
                 results: [],
                 isHosting: false,
+                isDeletingHosting: false,
                 isEnablingEmail: false,
                 isDeploying: false,
                 isSettingCatchAll: false
@@ -3407,6 +3408,38 @@ createApp({
                     this.currentTab = 'email';
                 } else this.showToast(data.message, 'error');
             } catch (e) { this.showToast('请求异常', 'error'); } finally { this.cfTools.isHosting = false; }
+        },
+        async handleCFDeleteHosting() {
+            if (!this.config.mail_domains) return this.showToast('发信域名池为空', 'warning');
+            if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 账号邮箱和 API Key！', 'warning');
+
+            const domains = String(this.config.mail_domains || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (domains.length === 0) return this.showToast('没有找到可删除的域名', 'warning');
+
+            const confirmed = await this.customConfirm(`⚠️ 危险操作：\n\n将批量删除以下 ${domains.length} 个 CF 托管域名（含全部 DNS / 邮件路由配置）：\n${domains.join('\n')}\n\n确定继续吗？`);
+            if (!confirmed) return;
+
+            this.cfTools.isDeletingHosting = true;
+            this.showToast('正在批量删除 CF 托管域名...', 'info');
+            this.currentTab = 'console';
+            try {
+                const res = await this.authFetch('/api/cloudflare/delete_zones', {
+                    method: 'POST',
+                    body: JSON.stringify({ domains: this.config.mail_domains, api_email: this.config.cf_api_email, api_key: this.config.cf_api_key })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.cfTools.results = data.data;
+                    this.showToast('✅ 托管域名删除完成', 'success');
+                    this.currentTab = 'email';
+                } else {
+                    this.showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('请求异常', 'error');
+            } finally {
+                this.cfTools.isDeletingHosting = false;
+            }
         },
         async handleCFEnableEmail() {
             if (!this.config.mail_domains) return this.showToast('发信域名池为空', 'warning');
