@@ -899,6 +899,49 @@ def _extract_sub2api_group_ids(item: dict) -> list[int]:
         deduped.append(group_id)
     return deduped
 
+
+def _is_openai_free_sub2api_account(item: dict) -> bool:
+    if not isinstance(item, dict):
+        return False
+
+    credentials = item.get("credentials", {})
+    if not isinstance(credentials, dict):
+        credentials = {}
+
+    text_candidates = [
+        str(item.get("name", "")).lower(),
+        str(item.get("platform", "")).lower(),
+        str(item.get("provider", "")).lower(),
+        str(item.get("type", "")).lower(),
+        str(item.get("plan", "")).lower(),
+        str(item.get("plan_type", "")).lower(),
+        str(item.get("account_type", "")).lower(),
+        str(item.get("subscription", "")).lower(),
+        str(item.get("subscription_type", "")).lower(),
+        str(item.get("tags", "")).lower(),
+        str(item.get("group", "")).lower(),
+        str(item.get("remark", "")).lower(),
+        str(credentials.get("platform", "")).lower(),
+        str(credentials.get("provider", "")).lower(),
+        str(credentials.get("plan", "")).lower(),
+        str(credentials.get("plan_type", "")).lower(),
+        str(credentials.get("account_type", "")).lower(),
+        str(credentials.get("subscription", "")).lower(),
+        str(credentials.get("subscription_type", "")).lower(),
+    ]
+    merged_text = " ".join(value for value in text_candidates if value)
+    has_openai = "openai" in merged_text
+    has_free = "free" in merged_text
+    return has_openai and has_free
+
+
+def _is_target_sub2api_account(item: dict) -> bool:
+    return _is_selected_sub2api_account(item) and _is_openai_free_sub2api_account(item)
+
+
+def _filter_target_sub2api_accounts(account_list: list[dict]) -> list[dict]:
+    return [item for item in account_list if _is_target_sub2api_account(item)]
+
 def _should_remove_sub2api_account(item: dict) -> bool:
     if not cfg.SUB2API_REMOVE_DEAD_ACCOUNTS:
         return False
@@ -931,8 +974,8 @@ def process_sub2api_worker(i: int, total: int, item: dict, client: Any, args: An
     if hasattr(args, 'check_stop') and args.check_stop(): return False
     name = item.get("name", "unknown")
     account_id = item.get("id")
-    if not _is_selected_sub2api_account(item):
-        print(f"[{ts()}] [INFO] Sub2API测活: {mask_email(name)} 未命中选中分组，跳过巡检")
+    if not _is_target_sub2api_account(item):
+        print(f"[{ts()}] [INFO] Sub2API测活: {mask_email(name)} 非 OpenAI free 或未命中选中分组，跳过巡检")
         return False
     result, reason = client.test_account(account_id)
 
@@ -1185,7 +1228,7 @@ async def perform_sub2api_check(args, async_stop_event, loop, client, executor=N
         print(f"[{ts()}] [ERROR] 获取 Sub2API 全量库存失败: {account_list}")
         return 0, 0
 
-    selected_accounts = [item for item in account_list if _is_selected_sub2api_account(item)]
+    selected_accounts = _filter_target_sub2api_accounts(account_list)
     total_files = len(selected_accounts)
 
     if executor is not None:
@@ -1408,7 +1451,7 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     except asyncio.TimeoutError: pass
                     continue
 
-                selected_accounts = [item for item in account_list if _is_selected_sub2api_account(item)]
+                selected_accounts = _filter_target_sub2api_accounts(account_list)
                 total_files = len(selected_accounts)
 
                 if executor is not None:
@@ -1437,7 +1480,8 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     except asyncio.TimeoutError:
                         pass
                     continue
-                total_files = len(account_list)
+                selected_accounts = _filter_target_sub2api_accounts(account_list)
+                total_files = len(selected_accounts)
                 valid_count = total_files
                 print(f"[{ts()}] [INFO] 当前云端总数: {total_files} (未开启自动巡检，默认全部视为有效)")
 
