@@ -852,7 +852,7 @@ def _handle_sub2api_dead_account(item: dict, client: Any, is_disabled: bool) -> 
     name = item.get("name", "unknown")
     account_id = item.get("id") 
 
-    if _should_remove_sub2api_account(item):
+    if cfg.SUB2API_REMOVE_DEAD_ACCOUNTS:
         print(f"[{ts()}] [ERROR] 凭证 {mask_email(name)} 彻底死亡，执行物理剔除...")
         if hasattr(client, "delete_account") and account_id:
             client.delete_account(account_id)
@@ -868,61 +868,47 @@ def _handle_sub2api_dead_account(item: dict, client: Any, is_disabled: bool) -> 
     else:
         print(f"[{ts()}] [ERROR] 凭证 {mask_email(name)} 已死亡，当前已是禁用状态，根据配置保留不删除。")
 
-def _extract_sub2api_group_ids(item: dict) -> list[int]:
-    group_ids = []
-    raw_group_ids = item.get("group_ids")
-    if isinstance(raw_group_ids, list):
-        for value in raw_group_ids:
-            try:
-                group_ids.append(int(value))
-            except (TypeError, ValueError):
-                pass
-
-    raw_groups = item.get("groups")
-    if isinstance(raw_groups, list):
-        for group in raw_groups:
-            if not isinstance(group, dict):
-                continue
-            for key in ("id", "group_id"):
-                try:
-                    group_ids.append(int(group.get(key)))
-                    break
-                except (TypeError, ValueError):
-                    pass
-
-    deduped = []
-    seen = set()
-    for group_id in group_ids:
-        if group_id in seen:
-            continue
-        seen.add(group_id)
-        deduped.append(group_id)
-    return deduped
-
-def _should_remove_sub2api_account(item: dict) -> bool:
-    if not cfg.SUB2API_REMOVE_DEAD_ACCOUNTS:
+def _is_openai_free_sub2api_account(item: dict) -> bool:
+    if not isinstance(item, dict):
         return False
 
-    configured_group_ids = set(getattr(cfg, "SUB2API_ACCOUNT_GROUP_IDS", []) or [])
-    if not configured_group_ids:
-        return True
+    credentials = item.get("credentials", {})
+    if not isinstance(credentials, dict):
+        credentials = {}
 
-    account_group_ids = set(_extract_sub2api_group_ids(item))
-    if account_group_ids & configured_group_ids:
-        return True
+    text_candidates = [
+        str(item.get("name", "")).lower(),
+        str(item.get("platform", "")).lower(),
+        str(item.get("provider", "")).lower(),
+        str(item.get("type", "")).lower(),
+        str(item.get("plan", "")).lower(),
+        str(item.get("plan_type", "")).lower(),
+        str(item.get("account_type", "")).lower(),
+        str(item.get("subscription", "")).lower(),
+        str(item.get("subscription_type", "")).lower(),
+        str(item.get("tags", "")).lower(),
+        str(item.get("group", "")).lower(),
+        str(item.get("remark", "")).lower(),
+        str(credentials.get("platform", "")).lower(),
+        str(credentials.get("provider", "")).lower(),
+        str(credentials.get("plan", "")).lower(),
+        str(credentials.get("plan_type", "")).lower(),
+        str(credentials.get("account_type", "")).lower(),
+        str(credentials.get("subscription", "")).lower(),
+        str(credentials.get("subscription_type", "")).lower(),
+    ]
+    merged_text = " ".join(value for value in text_candidates if value)
+    return "openai" in merged_text and "free" in merged_text
 
-    name = item.get("name", "unknown")
-    print(
-        f"[{ts()}] [INFO] 凭证 {mask_email(name)} 未命中绑定分组 {sorted(configured_group_ids)}，"
-        "跳过物理删除并按保留策略处理"
-    )
-    return False
 
 def process_sub2api_worker(i: int, total: int, item: dict, client: Any, args: Any) -> bool:
     """Sub2API 测活 Worker（使用 Sub2API /test SSE 接口）"""
     if hasattr(args, 'check_stop') and args.check_stop(): return False
     name = item.get("name", "unknown")
     account_id = item.get("id")
+    if not _is_openai_free_sub2api_account(item):
+        print(f"[{ts()}] [INFO] Sub2API测活: {mask_email(name)} 非 OpenAI free，跳过巡检")
+        return False
     result, reason = client.test_account(account_id)
 
     if result == "ok":
@@ -939,17 +925,7 @@ def process_sub2api_worker(i: int, total: int, item: dict, client: Any, args: An
             db_manager.update_account_status_by_truncated_name(name, 0)
         except Exception:
             pass
-        should_remove_on_limit = bool(cfg.SUB2API_REMOVE_ON_LIMIT_REACHED)
-        configured_group_ids = set(getattr(cfg, "SUB2API_ACCOUNT_GROUP_IDS", []) or [])
-        if should_remove_on_limit and configured_group_ids:
-            account_group_ids = set(_extract_sub2api_group_ids(item))
-            if not (account_group_ids & configured_group_ids):
-                should_remove_on_limit = False
-                print(
-                    f"[{ts()}] [INFO] 凭证 {mask_email(name)} 未命中绑定分组 {sorted(configured_group_ids)}，"
-                    "额度耗尽时跳过物理删除"
-                )
-        if should_remove_on_limit:
+        if cfg.SUB2API_REMOVE_ON_LIMIT_REACHED:
             print(f"[{ts()}] [WARNING] Sub2API测活: {mask_email(name)} 额度耗尽，执行物理删除...")
             if account_id:
                 client.delete_account(account_id)
@@ -1174,7 +1150,7 @@ async def perform_sub2api_check(args, async_stop_event, loop, client, executor=N
         print(f"[{ts()}] [ERROR] 获取 Sub2API 全量库存失败: {account_list}")
         return 0, 0
 
-    total_files = len(account_list)
+    total_files = len([item for item in account_list if _is_openai_free_sub2api_account(item)])
 
     if executor is not None:
         futures = [
@@ -1396,7 +1372,7 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     except asyncio.TimeoutError: pass
                     continue
 
-                total_files = len(account_list)
+                total_files = len([item for item in account_list if _is_openai_free_sub2api_account(item)])
 
                 if executor is not None:
                     futures = [
@@ -1424,7 +1400,7 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     except asyncio.TimeoutError:
                         pass
                     continue
-                total_files = len(account_list)
+                total_files = len([item for item in account_list if _is_openai_free_sub2api_account(item)])
                 valid_count = total_files
                 print(f"[{ts()}] [INFO] 当前云端总数: {total_files} (未开启自动巡检，默认全部视为有效)")
 
