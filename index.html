@@ -1081,21 +1081,6 @@
 
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-l-4 border-l-amber-400 bg-gradient-to-br from-amber-50/30 to-white">
                                 <h3 class="text-lg md:text-xl font-black text-amber-600 mb-6 flex items-center gap-2 tracking-tight"><span>🔑</span> 渠道专属参数</h3>
-                                <div class="mb-6 bg-rose-50/50 p-4 md:p-5 rounded-xl border border-rose-100 shadow-sm flex flex-col hover:bg-rose-50/80 transition-colors">
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <span class="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-wider">危险操作</span>
-                                        <span class="text-sm font-bold text-rose-900">批量删除 CF 托管域名</span>
-                                    </div>
-                                    <p class="text-xs text-rose-700/80 mb-3 flex-1 font-medium leading-relaxed">
-                                        ⚠️ 这里单独输入要删除的域名，和“发信域名池”无关。多个域名用英文逗号分隔。
-                                    </p>
-                                    <textarea v-model="cfTools.deleteDomains" rows="3" class="w-full resize-none appearance-none bg-white border border-rose-200 text-rose-800 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors shadow-sm text-sm font-mono mb-3" placeholder="例如：a.com,b.com,c.com"></textarea>
-                                    <button @click="handleCFDeleteHosting" :disabled="cfTools.isDeletingHosting" class="w-full py-2.5 bg-rose-600 text-white text-sm font-bold rounded-lg hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
-                                        <span v-if="cfTools.isDeletingHosting" class="animate-spin text-base">🗑️</span>
-                                        <span v-else class="text-base">🧨</span> 批量删除托管域名
-                                    </button>
-                                </div>
-
                                 <div v-if="config.email_api_mode === 'tempmail'" class="animate-fade-in">
                                     <div class="flex items-center gap-2 mb-4">
                                         <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
@@ -1977,6 +1962,20 @@
                                     <div class="text-[11px] text-rose-800 mt-4 font-bold bg-rose-50 border border-rose-100 p-3 rounded-lg leading-relaxed shadow-sm text-center">
                                         <a href="https://mails.luckyous.com/" class="text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1.5 text-sm" target="_blank"><span>🌐</span> mails.luckyous.com</a>
                                     </div>
+                                </div>
+                                <div class="mt-6 bg-rose-50/50 p-4 md:p-5 rounded-xl border border-rose-100 shadow-sm flex flex-col hover:bg-rose-50/80 transition-colors">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm tracking-wider">危险操作</span>
+                                        <span class="text-sm font-bold text-rose-900">批量删除 CF 托管域名</span>
+                                    </div>
+                                    <p class="text-xs text-rose-700/80 mb-3 flex-1 font-medium leading-relaxed">
+                                        ⚠️ 这里单独输入要删除的域名，和“发信域名池”无关。多个域名用英文逗号分隔。
+                                    </p>
+                                    <textarea v-model="cfTools.deleteDomains" rows="3" class="w-full resize-none appearance-none bg-white border border-rose-200 text-rose-800 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors shadow-sm text-sm font-mono mb-3" placeholder="例如：a.com,b.com,c.com"></textarea>
+                                    <button @click="handleCFDeleteHosting" :disabled="cfTools.isDeletingHosting" class="w-full py-2.5 bg-rose-600 text-white text-sm font-bold rounded-lg hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
+                                        <span v-if="cfTools.isDeletingHosting" class="animate-spin text-base">🗑️</span>
+                                        <span v-else class="text-base">🧨</span> 批量删除托管域名
+                                    </button>
                                 </div>
                             </div>
 

@@ -187,7 +187,8 @@ createApp({
                 activeGroup: null,
                 latencyMap: {},
                 latencyLoading: false,
-                latencyTestUrl: ''
+                latencyTestUrl: '',
+                latencyCache: {}
             },
             gmail_oauth_mode: {
                 master_email: '',
@@ -2640,11 +2641,15 @@ createApp({
                             url: sub.url
                         }));
                     }
-                    this.clashPool.latencyMap = {};
-                    this.clashPool.latencyTestUrl = '';
                     if (this.clashPool.activeGroup) {
                         const nextActive = this.clashPool.groups.find(g => g.name === this.clashPool.activeGroup.name);
                         this.clashPool.activeGroup = nextActive || null;
+                    }
+                    const currentActiveGroupName = this.clashPool.activeGroup?.name || '';
+                    if (currentActiveGroupName && this.clashPool.latencyCache[currentActiveGroupName]) {
+                        const cache = this.clashPool.latencyCache[currentActiveGroupName];
+                        this.clashPool.latencyMap = cache.map || {};
+                        this.clashPool.latencyTestUrl = cache.testUrl || '';
                     }
                     if (this.clashPool.instances.length > 0) {
                         this.clashPool.count = this.clashPool.instances.length;
@@ -2774,19 +2779,17 @@ createApp({
         },
         openClashGroup(group) {
             this.clashPool.activeGroup = group;
-            this.clashPool.latencyMap = {};
-            this.clashPool.latencyTestUrl = '';
+            const cache = this.clashPool.latencyCache[group.name] || null;
+            this.clashPool.latencyMap = cache?.map || {};
+            this.clashPool.latencyTestUrl = cache?.testUrl || '';
             this.fillProxyGroup(group.name);
         },
         closeClashGroup() {
             this.clashPool.activeGroup = null;
-            this.clashPool.latencyMap = {};
-            this.clashPool.latencyTestUrl = '';
         },
         async testActiveClashGroupLatency() {
             if (!this.clashPool.activeGroup) return;
             this.clashPool.latencyLoading = true;
-            this.clashPool.latencyMap = {};
             try {
                 const res = await this.authFetch('/api/clash/delay', {
                     method: 'POST',
@@ -2799,6 +2802,10 @@ createApp({
                 if (d.status === 'success') {
                     this.clashPool.latencyMap = d.data?.results || {};
                     this.clashPool.latencyTestUrl = d.data?.test_url || '';
+                    this.clashPool.latencyCache[this.clashPool.activeGroup.name] = {
+                        map: this.clashPool.latencyMap,
+                        testUrl: this.clashPool.latencyTestUrl
+                    };
                     this.showToast(d.message, 'success');
                 } else {
                     this.showToast(d.message, 'error');
@@ -2843,6 +2850,12 @@ createApp({
                 const d = await res.json();
                 this.showToast(d.message, d.status);
                 await this.fetchClashPool();
+                const currentGroupName = this.clashPool.activeGroup?.name || '';
+                const cache = currentGroupName ? this.clashPool.latencyCache[currentGroupName] : null;
+                if (cache) {
+                    this.clashPool.latencyMap = cache.map || {};
+                    this.clashPool.latencyTestUrl = cache.testUrl || '';
+                }
             } catch (e) {
                 this.showToast('节点切换失败', 'error');
             } finally {
