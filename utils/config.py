@@ -169,7 +169,7 @@ def init_config():
             default_config = yaml.safe_load(f) or {}
 
         if deep_update_config(default_config, user_config):
-            print(f"[{ts()}] [系统] 🛠️ 检测到旧版配置缺失新参数，已自动补齐并生效！")
+            print(f"[{ts()}] [系统] 检测到旧版配置缺失新参数，已自动补齐并生效！")
             try:
                 with CONFIG_FILE_LOCK:
                     with open(config_path, "w", encoding="utf-8") as f:
