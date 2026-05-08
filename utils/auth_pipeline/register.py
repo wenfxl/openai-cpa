@@ -226,6 +226,9 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                         if not login_code and (code_resp is None or code_resp.status_code != 200):
                             print(
                                 f"[{cfg.ts()}] [ERROR] 无密码通道验证码重试达上限 ({cfg.MAX_OTP_RETRIES} 次)，丢弃当前 {mask_email(email)} 邮箱。")
+                            if run_ctx is not None:
+                                run_ctx['discarded_email_failure'] = True
+                                run_ctx['mail_domain_failure_reason'] = 'discarded_email'
                             return None, None
 
                         code_url = str(code_resp.json().get("continue_url") or "").strip()
@@ -352,6 +355,9 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
 
                         if not code:
                             print(f"[{cfg.ts()}] [ERROR] 重试次数上限，丢弃当前 {mask_email(email)} 邮箱。")
+                            if run_ctx is not None:
+                                run_ctx['discarded_email_failure'] = True
+                                run_ctx['mail_domain_failure_reason'] = 'discarded_email'
                             return None, None
 
                         sentinel_otp = generate_payload(did=did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
@@ -728,6 +734,9 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                         if not login_code_oauth and (login_code_resp is None or login_code_resp.status_code != 200):
                             print(
                                 f"[{cfg.ts()}] [ERROR] 无密码通道重试次数达上限 ({cfg.MAX_OTP_RETRIES} 次)，丢弃当前 {mask_email(email)} 邮箱，放弃接管。")
+                            if run_ctx is not None:
+                                run_ctx['discarded_email_failure'] = True
+                                run_ctx['mail_domain_failure_reason'] = 'discarded_email'
                             return None, None
 
                         login_code_url = str(login_code_resp.json().get("continue_url") or "").strip()

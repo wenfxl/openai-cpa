@@ -574,6 +574,14 @@ def _handle_dead_account(name: str, is_disabled: bool) -> None:
         print(f"[{ts()}] [WARNING] 凭证 {mask_email(name)} 已死亡，当前已是禁用状态，根据配置保留不删除。")
 
 def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: dict = None) -> str:
+    def _format_cooldown_time(cooldown_until: float) -> str:
+        if not cooldown_until:
+            return ""
+        try:
+            return datetime.fromtimestamp(float(cooldown_until)).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            return ""
+
     if getattr(cfg, 'GLOBAL_STOP', False):
         return "stopped"
     global run_stats
@@ -614,7 +622,10 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
         token_json_str, password = result
         
     ret_status = "success"
-     
+    discarded_email_failure = run_ctx.get('discarded_email_failure', False) if run_ctx else False
+    domain_failure_reason = str(run_ctx.get('mail_domain_failure_reason', '') or '').strip().lower() if run_ctx else ''
+    domain_failure_event = mail_service.pop_last_domain_failure_event()
+
     if not token_json_str or token_json_str == "retry_403":
         if token_json_str == "retry_403":
             with _stats_lock: run_stats["retries"] += 1
@@ -622,15 +633,33 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
             ret_status = "retry_403"
         else:
             with _stats_lock: run_stats["failed"] += 1
+            failure_domain = cur_dom
+            failure_reason = domain_failure_reason
+            if not failure_reason and discarded_email_failure:
+                failure_reason = 'discarded_email'
+            if not failure_reason and domain_failure_event:
+                failure_reason = str(domain_failure_event.get('reason') or '').strip().lower()
+                failure_domain = domain_failure_event.get('domain') or failure_domain
+            if failure_reason:
+                domain_result = mail_service.record_domain_failure(failure_domain, failure_reason)
+                if domain_result:
+                    cooldown_text = _format_cooldown_time(domain_result.get("cooldown_until", 0.0))
+                    extra_text = f"，冷却结束时间: {cooldown_text}" if cooldown_text else ""
+                    print(f"[{ts()}] [INFO] 失败域名 {mask_email(domain_result.get('domain', failure_domain or ''))} -> 异常 {domain_result.get('fail_count', 0)} / 成功 {domain_result.get('success_count', 0)} / 原因 {failure_reason}{extra_text}")
             ret_status = "failed"
         if cfg.ENABLE_SUB_DOMAINS:
-            mail_service.clear_sticky_domain() 
+            mail_service.clear_sticky_domain()
             print(f"[{ts()}] [系统] 域名 {mask_email(cur_dom or '')} 注册失败，下一轮重新生成。")
-            
+
     else:
         with _stats_lock: run_stats["success"] += 1
         token_data    = json.loads(token_json_str)
         account_email = token_data.get("email", "unknown")
+        domain_result = mail_service.record_domain_success(account_email if account_email and "@" in account_email else cur_dom)
+        if domain_result:
+            cooldown_text = _format_cooldown_time(domain_result.get("cooldown_until", 0.0))
+            extra_text = f"，冷却结束时间: {cooldown_text}" if cooldown_text else ""
+            print(f"[{ts()}] [INFO] 成功域名 {mask_email(domain_result.get('domain', cur_dom or ''))} -> 失败 {domain_result.get('fail_count', 0)} / 成功 {domain_result.get('success_count', 0)}{extra_text}")
 
         # 存入本地数据库
         if cpa_upload:

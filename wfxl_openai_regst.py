@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from utils import core_engine, db_manager
 from utils.config import reload_all_configs
 from utils.log_stream_cache import RecentParsedLogCache
+from utils.email_providers import mail_service
 
 from global_state import engine, log_history, append_log
 from routers import api_routes
@@ -72,6 +73,7 @@ def _worker_push_thread():
         except: pass
         args = DummyArgs(proxy=getattr(core_engine.cfg, 'DEFAULT_PROXY', None))
         core_engine.run_stats.update({"success": 0, "failed": 0, "retries": 0, "pwd_blocked": 0, "phone_verify": 0, "start_time": time.time()})
+        mail_service.start_mail_domain_runtime_tracking()
         if getattr(core_engine.cfg, 'ENABLE_CPA_MODE', False): engine.start_cpa(args)
         elif getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False): engine.start_sub2api(args)
         else: engine.start_normal(args)
@@ -162,6 +164,7 @@ def _worker_push_thread():
                                 threading.Thread(target=_internal_start, daemon=True).start()
                             elif cmd == "stop" and is_running:
                                 engine.stop()
+                                mail_service.stop_mail_domain_runtime_tracking()
                             elif cmd == "export_accounts":
                                 print(f"[{core_engine.ts()}] [系统] 收到总控提取指令，准备发货！")
                                 def _upload_task():

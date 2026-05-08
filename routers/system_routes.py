@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from global_state import VALID_TOKENS, CLUSTER_NODES, NODE_COMMANDS, cluster_lock, log_history, engine, verify_token, worker_status, append_log
 from utils import core_engine, db_manager
+from utils.email_providers import mail_service
 from utils.config import reload_all_configs
 from utils.integrations.tg_notifier import send_tg_msg_async
 import utils.config as cfg
@@ -27,6 +28,7 @@ class DummyArgs:
         self.once = once
 
 class LoginData(BaseModel): password: str
+class DomainRuntimeActionReq(BaseModel): domain: str
 class ClusterUploadAccountsReq(BaseModel): node_name: str; secret: str; accounts: list
 class ClusterReportReq(BaseModel): node_name: str; secret: str; stats: dict; logs: list
 class ClusterControlReq(BaseModel): node_name: str; action: str
@@ -121,6 +123,7 @@ async def start_task(token: str = Depends(verify_token)):
     default_proxy = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
     args = DummyArgs(proxy=default_proxy if default_proxy else None)
     core_engine.run_stats.update({"success": 0, "failed": 0, "retries": 0, "pwd_blocked": 0, "phone_verify": 0, "start_time": time.time(),"target": 0})
+    mail_service.start_mail_domain_runtime_tracking()
     if getattr(core_engine.cfg, 'ENABLE_CPA_MODE', False):
         engine.start_cpa(args)
         return {"status": "success", "message": "启动成功：已自动识别并开启 [CPA 智能仓管模式]"}
@@ -155,6 +158,7 @@ async def stop_task(token: str = Depends(verify_token)):
 
     asyncio.create_task(send_tg_msg_async(msg))
     engine.stop()
+    mail_service.stop_mail_domain_runtime_tracking()
     return {"status": "success", "message": "已发送停止指令，正在安全退出..."}
 
 
@@ -190,12 +194,16 @@ async def get_stats(token: str = Depends(verify_token)):
         current_mode = "CPA 仓管" if getattr(core_engine.cfg, 'ENABLE_CPA_MODE', False) else (
             "Sub2Api 仓管" if getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False) else "常规量产")
 
+    domain_summary = mail_service.get_mail_domain_runtime_summary()
+
     return {
         "success": stats["success"], "failed": stats["failed"], "retries": stats["retries"],
         "pwd_blocked": stats.get("pwd_blocked", 0), "phone_verify": stats.get("phone_verify", 0),
         "total": total_attempts, "target": stats["target"] if stats["target"] > 0 else "∞",
         "success_rate": f"{success_rate}%", "elapsed": f"{elapsed}s", "avg_time": f"{avg_time}s",
-        "progress_pct": f"{progress_pct}%", "is_running": is_running, "mode": current_mode
+        "progress_pct": f"{progress_pct}%", "is_running": is_running, "mode": current_mode,
+        "available_count": domain_summary.get("available_count", 0),
+        "cooldown_count": domain_summary.get("cooldown_count", 0),
     }
 
 
@@ -241,13 +249,50 @@ async def get_config(token: str = Depends(verify_token)):
     return config_data
 
 
+@router.get("/api/config/mail_domain_runtime_stats")
+async def get_mail_domain_runtime_stats(token: str = Depends(verify_token)):
+    return {"status": "success", "items": mail_service.get_mail_domain_runtime_stats()}
+
+
+@router.post("/api/config/mail_domain_runtime_stats/clear")
+async def clear_mail_domain_runtime_stats(token: str = Depends(verify_token)):
+    cleared_count = mail_service.clear_all_mail_domain_runtime_cooldowns()
+    return {"status": "success", "message": f"已清除 {cleared_count} 个域名冷却"}
+
+
+@router.post("/api/config/mail_domain_runtime_stats/clear_counters")
+async def clear_mail_domain_runtime_domain_counters(req: DomainRuntimeActionReq, token: str = Depends(verify_token)):
+    item = mail_service.clear_mail_domain_runtime_domain_counters(req.domain)
+    if not item:
+        return {"status": "error", "message": "未找到指定域名的运行时计数"}
+    return {"status": "success", "message": f"已清空 {item['domain']} 的计数", "item": item}
+
+
+@router.post("/api/config/mail_domain_runtime_stats/clear_cooldown")
+async def clear_mail_domain_runtime_domain_cooldown(req: DomainRuntimeActionReq, token: str = Depends(verify_token)):
+    item = mail_service.clear_mail_domain_runtime_domain_cooldown(req.domain)
+    if not item:
+        return {"status": "error", "message": "未找到指定域名的冷却状态"}
+    return {"status": "success", "message": f"已清除 {item['domain']} 的冷却", "item": item}
+
+
 @router.post("/api/config")
 async def save_config(new_config: dict, token: str = Depends(verify_token)):
     try:
         if isinstance(new_config.get("sub2api_mode"), dict):
             new_config["sub2api_mode"].pop("min_remaining_weekly_percent", None)
         new_config["local_microsoft"] = _sanitize_local_microsoft_config(new_config.get("local_microsoft"))
+        if not isinstance(new_config.get("disabled_mail_domains"), list):
+            new_config["disabled_mail_domains"] = []
+        if not isinstance(new_config.get("mail_domain_failure_types"), list):
+            new_config["mail_domain_failure_types"] = ["discarded_email"]
+        new_config["mail_domain_failure_types"] = list(dict.fromkeys(
+            str(item or "").strip().lower()
+            for item in new_config.get("mail_domain_failure_types", [])
+            if str(item or "").strip()
+        )) or ["discarded_email"]
         reload_all_configs(new_config_dict=new_config)
+        mail_service.sync_mail_domain_runtime_state_with_config()
 
         return {"status": "success", "message": "✅ 配置已成功保存并同步至云端！"}
     except Exception as e:
@@ -552,12 +597,14 @@ def ext_reset_stats(token: str = Depends(verify_token)):
         "target": getattr(core_engine.cfg, 'NORMAL_TARGET_COUNT', 0),
         "ext_is_running": True
     })
+    mail_service.start_mail_domain_runtime_tracking()
     return {"status": "success"}
 
 @router.post("/api/ext/stop")
 def ext_stop(token: str = Depends(verify_token)):
     from utils import core_engine
     core_engine.run_stats["ext_is_running"] = False
+    mail_service.stop_mail_domain_runtime_tracking()
     return {"status": "success"}
 
 @router.get("/api/system/version")

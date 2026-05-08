@@ -49,6 +49,14 @@ luckmail_lock = threading.Lock()
 empty_retry_count = 0
 empty_lock = threading.Lock()
 _CM_TOKEN_CACHE: Optional[str] = None
+_DOMAIN_RUNTIME_LOCK = threading.Lock()
+_DOMAIN_RUNTIME_STATE = {}
+_MAIL_DOMAIN_FAILURE_TYPES = {"discarded_email", "cloudflare_temp_email_network", "capacity_exceeded"}
+_DOMAIN_RUNTIME_SESSION = {
+    "counting_enabled": False,
+    "last_started_at": 0.0,
+    "last_stopped_at": 0.0,
+}
 
 _thread_data = threading.local()
 _orig_sleep = time.sleep
@@ -84,6 +92,430 @@ def clear_sticky_domain():
 
 def set_last_email(email: str):
     _thread_data.last_attempt_email = email
+
+
+def _set_last_domain_failure_event(domain: str, reason: str) -> None:
+    normalized = _normalize_main_domain(domain)
+    normalized_reason = str(reason or "").strip().lower()
+    if not normalized or normalized_reason not in _MAIL_DOMAIN_FAILURE_TYPES:
+        return
+    _thread_data.last_domain_failure_event = {
+        "domain": normalized,
+        "reason": normalized_reason,
+    }
+
+
+def pop_last_domain_failure_event() -> dict:
+    event = getattr(_thread_data, 'last_domain_failure_event', None)
+    _thread_data.last_domain_failure_event = None
+    return dict(event) if isinstance(event, dict) else {}
+
+
+def _get_configured_main_domains() -> list[str]:
+    seen = set()
+    domains = []
+    for part in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(','):
+        root = str(part or '').strip().lower().strip('.')
+        if root and root not in seen:
+            seen.add(root)
+            domains.append(root)
+    return domains
+
+
+def _normalize_main_domain(domain: str) -> str:
+    text = str(domain or "").strip().lower().strip(".")
+    if not text:
+        return ""
+    if "@" in text:
+        _, text = text.rsplit("@", 1)
+        text = text.strip().strip(".")
+        if not text:
+            return ""
+
+    configured = _get_configured_main_domains()
+    for root in configured:
+        if text == root or text.endswith(f".{root}"):
+            return root
+    return text if not configured else ""
+
+
+def _get_disabled_main_domains() -> set[str]:
+    normalized = set()
+    for domain in getattr(cfg, 'DISABLED_MAIL_DOMAINS', []) or []:
+        root = _normalize_main_domain(domain)
+        if root:
+            normalized.add(root)
+    return normalized
+
+
+def _all_configured_main_domains_disabled() -> bool:
+    configured = _get_configured_main_domains()
+    if not configured:
+        return False
+    disabled = _get_disabled_main_domains()
+    return bool(disabled) and all(domain in disabled for domain in configured)
+
+
+def is_mail_domain_disabled(domain: str) -> bool:
+    normalized = _normalize_main_domain(domain)
+    return bool(normalized) and normalized in _get_disabled_main_domains()
+
+
+def is_mail_domain_runtime_control_enabled(mode: str | None = None) -> bool:
+    current_mode = str(mode or getattr(cfg, 'EMAIL_API_MODE', '') or '').strip()
+    if current_mode not in {"cloudflare_temp_email", "freemail", "cloudmail", "openai_cpa"}:
+        return False
+    return bool(getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False))
+
+
+def start_mail_domain_runtime_tracking() -> None:
+    if not is_mail_domain_runtime_control_enabled():
+        return
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _DOMAIN_RUNTIME_SESSION["counting_enabled"] = True
+        _DOMAIN_RUNTIME_SESSION["last_started_at"] = now
+        _DOMAIN_RUNTIME_SESSION["last_stopped_at"] = 0.0
+
+
+def stop_mail_domain_runtime_tracking() -> None:
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _DOMAIN_RUNTIME_SESSION["counting_enabled"] = False
+        _DOMAIN_RUNTIME_SESSION["last_stopped_at"] = now
+
+
+def clear_mail_domain_runtime_stats() -> None:
+    with _DOMAIN_RUNTIME_LOCK:
+        _DOMAIN_RUNTIME_STATE.clear()
+        _DOMAIN_RUNTIME_SESSION["counting_enabled"] = False
+        _DOMAIN_RUNTIME_SESSION["last_started_at"] = 0.0
+        _DOMAIN_RUNTIME_SESSION["last_stopped_at"] = 0.0
+
+
+def _is_mail_domain_runtime_tracking_active() -> bool:
+    return bool(_DOMAIN_RUNTIME_SESSION.get("counting_enabled"))
+
+
+def _new_domain_runtime_state() -> dict:
+    return {
+        "fail_count": 0,
+        "success_count": 0,
+        "failure_counts": {},
+        "last_failure_reason": "",
+        "cooldown_until": 0.0,
+        "cooldown_reason": "",
+        "last_used_at": 0.0,
+        "last_failure_at": 0.0,
+        "last_success_at": 0.0,
+    }
+
+
+def _prune_expired_domain_records(now: float) -> None:
+    expired_domains = [
+        domain for domain, state in _DOMAIN_RUNTIME_STATE.items()
+        if float(state.get("cooldown_until") or 0.0) > 0 and float(state.get("cooldown_until") or 0.0) <= now
+    ]
+    for domain in expired_domains:
+        _DOMAIN_RUNTIME_STATE.pop(domain, None)
+
+
+def _get_domain_state(domain: str) -> dict:
+    now = time.time()
+    normalized = _normalize_main_domain(domain)
+    if not normalized or not is_mail_domain_runtime_control_enabled():
+        return {}
+
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        return dict(state)
+
+
+def pick_available_main_domain(main_domains: list[str]) -> str | None:
+    disabled_domains = _get_disabled_main_domains()
+    if not is_mail_domain_runtime_control_enabled():
+        normalized_domains = [_normalize_main_domain(domain) for domain in main_domains]
+        candidates = [domain for domain in normalized_domains if domain and domain not in disabled_domains]
+        return random.choice(candidates) if candidates else None
+
+    candidates = []
+    now = time.time()
+
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        for domain in main_domains:
+            normalized = _normalize_main_domain(domain)
+            if not normalized or normalized in disabled_domains:
+                continue
+            state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+            cooldown_until = float(state.get("cooldown_until") or 0.0)
+            if cooldown_until > now:
+                continue
+            candidates.append(normalized)
+
+        if not candidates:
+            return None
+
+        selected = random.choice(candidates)
+        _DOMAIN_RUNTIME_STATE[selected]["last_used_at"] = now
+        return selected
+
+
+def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float:
+    cooldown_until = time.time() + max(int(cooldown_sec or 0), 0)
+    state["fail_count"] = 0
+    state["cooldown_reason"] = reason
+    state["cooldown_until"] = cooldown_until
+    return cooldown_until
+
+
+def _get_selected_mail_domain_failure_types() -> set[str]:
+    selected = {
+        str(item or "").strip().lower()
+        for item in (getattr(cfg, 'MAIL_DOMAIN_FAILURE_TYPES', []) or [])
+        if str(item or "").strip()
+    }
+    return {item for item in selected if item in _MAIL_DOMAIN_FAILURE_TYPES}
+
+
+def _recalculate_domain_fail_count(state: dict) -> int:
+    failure_counts = state.get("failure_counts")
+    if not isinstance(failure_counts, dict):
+        failure_counts = {}
+        state["failure_counts"] = failure_counts
+    selected = _get_selected_mail_domain_failure_types()
+    fail_count = sum(
+        max(0, int(failure_counts.get(reason) or 0))
+        for reason in selected
+    )
+    state["fail_count"] = fail_count
+    return fail_count
+
+
+def _build_domain_result(domain: str, state: dict, cooldown_until: float, cooldown_triggered: bool) -> dict:
+    return {
+        "domain": domain,
+        "fail_count": int(state.get("fail_count") or 0),
+        "success_count": int(state.get("success_count") or 0),
+        "failure_counts": dict(state.get("failure_counts") or {}),
+        "last_failure_reason": str(state.get("last_failure_reason") or ""),
+        "cooldown_reason": str(state.get("cooldown_reason") or ""),
+        "cooldown_until": cooldown_until,
+        "cooldown_triggered": cooldown_triggered,
+    }
+
+
+def record_domain_failure(domain: str, reason: str) -> dict:
+    normalized = _normalize_main_domain(domain)
+    normalized_reason = str(reason or "").strip().lower()
+    if (
+        not normalized
+        or normalized_reason not in _MAIL_DOMAIN_FAILURE_TYPES
+        or not is_mail_domain_runtime_control_enabled()
+        or not _is_mail_domain_runtime_tracking_active()
+    ):
+        return {}
+
+    threshold = int(getattr(cfg, 'MAIL_DOMAIN_FAIL_THRESHOLD', 0) or 0)
+    cooldown_sec = int(getattr(cfg, 'MAIL_DOMAIN_FAIL_COOLDOWN_SEC', 0) or 0)
+    now = time.time()
+
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        failure_counts = state.get("failure_counts")
+        if not isinstance(failure_counts, dict):
+            failure_counts = {}
+            state["failure_counts"] = failure_counts
+        cooldown_until = float(state.get("cooldown_until") or 0.0)
+        state["last_failure_at"] = now
+        state["last_failure_reason"] = normalized_reason
+
+        if cooldown_until > now:
+            _recalculate_domain_fail_count(state)
+            state["fail_count"] = 0
+            if not state.get("cooldown_reason"):
+                state["cooldown_reason"] = normalized_reason
+            return _build_domain_result(normalized, state, cooldown_until, False)
+
+        failure_counts[normalized_reason] = int(failure_counts.get(normalized_reason) or 0) + 1
+        fail_count = _recalculate_domain_fail_count(state)
+        cooldown_triggered = False
+        if threshold > 0 and fail_count >= threshold:
+            cooldown_until = _apply_domain_cooldown(state, normalized_reason, cooldown_sec)
+            cooldown_triggered = True
+        else:
+            cooldown_until = float(state.get("cooldown_until") or 0.0)
+        return _build_domain_result(normalized, state, cooldown_until, cooldown_triggered)
+
+
+def record_domain_success(domain: str) -> dict:
+    normalized = _normalize_main_domain(domain)
+    if not normalized or not is_mail_domain_runtime_control_enabled() or not _is_mail_domain_runtime_tracking_active():
+        return {}
+
+    now = time.time()
+
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        state["success_count"] = int(state.get("success_count") or 0) + 1
+        state["last_success_at"] = now
+        _recalculate_domain_fail_count(state)
+        cooldown_until = float(state.get("cooldown_until") or 0.0)
+        return _build_domain_result(normalized, state, cooldown_until, False)
+
+
+def _build_domain_runtime_row(domain: str, state: dict, now: float) -> dict:
+    cooldown_until = float(state.get("cooldown_until") or 0.0)
+    is_disabled = is_mail_domain_disabled(domain)
+    _recalculate_domain_fail_count(state)
+    return {
+        "domain": domain,
+        "fail_count": int(state.get("fail_count") or 0),
+        "success_count": int(state.get("success_count") or 0),
+        "failure_counts": dict(state.get("failure_counts") or {}),
+        "last_failure_reason": str(state.get("last_failure_reason") or ""),
+        "cooldown_until": cooldown_until,
+        "cooldown_remaining_sec": max(0, int(cooldown_until - now)) if cooldown_until > now else 0,
+        "cooldown_reason": str(state.get("cooldown_reason") or ""),
+        "is_available": cooldown_until <= now,
+        "is_disabled": is_disabled,
+        "is_enabled": not is_disabled,
+        "last_used_at": float(state.get("last_used_at") or 0.0),
+        "last_failure_at": float(state.get("last_failure_at") or 0.0),
+        "last_success_at": float(state.get("last_success_at") or 0.0),
+    }
+
+
+def _get_domain_runtime_row_locked(domain: str, now: float) -> dict:
+    state = _DOMAIN_RUNTIME_STATE.get(domain)
+    if not state:
+        return {}
+    return _build_domain_runtime_row(domain, state, now)
+
+
+def get_mail_domain_runtime_summary() -> dict:
+    if not is_mail_domain_runtime_control_enabled():
+        return {"total_count": 0, "available_count": 0, "cooldown_count": 0}
+
+    now = time.time()
+    configured_domains = _get_configured_main_domains()
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        cooldown_domains = {
+            domain for domain, state in _DOMAIN_RUNTIME_STATE.items()
+            if float(state.get("cooldown_until") or 0.0) > now
+        }
+        total_count = len(configured_domains)
+        cooldown_count = sum(1 for domain in configured_domains if domain in cooldown_domains)
+        available_count = max(0, total_count - cooldown_count)
+        return {
+            "total_count": total_count,
+            "available_count": available_count,
+            "cooldown_count": cooldown_count,
+        }
+
+
+def sync_mail_domain_runtime_state_with_config() -> dict:
+    configured_domains = _get_configured_main_domains()
+    configured_set = set(configured_domains)
+    now = time.time()
+
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        existing_domains = set(_DOMAIN_RUNTIME_STATE.keys())
+
+        added_count = 0
+        removed_count = 0
+
+        for domain in configured_domains:
+            if domain not in _DOMAIN_RUNTIME_STATE:
+                _DOMAIN_RUNTIME_STATE[domain] = _new_domain_runtime_state()
+                added_count += 1
+
+        for domain in list(existing_domains):
+            if domain not in configured_set:
+                _DOMAIN_RUNTIME_STATE.pop(domain, None)
+                removed_count += 1
+
+        total_count = len(_DOMAIN_RUNTIME_STATE)
+
+    return {
+        "added_count": added_count,
+        "removed_count": removed_count,
+        "total_count": total_count,
+    }
+
+
+def clear_mail_domain_runtime_domain_counters(domain: str) -> dict:
+    normalized = _normalize_main_domain(domain)
+    if not normalized or not is_mail_domain_runtime_control_enabled():
+        return {}
+
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        state = _DOMAIN_RUNTIME_STATE.get(normalized)
+        if not state:
+            return {}
+        state["fail_count"] = 0
+        state["success_count"] = 0
+        state["failure_counts"] = {}
+        state["last_failure_reason"] = ""
+        state["last_failure_at"] = 0.0
+        state["last_success_at"] = 0.0
+        return _get_domain_runtime_row_locked(normalized, now)
+
+
+def clear_mail_domain_runtime_domain_cooldown(domain: str) -> dict:
+    normalized = _normalize_main_domain(domain)
+    if not normalized or not is_mail_domain_runtime_control_enabled():
+        return {}
+
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        state = _DOMAIN_RUNTIME_STATE.get(normalized)
+        if not state:
+            return {}
+        state["cooldown_until"] = 0.0
+        state["cooldown_reason"] = ""
+        return _get_domain_runtime_row_locked(normalized, now)
+
+
+def clear_all_mail_domain_runtime_cooldowns() -> int:
+    if not is_mail_domain_runtime_control_enabled():
+        return 0
+
+    now = time.time()
+    cleared_count = 0
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        for state in _DOMAIN_RUNTIME_STATE.values():
+            if float(state.get("cooldown_until") or 0.0) > now:
+                cleared_count += 1
+            state["cooldown_until"] = 0.0
+            state["cooldown_reason"] = ""
+            _recalculate_domain_fail_count(state)
+    return cleared_count
+
+
+def get_mail_domain_runtime_stats() -> list[dict]:
+    if not is_mail_domain_runtime_control_enabled():
+        return []
+
+    sync_mail_domain_runtime_state_with_config()
+    now = time.time()
+    rows = []
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        for domain in sorted(_DOMAIN_RUNTIME_STATE.keys()):
+            state = _DOMAIN_RUNTIME_STATE[domain]
+            rows.append(_build_domain_runtime_row(domain, state, now))
+    return rows
+
 
 
 def get_last_email() -> Optional[str]:
@@ -210,6 +642,7 @@ def get_email_and_token(proxies: Any = None) -> tuple:
     """兼容五种邮箱模式的地址创建，返回 (email, token_or_id)。"""
     if getattr(cfg, 'GLOBAL_STOP', False): return None, None
     _thread_data.last_attempt_email = None
+    _thread_data.last_domain_failure_event = None
 
     mode = cfg.EMAIL_API_MODE
     mail_proxies = proxies if cfg.USE_PROXY_FOR_EMAIL else None
@@ -491,6 +924,7 @@ def get_email_and_token(proxies: Any = None) -> tuple:
         return target_email, json.dumps(mailbox_info, ensure_ascii=False)
 
     prefix, ai_enabled = _get_ai_data_package()
+    use_domain_runtime_control = is_mail_domain_runtime_control_enabled(mode)
 
     if cfg.ENABLE_SUB_DOMAINS:
         # sticky = getattr(_thread_data, 'sticky_domain', None)
@@ -503,7 +937,15 @@ def get_email_and_token(proxies: Any = None) -> tuple:
             print(f"[{cfg.ts()}] [ERROR] 未配置主域名池，无法捏造子域！")
             return None, None
 
-        selected_main = random.choice(main_list)
+        selected_main = pick_available_main_domain(main_list)
+        if not selected_main:
+            if _all_configured_main_domains_disabled():
+                print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
+            elif use_domain_runtime_control:
+                print(f"[{cfg.ts()}] [ERROR] 所有主域名均处于冷却中，当前无法继续生成邮箱！")
+            else:
+                print(f"[{cfg.ts()}] [ERROR] 未找到可用主域名，当前无法继续生成邮箱！")
+            return None, None
         if getattr(cfg, 'RANDOM_SUB_DOMAIN_LEVEL', False):
             level = random.randint(1, 7)
         else:
@@ -527,7 +969,15 @@ def get_email_and_token(proxies: Any = None) -> tuple:
         if not domain_list:
             print(f"[{cfg.ts()}] [ERROR] 域名池配置为空，无法生成邮箱！")
             return None, None
-        selected_domain = random.choice(domain_list)
+        selected_domain = pick_available_main_domain(domain_list)
+        if not selected_domain:
+            if _all_configured_main_domains_disabled():
+                print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
+            elif use_domain_runtime_control:
+                print(f"[{cfg.ts()}] [ERROR] 所有主域名均处于冷却中，当前无法继续生成邮箱！")
+            else:
+                print(f"[{cfg.ts()}] [ERROR] 域名池配置为空或无有效主域名，无法生成邮箱！")
+            return None, None
 
     email_str = f"{prefix}@{selected_domain}"
     set_last_email(email_str)
@@ -602,6 +1052,7 @@ def get_email_and_token(proxies: Any = None) -> tuple:
     if mode == "cloudflare_temp_email":
         headers = {"x-admin-auth": cfg.ADMIN_AUTH, "Content-Type": "application/json"}
         body = {"enablePrefix": False, "name": prefix, "domain": selected_domain}
+        terminal_failure_reason = ""
         for attempt in range(5):
             if getattr(cfg, 'GLOBAL_STOP', False): return None, None
             try:
@@ -610,6 +1061,14 @@ def get_email_and_token(proxies: Any = None) -> tuple:
                     headers=headers, json=body,
                     proxies=mail_proxies, verify=_ssl_verify(), timeout=15,
                 )
+                status_code = int(getattr(res, 'status_code', 0) or 0)
+                text = str(getattr(res, 'text', '') or '')
+                quota_text = text.lower()
+                if status_code in {403, 429, 507} or any(token in quota_text for token in ("quota", "limit", "capacity", "exceeded", "over limit", "full")):
+                    terminal_failure_reason = "capacity_exceeded"
+                    print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email邮箱容量疑似超限 (尝试 {attempt + 1}/5): {res.text}")
+                    time.sleep(1)
+                    continue
                 res.raise_for_status()
                 data = res.json()
                 if data and data.get("address"):
@@ -618,11 +1077,15 @@ def get_email_and_token(proxies: Any = None) -> tuple:
                     set_last_email(email)
                     print(f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {mask_email(email)}")
                     return email, jwt
+                terminal_failure_reason = "cloudflare_temp_email_network"
                 print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email邮箱申请失败 (尝试 {attempt + 1}/5): {res.text}")
                 time.sleep(1)
             except Exception as e:
+                terminal_failure_reason = "cloudflare_temp_email_network"
                 print(f"[{cfg.ts()}] [ERROR] cloudflare_temp_email邮箱注册网络异常，准备重试: {e}")
                 time.sleep(2)
+        if terminal_failure_reason:
+            _set_last_domain_failure_event(selected_domain, terminal_failure_reason)
         return None, None
 
 
