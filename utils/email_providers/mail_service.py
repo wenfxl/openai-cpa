@@ -161,7 +161,7 @@ def is_mail_domain_disabled(domain: str) -> bool:
     return bool(normalized) and normalized in _get_disabled_main_domains()
 
 
-def is_mail_domain_runtime_control_enabled(mode: str | None = None) -> bool:
+def is_mail_domain_runtime_control_enabled(mode: Optional[str] = None) -> bool:
     current_mode = str(mode or getattr(cfg, 'EMAIL_API_MODE', '') or '').strip()
     if current_mode not in {"cloudflare_temp_email", "freemail", "cloudmail", "openai_cpa"}:
         return False
@@ -231,8 +231,7 @@ def _get_domain_state(domain: str) -> dict:
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
         return dict(state)
 
-
-def pick_available_main_domain(main_domains: list[str]) -> str | None:
+def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
     disabled_domains = _get_disabled_main_domains()
     if not is_mail_domain_runtime_control_enabled():
         normalized_domains = [_normalize_main_domain(domain) for domain in main_domains]

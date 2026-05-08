@@ -7,6 +7,11 @@ import threading
 import sys
 import subprocess
 import httpx
+import requests
+import zipfile
+import io
+import shutil
+
 from typing import Optional, Any
 from fastapi import APIRouter, Depends, Query, Request, WebSocket, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -302,23 +307,36 @@ async def save_config(new_config: dict, token: str = Depends(verify_token)):
 @router.get("/api/system/check_update")
 async def check_update(current_version: str, token: str = Depends(verify_token)):
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get("https://api.github.com/repos/wenfxl/openai-cpa/releases/latest",
-                                    headers={"Accept": "application/vnd.github.v3+json"})
-            if resp.status_code != 200: return {"status": "error",
-                                                "message": f"无法获取更新数据 (GitHub API 返回 HTTP {resp.status_code})"}
-        data = resp.json()
-        remote_version = data.get("tag_name", "")
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
 
+        web_url = "https://github.com/wenfxl/openai-cpa/releases/latest"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        async with httpx.AsyncClient(proxy=proxy_url, timeout=15.0) as client:
+            resp = await client.head(web_url, headers=headers, follow_redirects=False)
+
+            if resp.status_code == 302:
+                redirect_url = resp.headers.get("Location")
+                if not redirect_url:
+                    return {"status": "error", "message": "无法从 GitHub 获取重定向地址"}
+                remote_version = redirect_url.split("/")[-1]
+                html_url = redirect_url
+                download_url = f"https://github.com/wenfxl/openai-cpa/archive/refs/tags/{remote_version}.zip"
+            else:
+                return {"status": "error", "message": f"获取版本失败，状态码: {resp.status_code}"}
         def _parse(v):
             return [int(x) for x in re.findall(r'\d+', str(v))]
 
         has_update = _parse(remote_version) > _parse(current_version) if remote_version else False
-        assets = data.get("assets")
-        download_url = assets[0].get("browser_download_url", "") if assets else data.get("zipball_url", "")
-        return {"status": "success", "has_update": has_update, "remote_version": remote_version,
-                "changelog": data.get("body", "无更新日志"), "download_url": download_url,
-                "html_url": data.get("html_url", "")}
+        changelog = "暂不展示详细日志。请自行前往仓库查看。"
+
+        return {
+            "status": "success",
+            "has_update": has_update,
+            "remote_version": remote_version,
+            "changelog": changelog,
+            "download_url": download_url,
+            "html_url": html_url
+        }
     except Exception as e:
         return {"status": "error", "message": f"检查更新发生未知异常: {str(e)}"}
 
@@ -610,3 +628,110 @@ def ext_stop(token: str = Depends(verify_token)):
 @router.get("/api/system/version")
 def get_system_version():
     return {"status": "success", "version": cfg.APP_VERSION}
+
+
+def is_docker():
+    path = '/proc/self/cgroup'
+    return (
+            os.path.exists('/.dockerenv') or
+            os.path.exists('/run/.containerenv') or
+            (os.path.isfile(path) and any('docker' in line for line in open(path)))
+    )
+
+@router.post("/api/system/auto_update")
+def auto_update(token: str = Depends(verify_token)):
+    if is_docker():
+        return execute_docker_update()
+    else:
+        return execute_native_update()
+
+
+def execute_docker_update():
+    try:
+        project_path = os.getenv("HOST_PROJECT_PATH")
+        image_name = "wenfxl/wenfxl-codex-manager:latest"
+        print(f"[{core_engine.ts()}] [系统] 🚀 正在通过官方 Compose 引擎执行重建...")
+        subprocess.run(["docker", "pull", image_name], check=False)
+        update_cmd = (
+            f"nohup docker run --rm "
+            f"-v /var/run/docker.sock:/var/run/docker.sock "
+            f"-v {project_path}:{project_path} "
+            f"-w {project_path} "
+            f"docker/compose:latest up -d --no-deps codex-web > /dev/null 2>&1 &"
+        )
+
+        print(f"[{core_engine.ts()}] [系统] 🔄 指令已发出，由官方引擎接管重建任务...")
+        subprocess.Popen(update_cmd, shell=True)
+
+        return {
+            "status": "success",
+            "message": "更新指令已由官方引擎接管！系统正在自我重建，请 20 秒后刷新网页..."
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": f"更新异常: {str(e)}"}
+
+def execute_native_update():
+    try:
+        proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
+        proxies = None
+        if proxy_url:
+            proxies = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
+            print(f"[{core_engine.ts()}] [系统] 🚀 正在使用全局代理穿透下载更新: {proxy_url}")
+        else:
+            print(f"[{core_engine.ts()}] [系统] ⚠️ 未检测到全局代理，尝试直连下载...")
+
+        web_url = "https://github.com/wenfxl/openai-cpa/releases/latest"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        release_response = requests.head(web_url, headers=headers, proxies=proxies, allow_redirects=False, timeout=15)
+
+        if release_response.status_code == 302:
+            redirect_url = release_response.headers.get('Location')
+            if not redirect_url:
+                raise Exception("无法从 GitHub 获取重定向地址")
+            latest_tag = redirect_url.split('/')[-1]
+            print(f"[{core_engine.ts()}] [系统] 🎉 成功获取最新版本标签: {latest_tag}")
+
+            zip_url = f"https://github.com/wenfxl/openai-cpa/archive/refs/tags/{latest_tag}.zip"
+        else:
+            raise Exception(f"请求被拒绝或状态异常，状态码: {release_response.status_code}")
+
+        print(f"[{core_engine.ts()}] [系统] 🚀 开始下载新版本源码包: {zip_url}")
+
+        response = requests.get(zip_url, headers=headers, stream=True, proxies=proxies, timeout=60)
+        response.raise_for_status()
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+            root_dir = zip_ref.namelist()[0]
+            for member in zip_ref.namelist():
+                if member == root_dir:
+                    continue
+                target_path = os.path.join(os.getcwd(), member.replace(root_dir, "", 1))
+                if member.endswith('/'):
+                    os.makedirs(target_path, exist_ok=True)
+                else:
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                    with zip_ref.open(member) as source, open(target_path, "wb") as target:
+                        shutil.copyfileobj(source, target)
+
+        def restart_server():
+            time.sleep(2)
+            print(f"[{core_engine.ts()}] [系统] 🔄 代码覆盖完毕，正在执行热重启...")
+            try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+                subprocess.Popen([sys.executable] + sys.argv)
+                os._exit(0)
+            except Exception as e:
+                print(f"[{core_engine.ts()}] [系统] ❌ 重启失败: {e}")
+                os._exit(1)
+
+        threading.Thread(target=restart_server).start()
+
+        return {"status": "success", "message": "本地代码更新完成，系统正在热重启..."}
+
+    except Exception as e:
+        return {"status": "error", "message": f"本地更新异常: {str(e)}"}

@@ -59,10 +59,9 @@ def _build_account_item(token_data: Dict[str, Any], settings: Dict[str, Any], pr
             "expires_at": int(time.time() + 864000),
             "expires_in": 863999,
             "model_mapping": {
-                "gpt-5.2":"gpt-5.2",
-                "gpt-5.3-codex":"gpt-5.3-codex",
-                "gpt-5.4":"gpt-5.4",
-                "gpt-5.4-mini":"gpt-5.4-mini",
+                "gpt-5.4": "gpt-5.4",
+                "gpt-5.4-mini": "gpt-5.4-mini",
+                "gpt-5.5": "gpt-5.5",
             },
             "organization_id": token_data.get("workspace_id", ""),
             "refresh_token": token_data.get("refresh_token", ""),
@@ -246,6 +245,21 @@ class Sub2APIClient:
         logger.info("Fetched %s Sub2API accounts across paginated results", len(all_items))
         return True, all_items
 
+    def get_account_usage(self, account_id: str) -> Tuple[bool, Any]:
+        url = f"{self.api_url}/api/v1/admin/accounts/{account_id}/usage"
+        params = {"timezone": "Asia/Shanghai"}
+        try:
+            response = cffi_requests.get(
+                url,
+                headers=self.headers,
+                params=params,
+                **self.request_kwargs
+            )
+            return self._handle_response(response)
+        except Exception as exc:
+            logger.error("Get Sub2API account usage %s failed: %s", account_id, exc)
+            return False, str(exc)
+
     def add_account(self, token_data: Dict[str, Any]) -> Tuple[bool, str]:
         settings = self._get_push_settings()
         working_token_data = dict(token_data)
@@ -271,7 +285,14 @@ class Sub2APIClient:
             "name": account_name,
             "platform": "openai",
             "type": "oauth",
-            "credentials": {"refresh_token": refresh_token},
+            "credentials": {
+                "refresh_token": refresh_token,
+                "model_mapping": {
+                    "gpt-5.4": "gpt-5.4",
+                    "gpt-5.4-mini": "gpt-5.4-mini",
+                    "gpt-5.5": "gpt-5.5",
+                }
+            },
             "concurrency": settings["concurrency"],
             "priority": settings["priority"],
             "rate_multiplier": settings["rate_multiplier"],

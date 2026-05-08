@@ -1,6 +1,7 @@
 import json
 import time
 import urllib.parse
+import concurrent.futures
 from typing import List, Any, Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -279,24 +280,39 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
             client = Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY)
             success, raw_sub2_data = client.get_all_accounts()
             if success:
-                for item in raw_sub2_data:
+                def process_single_account(item):
                     raw_time = item.get("updated_at", "-")
                     if raw_time != "-":
                         try:
                             raw_time = raw_time.split(".")[0].replace("T", " ")
                         except:
                             pass
+
                     extra = item.get("extra", {})
-                    combined_data.append({
-                        "id": str(item.get("id", "")), "account_type": "sub2api",
+                    account_id = str(item.get("id", ""))
+                    window_stats = {}
+                    if account_id:
+                        usage_ok, usage_data = client.get_account_usage(account_id)
+                        if usage_ok and isinstance(usage_data, dict):
+                            window_stats = usage_data.get("data", {}).get("five_hour", {}).get("window_stats", {})
+                    return {
+                        "id": account_id,
+                        "account_type": "sub2api",
                         "credential": item.get("name", "未知账号"),
                         "status": "disabled" if item.get("status") == "inactive" else (
                             "active" if item.get("status") == "active" else "dead"),
                         "last_check": raw_time,
-                        "details": {"plan_type": item.get("credentials", {}).get("plan_type", "未知"),
-                                    "codex_5h_used_percent": extra.get("codex_5h_used_percent", 0),
-                                    "codex_7d_used_percent": extra.get("codex_7d_used_percent", 0)}
-                    })
+                        "details": {
+                            "plan_type": item.get("credentials", {}).get("plan_type", "未知"),
+                            "codex_5h_used_percent": extra.get("codex_5h_used_percent", 0),
+                            "codex_7d_used_percent": extra.get("codex_7d_used_percent", 0),
+                            "window_stats": window_stats
+                        }
+                    }
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    results = list(executor.map(process_single_account, raw_sub2_data))
+                combined_data.extend(results)
+
         except Exception as e:
             print(f"[{cfg.ts()}] [SUB2API] 拉取 Sub2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
 

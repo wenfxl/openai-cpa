@@ -101,7 +101,7 @@ createApp({
             statsTimer: null,
 
             showPwd: {
-                login: false, web: false, cf: false, imap: false, 
+                login: false, web: false, cf: false, imap: false,
                 free_token: false, free_pass: false,
                 cm: false, mc: false, clash: false, cpa: false, sub2api: false,
                 cf_key: false, cf_modal_key: false,
@@ -221,6 +221,7 @@ createApp({
                 isDeploying: false,
                 isSettingCatchAll: false
             },
+            isUpdatingSystem: false,
         };
     },
     watch: {
@@ -361,7 +362,7 @@ createApp({
                 const data = await res.json();
                 if (data.status === 'success') {
 					this.logs = [];
-                    localStorage.setItem('auth_token', data.token); 
+                    localStorage.setItem('auth_token', data.token);
                     this.isLoggedIn = true;
                     this.initApp();
                     this.showToast("登录成功，欢迎回来！", "success");
@@ -867,8 +868,8 @@ createApp({
                     } else {
                         this.totalAccounts = this.accounts.length;
                     }
-                    
-                    this.selectedAccounts = []; 
+
+                    this.selectedAccounts = [];
                     if (isManual) this.showToast("账号列表已刷新！", "success");
                 }
             } catch (e) {
@@ -883,14 +884,14 @@ createApp({
                 return;
             }
             this.currentPage = newPage;
-            this.selectedAccounts = []; 
+            this.selectedAccounts = [];
             this.fetchAccounts(false);
         },
 		changePageSize() {
             this.currentPage = 1;
-            
-            this.selectedAccounts = []; 
-            
+
+            this.selectedAccounts = [];
+
             this.fetchAccounts(false);
         },
         switchTab(tabId) {
@@ -898,7 +899,7 @@ createApp({
             this.currentTab = tabId;
             window.location.hash = tabId;
 			if (tabId === 'console') {
-				this.pollStats(); 
+				this.pollStats();
 			}
             if (tabId === 'accounts') {
                 this.fetchAccounts();
@@ -1005,11 +1006,11 @@ createApp({
 		maskEmail(email) {
             if (!email) return '';
             const parts = email.split('@');
-            if (parts.length !== 2) return '******'; 
-            
+            if (parts.length !== 2) return '******';
+
             const name = parts[0];
             const maskedDomain = '***.***';
-            
+
             if (name.length <= 3) {
                 return name + '***@' + maskedDomain;
             }
@@ -1026,10 +1027,10 @@ createApp({
 			const url = URL.createObjectURL(blob);
 			const link = document.createElement('a');
 			link.href = url;
-			
+
 			const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 			link.download = `accounts_login_${dateStr}.txt`;
-			
+
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
@@ -1045,14 +1046,14 @@ createApp({
 			this.isDeletingAccounts = true;
             try {
                 const emailsToDelete = this.selectedAccounts.map(acc => acc.email);
-                
+
                 const res = await this.authFetch('/api/accounts/delete', {
                     method: 'POST',
                     body: JSON.stringify({ emails: emailsToDelete })
                 });
-                
+
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     this.showToast(`成功物理删除 ${emailsToDelete.length} 个账号`, 'success');
                     this.selectedAccounts = [];
@@ -1340,7 +1341,7 @@ createApp({
             }
         },
         async clearLogs() {
-            this.logs = []; 
+            this.logs = [];
             try { await this.authFetch('/api/logs/clear', { method: 'POST' }); } catch (e) {}
         },
 		initSSE() {
@@ -1431,7 +1432,7 @@ createApp({
 		},
 		// async executeGenerateDomainsOnly() {
 			// if (!this.config.mail_domains) return this.showToast('请先填写上方的主发信域名池！', 'warning');
-			
+
 			// const level = this.config.sub_domain_level || 1;
 
 			// try {
@@ -1461,7 +1462,7 @@ createApp({
 		async executeSyncToCF() {
 			const rawList = this.config.mail_domains || '';
 			const subDomains = rawList.split(',').map(d => d.trim()).filter(d => d);
-			
+
 			if (subDomains.length === 0) return this.showToast('当前没有可解析的主域，请先填写！', 'warning');
 			if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 账号邮箱和 API Key！', 'warning');
 			const confirmed = await this.customConfirm(`把 ${subDomains.length} 个主域名解析到 Cloudflare，确定继续吗？`);
@@ -1479,7 +1480,7 @@ createApp({
 						api_key: this.config.cf_api_key
 					})
 				});
-				
+
 				const data = await res.json();
 				if (data.status === 'success') {
 					this.showToast('✅ 解析成功...', 'success');
@@ -1489,7 +1490,7 @@ createApp({
 			} catch (e) {
 				this.showToast('解析接口请求异常', 'error');
 			} finally {
-				this.isLoadingSync = false; 
+				this.isLoadingSync = false;
 			}
 		},
 		// async checkCfGlobalStatus() {
@@ -1499,10 +1500,10 @@ createApp({
 				// const res = await this.authFetch(`/api/config/cf_global_status?main_domain=${encodeURIComponent(domains)}`);
 				// const data = await res.json();
 				// if (data.status === 'success') {
-					// this.cfGlobalStatusList = data.data; 
+					// this.cfGlobalStatusList = data.data;
 					// const allEnabled = data.data.length > 0 && data.data.every(item => item.is_enabled);
 					// if (allEnabled && this.cfStatusTimer) {
-						// this.stopCfStatusPolling(); 
+						// this.stopCfStatusPolling();
 						// this.showToast('✨ 线上状态已全部激活！', 'success');
 					// }
 				// }
@@ -1511,15 +1512,15 @@ createApp({
 			// }
 		// },
 		// async startCfStatusPolling() {
-			// this.stopCfStatusPolling(); 
+			// this.stopCfStatusPolling();
 			// this.isLoadingCfRoutes = true;
-			
+
 			// this.showToast("🚀 开启 CF 状态智能监控...");
 
 			// this.cfStatusTimer = setInterval(() => {
 				// this.checkCfGlobalStatus();
 			// }, 8000);
-			// await this.fetchCfRoutes(); 
+			// await this.fetchCfRoutes();
 		// },
 		// stopCfStatusPolling() {
 			// if (this.cfStatusTimer) {
@@ -1548,8 +1549,8 @@ createApp({
 				// const data = await res.json();
 				// if (data.status === 'success') {
 					// if (data.domains) {
-						// this.cfRoutes = data.domains.split(',').filter(d=>d).map(d => ({ 
-							// domain: d, 
+						// this.cfRoutes = data.domains.split(',').filter(d=>d).map(d => ({
+							// domain: d,
 							// loading: false
 						// }));
 					// } else {
@@ -1573,7 +1574,7 @@ createApp({
 		// async deleteSelectedCfRoutes() {
 			// if (this.selectedCfRoutes.length === 0) return;
 			// const domainsToDelete = this.selectedCfRoutes.map(item => item.domain);
-			
+
 			// this.isDeletingCfRoutes = true;
 			// try {
 				// await this.executeDeleteCfDomains(domainsToDelete);
@@ -1583,7 +1584,7 @@ createApp({
 		// },
 
 		// async deleteSingleCfRoute(routeObj) {
-			// routeObj.loading = true; 
+			// routeObj.loading = true;
 			// try {
 				// await this.executeDeleteCfDomains([routeObj.domain]);
 			// } finally {
@@ -1872,10 +1873,39 @@ createApp({
         },
         async promptUpdate() {
             if (!this.updateInfo.hasUpdate) return;
-            const msg = `🚀 发现新版本: ${this.updateInfo.version}\n\n📝 更新内容:\n${this.updateInfo.changelog}\n\n是否前往 GitHub 查看并下载更新？`;
+            const msg = `🚀 发现新版本: ${this.updateInfo.version}\n\n📝 更新内容:\n${this.updateInfo.changelog}\n\n是否立即执行一键更新？\n(系统将自动识别 Docker/本地环境，更新期间请勿关闭页面)`;
             const confirmed = await this.customConfirm(msg);
             if (confirmed) {
-                window.open(this.updateInfo.url, '_blank');
+                this.executeAutoUpdate();
+            }
+        },
+        async executeAutoUpdate() {
+            this.isUpdatingSystem = true;
+            this.showToast("🚀 正在下发更新指令，请耐心等待...", "info");
+            try {
+                const res = await this.authFetch('/api/system/auto_update', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    this.showToast(`✅ ${data.message}`, "success");
+                    if(this.statsTimer) clearInterval(this.statsTimer);
+                    if(this.evtSource) this.evtSource.close();
+
+                    this.showToast("⏳ 网页将在 20 秒后自动刷新...", "info");
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 20000);
+
+                } else if (data.status === 'warning') {
+                    this.showToast(`⚠️ ${data.message}`, "warning");
+                    this.isUpdatingSystem = false;
+                } else {
+                    this.showToast(`❌ 更新失败: ${data.message}`, "error");
+                    this.isUpdatingSystem = false;
+                }
+            } catch (e) {
+                this.showToast("更新指令已发送，由于后端重启，连接已断开，请稍后手动刷新。", "warning");
+                setTimeout(() => { window.location.reload(); }, 20000);
             }
         },
         async getGmailAuthUrl() {

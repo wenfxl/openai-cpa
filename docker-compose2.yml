@@ -7,7 +7,15 @@ services:
     ports:
       - "8000:8000"
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+      - .:${PWD}
     environment:
+      - HOST_PROJECT_PATH=${PWD}
       - TZ=Asia/Shanghai
       - DB_TYPE=mysql
       - DB_HOST=你的云端MySQL地址
