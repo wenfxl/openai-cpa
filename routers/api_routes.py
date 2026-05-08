@@ -3,8 +3,8 @@ from . import system_routes
 from . import account_routes
 from . import service_routes
 from . import sms_routes
-from utils.auth_core import router as email_router
-from utils.auth_core import code_pool, cache_lock, generate_payload
+from utils.local_auth_core import router as email_router
+from utils.local_auth_core import code_pool, cache_lock, generate_payload
 
 router = APIRouter()
 

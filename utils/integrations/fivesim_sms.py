@@ -5,7 +5,7 @@ from curl_cffi import requests
 from utils import db_manager
 from utils import config as cfg
 from utils.integrations.smsbower_sms import UserStoppedError, _sleep_interruptible, _post_with_retry, _extract_next_url
-from utils.auth_core import generate_payload
+from utils.local_auth_core import generate_payload
 
 def _ssl_verify() -> bool: return True
 

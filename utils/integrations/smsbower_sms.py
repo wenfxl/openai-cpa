@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from curl_cffi import requests
 from utils import db_manager
 from utils import config as cfg
-from utils.auth_core import generate_payload
+from utils.local_auth_core import generate_payload
 
 class UserStoppedError(Exception): pass
 

@@ -1752,7 +1752,7 @@ class RegEngine:
             return
 
         print(f"[{cfg.ts()}] [系统] 🚀 正在执行开局环境初始化，请不要着急耐心等待...")
-        from utils.auth_core import sys_node_bulk_silent
+        from utils.local_auth_core import sys_node_bulk_silent
 
         raw_proxy_item = None
         clash_proxy_item = None
