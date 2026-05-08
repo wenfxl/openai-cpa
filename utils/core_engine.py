@@ -1382,12 +1382,6 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     except asyncio.TimeoutError:
                         pass
                     continue
-                filtered_list = [
-                    item for item in account_list
-                    if item.get("platform") == "openai"
-                       and str(item.get("credentials", {}).get("plan_type", "free")).lower() == "free"
-                ]
-                total_files = len(filtered_list)
                 valid_count = total_files
                 print(f"[{ts()}] [INFO] 当前云端总数: {total_files} (未开启自动巡检，默认全部视为有效)")
 
