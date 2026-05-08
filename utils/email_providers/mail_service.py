@@ -480,6 +480,10 @@ def clear_mail_domain_runtime_domain_cooldown(domain: str) -> dict:
         state = _DOMAIN_RUNTIME_STATE.get(normalized)
         if not state:
             return {}
+        state["fail_count"] = 0
+        state["failure_counts"] = {}
+        state["last_failure_reason"] = ""
+        state["last_failure_at"] = 0.0
         state["cooldown_until"] = 0.0
         state["cooldown_reason"] = ""
         return _get_domain_runtime_row_locked(normalized, now)
@@ -496,9 +500,12 @@ def clear_all_mail_domain_runtime_cooldowns() -> int:
         for state in _DOMAIN_RUNTIME_STATE.values():
             if float(state.get("cooldown_until") or 0.0) > now:
                 cleared_count += 1
+            state["fail_count"] = 0
+            state["failure_counts"] = {}
+            state["last_failure_reason"] = ""
+            state["last_failure_at"] = 0.0
             state["cooldown_until"] = 0.0
             state["cooldown_reason"] = ""
-            _recalculate_domain_fail_count(state)
     return cleared_count
 
 
