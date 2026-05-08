@@ -3613,33 +3613,31 @@
                             </div>
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-emerald-500 bg-gradient-to-br from-emerald-50/10 to-white lg:col-span-2">
                                 <h3 class="text-lg md:text-xl font-black text-emerald-700 mb-6 flex items-center gap-2 tracking-tight">
-                                    <span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></span> 云端授权管理控制台
-                                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 shadow-sm ml-2">容器部署必备</span>
+                                    <span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></span> 本地认证管理
+                                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 shadow-sm ml-2">无需云端授权</span>
                                 </h3>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-stretch">
                                     <div class="bg-emerald-50/50 p-5 md:p-6 rounded-2xl border border-emerald-200/60 shadow-inner flex flex-col justify-center">
-                                        <label class="block text-emerald-800 text-xs font-black uppercase tracking-wider mb-3">请加入官方群获取授权凭证后，上传 wenfxl.license 然后左下角重启项目</label>
+                                        <label class="block text-emerald-800 text-xs font-black uppercase tracking-wider mb-3">本地认证兼容层已启用</label>
                                         <div class="flex flex-col xl:flex-row gap-3 mt-auto">
-                                            <input type="file" id="licenseFileInput" accept=".license,.txt,application/octet-stream,text/plain"
-                                                   class="flex-1 appearance-none bg-white border border-emerald-200 text-slate-700 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-colors shadow-sm text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
-                                            <button @click="uploadLicenseFile"
+                                            <button @click="authResetModal.show = true"
                                                     class="px-5 py-2.5 bg-emerald-600 text-white text-sm font-black rounded-xl hover:bg-emerald-700 active:scale-95 transition-all shadow-md shadow-emerald-500/30 whitespace-nowrap flex items-center justify-center gap-2">
-                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4"></path></svg></span> 确认上传
+                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span> 清理历史授权数据
                                             </button>
                                         </div>
-                                        <p class="text-[11px] text-emerald-600/80 mt-3 font-medium">支持上传 .license 授权文件，自动保存至 MySQL/SQLite 系统库。</p>
+                                        <p class="text-[11px] text-emerald-600/80 mt-3 font-medium">系统不再要求上传授权文件，历史 License、机器码和租约数据可按需清理。</p>
                                     </div>
 
                                     <div class="bg-rose-50/50 p-5 md:p-6 rounded-2xl border border-rose-200/60 shadow-inner flex flex-col justify-center">
-                                        <label class="block text-rose-800 text-xs font-black uppercase tracking-wider mb-3">授权与设备状态重置</label>
+                                        <label class="block text-rose-800 text-xs font-black uppercase tracking-wider mb-3">历史认证状态清理</label>
                                         <div class="mt-auto">
                                             <button @click="authResetModal.show = true"
                                                     class="w-full px-6 py-3 md:py-3.5 bg-white border-2 border-rose-200 text-rose-600 text-sm font-black rounded-xl hover:bg-rose-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 group">
-                                                <span class="group-hover:rotate-12 transition-transform text-lg"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 一键重置系统授权与设备绑定
+                                                <span class="group-hover:rotate-12 transition-transform text-lg"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 一键清理历史认证记录
                                             </button>
                                         </div>
-                                        <p class="text-[11px] text-rose-500/80 mt-3 font-medium">如果连数据库一起迁移新机，那么首次运行时，一定要在这里清理数据库旧机器码与租约数据。可以不清理(License)。</p>
+                                        <p class="text-[11px] text-rose-500/80 mt-3 font-medium">迁移旧数据库后，可在这里清理遗留 License、机器码与租约数据。</p>
                                     </div>
                                 </div>
                             </div>

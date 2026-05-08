@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Tuple
 from curl_cffi import requests
 from utils import config as cfg
 from utils.email_providers.mail_service import get_oai_code, mask_email
-from utils.auth_core import generate_payload
+from utils.local_auth_core import generate_payload
 
 from .http_utils import _post_with_retry, _oai_headers
 from .user_utils import generate_random_user_info

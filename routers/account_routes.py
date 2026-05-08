@@ -10,7 +10,7 @@ from utils import core_engine, db_manager
 import utils.config as cfg
 from utils.integrations.sub2api_client import Sub2APIClient, build_sub2api_export_bundle, get_sub2api_push_settings
 from utils.integrations.image2api_client import Image2APIClient
-from utils.auth_core import email_jwt
+from utils.local_auth_core import email_jwt
 router = APIRouter()
 
 class ExportReq(BaseModel): emails: list[str]
@@ -809,14 +809,7 @@ async def clear_all_team_accounts(token: str = Depends(verify_token)):
 
 @router.post("/api/auth/upload_license")
 async def upload_license(req: LicenseUploadReq, token: str = Depends(verify_token)):
-    if not req.content or not req.content.strip():
-        return {"status": "error", "message": "上传的授权内容为空"}
-    try:
-        db_manager.set_sys_kv('auth_license_file', req.content.strip())
-
-        return {"status": "success", "message": "授权文件已成功上传至数据库！请重启程序生效。"}
-    except Exception as e:
-        return {"status": "error", "message": f"处理异常: {str(e)}"}
+    return {"status": "success", "message": "本地认证模式已启用，无需上传授权文件。"}
 
 @router.post("/api/auth/reset")
 async def reset_auth(req: ResetAuthReq, token: str = Depends(verify_token)):

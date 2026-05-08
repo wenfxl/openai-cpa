@@ -2966,47 +2966,12 @@ this.showToast(`指令 [${action}] 已成功发送至节点: ${nodeName}`, 'succ
                 this.showToast('清空异常', 'error');
             }
         },
-        async uploadLicenseFile() {
-            const fileInput = document.getElementById('licenseFileInput');
-            if (!fileInput || !fileInput.files.length) {
-                this.showToast('请先选择一个授权文件！', 'warning');
-                return;
-            }
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const fileContent = e.target.result;
-
-                try {
-                    const response = await this.authFetch('/api/auth/upload_license', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            content: fileContent
-                        })
-                    });
-
-                    const res = await response.json();
-                    if (res.status === 'success') {
-                        this.showToast(res.message, 'success');
-                        fileInput.value = '';
-                    } else {
-                        this.showToast(res.message, 'error');
-                    }
-                } catch (error) {
-                    console.error(error);
-                    this.showToast('上传授权文件发生网络错误', 'error');
-                }
-            };
-            reader.readAsText(file);
-        },
-
         async submitAuthReset() {
             if (!this.authResetModal.clearLicense && !this.authResetModal.clearHwid && !this.authResetModal.clearLease) {
                 this.showToast('请至少勾选一项需要清除的数据！', 'warning');
                 return;
             }
-            const confirmed = await this.customConfirm('危险操作：清除授权数据后可能导致程序异常或需要重新绑定授权！\n\n确定继续吗？');
+            const confirmed = await this.customConfirm('将清除数据库中的历史授权、机器码或租约记录。\n\n确定继续吗？');
             if (!confirmed) return;
             try {
                 const response = await this.authFetch('/api/auth/reset', {
