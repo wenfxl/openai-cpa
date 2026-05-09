@@ -22,6 +22,7 @@ from utils import core_engine, db_manager
 from utils.email_providers import mail_service
 from utils.config import reload_all_configs
 from utils.integrations.tg_notifier import send_tg_msg_async
+from utils.memory_predictor import build_memory_report
 import utils.config as cfg
 
 router = APIRouter()
@@ -200,6 +201,9 @@ async def get_stats(token: str = Depends(verify_token)):
             "Sub2Api 仓管" if getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False) else "常规量产")
 
     domain_summary = mail_service.get_mail_domain_runtime_summary()
+    memory_report = build_memory_report(getattr(core_engine.cfg, '_c', {}))
+    actual_memory = memory_report.get("actual", {})
+    predicted_memory = memory_report.get("prediction", {}).get("predicted_mb", {})
 
     return {
         "success": stats["success"], "failed": stats["failed"], "retries": stats["retries"],
@@ -209,7 +213,19 @@ async def get_stats(token: str = Depends(verify_token)):
         "progress_pct": f"{progress_pct}%", "is_running": is_running, "mode": current_mode,
         "available_count": domain_summary.get("available_count", 0),
         "cooldown_count": domain_summary.get("cooldown_count", 0),
+        "memory": {
+            "rss_mb": actual_memory.get("rss_mb"),
+            "predicted_mid_mb": predicted_memory.get("mid"),
+            "predicted_high_mb": predicted_memory.get("high"),
+            "safety_level": memory_report.get("safety", {}).get("level"),
+            "safety_label": memory_report.get("safety", {}).get("label"),
+        },
     }
+
+
+@router.get("/api/system/memory_prediction")
+async def get_memory_prediction(token: str = Depends(verify_token)):
+    return build_memory_report(getattr(core_engine.cfg, '_c', {}))
 
 
 @router.post("/api/start_check")
