@@ -331,49 +331,6 @@ def _select_main_domain_from_candidates(candidates: list[str]) -> Optional[str]:
     return random.choice(candidates)
 
 
-def _get_main_domain_exclusion_report(main_domains: list[str]) -> dict:
-    now = time.time()
-    disabled_domains = _get_disabled_main_domains()
-    disabled = []
-    cooling = []
-    with _DOMAIN_RUNTIME_LOCK:
-        _prune_expired_domain_records(now)
-        for domain in main_domains:
-            normalized = _normalize_main_domain(domain)
-            if not normalized:
-                continue
-            if normalized in disabled_domains:
-                disabled.append(normalized)
-                continue
-            state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
-            cooldown_until = float(state.get("cooldown_until") or 0.0)
-            if cooldown_until > now:
-                cooling.append(normalized)
-    return {
-        "disabled": sorted(set(disabled)),
-        "cooling": sorted(set(cooling)),
-    }
-
-
-def _format_domain_rank_debug(main_domains: list[str]) -> str:
-    now = time.time()
-    lines = []
-    with _DOMAIN_RUNTIME_LOCK:
-        _prune_expired_domain_records(now)
-        for domain in main_domains:
-            normalized = _normalize_main_domain(domain)
-            if not normalized:
-                continue
-            state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
-            fail_count = _recalculate_domain_fail_count(state)
-            pick_count, last_used_at = _get_domain_selection_key(state)
-            cooldown_until = float(state.get("cooldown_until") or 0.0)
-            lines.append(
-                f"{normalized}(fail={fail_count},pick={pick_count},last={int(last_used_at)},cool={max(0, int(cooldown_until - now)) if cooldown_until > now else 0})"
-            )
-    return ", ".join(lines)
-
-
 def _preallocate_main_domains_locked(main_domains: list[str], batch_size: int, now: float) -> list[Optional[str]]:
     allocated: list[Optional[str]] = []
     batch_size = max(0, int(batch_size or 0))
@@ -423,37 +380,6 @@ def preallocate_main_domains_for_batch(main_domains: list[str], batch_size: int)
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
         return _preallocate_main_domains_locked(main_domains, batch_size, now)
-
-
-def get_main_domain_exclusion_report(main_domains: list[str]) -> dict:
-    if not is_mail_domain_runtime_control_enabled():
-        return {"disabled": [], "cooling": []}
-    return _get_main_domain_exclusion_report(main_domains)
-
-
-def get_main_domain_rank_debug(main_domains: list[str]) -> str:
-    if not is_mail_domain_runtime_control_enabled():
-        return ""
-    return _format_domain_rank_debug(main_domains)
-
-
-def get_main_domain_selection_debug(main_domains: list[str]) -> dict:
-    if not is_mail_domain_runtime_control_enabled():
-        return {
-            "prefer_low_failure": False,
-            "selection_mode": "runtime_control_disabled",
-            "candidate_count": 0,
-        }
-
-    now = time.time()
-    with _DOMAIN_RUNTIME_LOCK:
-        _prune_expired_domain_records(now)
-        candidates = _get_available_main_domain_candidates(main_domains, now)
-        return {
-            "prefer_low_failure": bool(getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)),
-            "selection_mode": "low_failure" if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False) else "random",
-            "candidate_count": len(candidates),
-        }
 
 
 def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float:

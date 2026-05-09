@@ -1053,16 +1053,6 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                     batch_id = int(time.time() * 1000)
                     domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
                     preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, current_batch)
-                    exclusion_report = mail_service.get_main_domain_exclusion_report(domain_pool)
-                    rank_debug = mail_service.get_main_domain_rank_debug(domain_pool)
-                    selection_debug = mail_service.get_main_domain_selection_debug(domain_pool)
-                    print(
-                        f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={current_batch} | assigned={preallocated_domains} | "
-                        f"disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | "
-                        f"prefer_low_failure={selection_debug['prefer_low_failure']} | "
-                        f"selection_mode={selection_debug['selection_mode']} | "
-                        f"candidate_count={selection_debug['candidate_count']} | rank={rank_debug}"
-                    )
 
                 def _worker(worker_index=0, assigned_domain=None):
                     if stop_event.is_set(): return "stopped"
@@ -1366,13 +1356,6 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                         if not smart_switch_node(args.proxy):
                             print(f"[{ts()}] [WARNING] [CPA补货] 全局节点切换失败，使用当前 IP 继续...")
 
-                    print(
-                        f"[{ts()}] [DEBUG] [CPA补货域名诊断] "
-                        f"enable_multi_thread={cfg.ENABLE_MULTI_THREAD_REG} | "
-                        f"runtime_control={getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)} | "
-                        f"batch_size={batch_size} | email_mode={getattr(cfg, 'EMAIL_API_MODE', '')}"
-                    )
-
                     if (
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
@@ -1381,16 +1364,6 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                         batch_id = int(time.time() * 1000)
                         domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
                         preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
-                        exclusion_report = mail_service.get_main_domain_exclusion_report(domain_pool)
-                        rank_debug = mail_service.get_main_domain_rank_debug(domain_pool)
-                        selection_debug = mail_service.get_main_domain_selection_debug(domain_pool)
-                        print(
-                            f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains} | "
-                            f"disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | "
-                            f"prefer_low_failure={selection_debug['prefer_low_failure']} | "
-                            f"selection_mode={selection_debug['selection_mode']} | "
-                            f"candidate_count={selection_debug['candidate_count']} | rank={rank_debug}"
-                        )
 
                     if cfg.ENABLE_MULTI_THREAD_REG:
                         print(f"[{ts()}] [INFO] 多线程补货: {success_in_this_cycle}/{need_to_reg} "
@@ -1625,13 +1598,6 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         if not smart_switch_node(args.proxy):
                             print(f"[{ts()}] [WARNING] [Sub2API补货] 全局节点切换失败，使用当前 IP 继续...")
 
-                    print(
-                        f"[{ts()}] [DEBUG] [Sub2API补货域名诊断] "
-                        f"enable_multi_thread={cfg.ENABLE_MULTI_THREAD_REG} | "
-                        f"runtime_control={getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)} | "
-                        f"batch_size={batch_size} | email_mode={getattr(cfg, 'EMAIL_API_MODE', '')}"
-                    )
-
                     if (
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
@@ -1640,16 +1606,6 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         batch_id = int(time.time() * 1000)
                         domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
                         preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
-                        exclusion_report = mail_service.get_main_domain_exclusion_report(domain_pool)
-                        rank_debug = mail_service.get_main_domain_rank_debug(domain_pool)
-                        selection_debug = mail_service.get_main_domain_selection_debug(domain_pool)
-                        print(
-                            f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains} | "
-                            f"disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | "
-                            f"prefer_low_failure={selection_debug['prefer_low_failure']} | "
-                            f"selection_mode={selection_debug['selection_mode']} | "
-                            f"candidate_count={selection_debug['candidate_count']} | rank={rank_debug}"
-                        )
 
                     if cfg.ENABLE_MULTI_THREAD_REG:
                         print(f"[{ts()}] [INFO] 多线程补货: {success_in_this_cycle}/{need_to_reg} "
