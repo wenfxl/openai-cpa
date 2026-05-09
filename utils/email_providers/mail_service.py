@@ -112,6 +112,29 @@ def pop_last_domain_failure_event() -> dict:
     return dict(event) if isinstance(event, dict) else {}
 
 
+def _format_domain_assignment_trace(
+    email_or_domain: str,
+    batch_id: Optional[int] = None,
+    worker_index: Optional[int] = None,
+    assigned_domain: Optional[str] = None,
+) -> str:
+    trace_parts = []
+    if batch_id is not None:
+        trace_parts.append(f"batch={batch_id}")
+    if worker_index is not None:
+        trace_parts.append(f"worker={worker_index}")
+    normalized_assigned = _normalize_main_domain(assigned_domain) if assigned_domain else ""
+    if normalized_assigned:
+        trace_parts.append(f"assigned={normalized_assigned}")
+    if email_or_domain:
+        normalized_actual = _normalize_main_domain(email_or_domain)
+        if normalized_actual:
+            trace_parts.append(f"actual={normalized_actual}")
+    if not trace_parts:
+        return ""
+    return " [域名分配] " + " | ".join(trace_parts)
+
+
 def _get_configured_main_domains() -> list[str]:
     seen = set()
     domains = []
@@ -744,7 +767,12 @@ def _get_ai_data_package():
 #         return None, None
 #     return result
 
-def get_email_and_token(proxies: Any = None, assigned_domain: Optional[str] = None) -> tuple:
+def get_email_and_token(
+    proxies: Any = None,
+    assigned_domain: Optional[str] = None,
+    batch_id: Optional[int] = None,
+    worker_index: Optional[int] = None,
+) -> tuple:
 # def _raw_get_email_and_token(proxies: Any = None) -> tuple:
     """兼容五种邮箱模式的地址创建，返回 (email, token_or_id)。"""
     if getattr(cfg, 'GLOBAL_STOP', False): return None, None
@@ -1103,7 +1131,10 @@ def get_email_and_token(proxies: Any = None, assigned_domain: Optional[str] = No
 
     if mode == "cloudmail":
         if getattr(cfg, 'CM_LOCAL_WEBHOOK', False):
-            print(f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 cloudmail 指定创建邮箱: {mask_email(email_str)}")
+            print(
+                f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 cloudmail 指定创建邮箱: {mask_email(email_str)}"
+                f"{_format_domain_assignment_trace(email_str, batch_id, worker_index, assigned_domain)}"
+            )
             return email_str, ""
         else:
             token = get_cm_token(mail_proxies)
@@ -1141,7 +1172,10 @@ def get_email_and_token(proxies: Any = None, assigned_domain: Optional[str] = No
                                         json={"email": email_str}, headers=headers,
                                         proxies=mail_proxies, verify=_ssl_verify(), timeout=15)
                     res.raise_for_status()
-                    print(f"[{cfg.ts()}] [INFO] 成功通过 Freemail 指定创建邮箱: {mask_email(email_str)}")
+                    print(
+                        f"[{cfg.ts()}] [INFO] 成功通过 Freemail 指定创建邮箱: {mask_email(email_str)}"
+                        f"{_format_domain_assignment_trace(email_str, batch_id, worker_index, assigned_domain)}"
+                    )
                     return email_str, ""
                 except Exception as e:
                     print(f"[{cfg.ts()}] [ERROR] Freemail 邮箱创建异常: {e}")
@@ -1182,7 +1216,10 @@ def get_email_and_token(proxies: Any = None, assigned_domain: Optional[str] = No
                     email = data["address"].strip()
                     jwt = data.get("jwt", "").strip()
                     set_last_email(email)
-                    print(f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {mask_email(email)}")
+                    print(
+                        f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {mask_email(email)}"
+                        f"{_format_domain_assignment_trace(email, batch_id, worker_index, assigned_domain)}"
+                    )
                     return email, jwt
                 terminal_failure_reason = "cloudflare_temp_email_network"
                 print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email邮箱申请失败 (尝试 {attempt + 1}/5): {res.text}")

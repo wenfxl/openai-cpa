@@ -711,17 +711,23 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
         send_tg_msg_sync(success_text)
     return ret_status
 
-def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False, assigned_domain=None):
+def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False, assigned_domain=None, batch_id=None, worker_index=None):
     proxy = format_docker_url(proxy)
     """切节点 → 注册 → 处理结果。"""
     if not skip_switch:
         if not smart_switch_node(proxy):
             print(f"[{ts()}] [WARNING] {proxy} 节点切换失败，将使用当前 IP 继续尝试...")
-    
+
     result = None
     run_ctx = {}
     try:
-        result = run(proxy, run_ctx=run_ctx, assigned_domain=assigned_domain)
+        result = run(
+            proxy,
+            run_ctx=run_ctx,
+            assigned_domain=assigned_domain,
+            batch_id=batch_id,
+            worker_index=worker_index,
+        )
     except Exception as e:
         print(f"[{ts()}] [ERROR] 注册线程发生未捕获异常{e}")
         import traceback
@@ -1043,16 +1049,27 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                     and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
                 )
                 preallocated_domains = []
+                batch_id = None
                 if should_preallocate_domains:
+                    batch_id = int(time.time() * 1000)
                     domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
                     preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, current_batch)
+                    print(f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={current_batch} | assigned={preallocated_domains}")
 
                 def _worker(worker_index=0, assigned_domain=None):
                     if stop_event.is_set(): return "stopped"
                     if cfg.is_raw_proxy_pool_enabled():
                         borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
                         try:
-                            return run_and_refresh(p, args, False, skip_switch=True, assigned_domain=assigned_domain)
+                            return run_and_refresh(
+                                p,
+                                args,
+                                False,
+                                skip_switch=True,
+                                assigned_domain=assigned_domain,
+                                batch_id=batch_id,
+                                worker_index=worker_index,
+                            )
                         finally:
                             if cfg.should_return_pooled_proxy(borrowed_generation):
                                 cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
@@ -1061,11 +1078,27 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                         p = cfg.PROXY_QUEUE.get()
                         proxy_url = p[-1] if isinstance(p, tuple) else p
                         try:
-                            return run_and_refresh(proxy_url, args, False, skip_switch=False, assigned_domain=assigned_domain)
+                            return run_and_refresh(
+                                proxy_url,
+                                args,
+                                False,
+                                skip_switch=False,
+                                assigned_domain=assigned_domain,
+                                batch_id=batch_id,
+                                worker_index=worker_index,
+                            )
                         finally:
                             cfg.PROXY_QUEUE.put(p)
                             cfg.PROXY_QUEUE.task_done()
-                    return run_and_refresh(args.proxy, args, False, skip_switch=True, assigned_domain=assigned_domain)
+                    return run_and_refresh(
+                        args.proxy,
+                        args,
+                        False,
+                        skip_switch=True,
+                        assigned_domain=assigned_domain,
+                        batch_id=batch_id,
+                        worker_index=worker_index,
+                    )
 
                 if executor is not None:
                     futures = [
