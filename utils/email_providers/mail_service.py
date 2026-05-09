@@ -57,6 +57,7 @@ _DOMAIN_RUNTIME_SESSION = {
     "last_started_at": 0.0,
     "last_stopped_at": 0.0,
 }
+_DOMAIN_IN_FLIGHT_TTL_SEC = 300
 
 _thread_data = threading.local()
 _orig_sleep = time.sleep
@@ -208,14 +209,34 @@ def _new_domain_runtime_state() -> dict:
         "last_used_at": 0.0,
         "last_failure_at": 0.0,
         "last_success_at": 0.0,
+        "in_flight_count": 0,
+        "in_flight_reserved_at": [],
     }
 
 
+def _prune_stale_in_flight(state: dict, now: float) -> None:
+    reserved_at_values = state.get("in_flight_reserved_at")
+    if not isinstance(reserved_at_values, list):
+        reserved_at_values = []
+    ttl = max(0, int(_DOMAIN_IN_FLIGHT_TTL_SEC or 0))
+    if ttl > 0:
+        cutoff = now - ttl
+        reserved_at_values = [
+            float(item) for item in reserved_at_values
+            if float(item or 0.0) > cutoff
+        ]
+    else:
+        reserved_at_values = [float(item) for item in reserved_at_values if float(item or 0.0) > 0.0]
+    state["in_flight_reserved_at"] = reserved_at_values
+    state["in_flight_count"] = len(reserved_at_values)
+
+
 def _prune_expired_domain_records(now: float) -> None:
-    expired_domains = [
-        domain for domain, state in _DOMAIN_RUNTIME_STATE.items()
-        if float(state.get("cooldown_until") or 0.0) > 0 and float(state.get("cooldown_until") or 0.0) <= now
-    ]
+    expired_domains = []
+    for domain, state in _DOMAIN_RUNTIME_STATE.items():
+        _prune_stale_in_flight(state, now)
+        if float(state.get("cooldown_until") or 0.0) > 0 and float(state.get("cooldown_until") or 0.0) <= now:
+            expired_domains.append(domain)
     for domain in expired_domains:
         _DOMAIN_RUNTIME_STATE.pop(domain, None)
 
@@ -235,20 +256,55 @@ def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
     if not candidates:
         return None
 
-    grouped_candidates: dict[tuple[int, float], list[str]] = {}
-    best_key: Optional[tuple[int, float]] = None
+    zero_failure_candidates = []
+    fallback_candidates = []
     for domain in candidates:
         state = _DOMAIN_RUNTIME_STATE.setdefault(domain, _new_domain_runtime_state())
+        _prune_stale_in_flight(state, time.time())
         fail_count = _recalculate_domain_fail_count(state)
+        in_flight_count = max(0, int(state.get("in_flight_count") or 0))
         last_used_at = float(state.get("last_used_at") or 0.0)
-        key = (fail_count, last_used_at)
-        grouped_candidates.setdefault(key, []).append(domain)
-        if best_key is None or key < best_key:
-            best_key = key
+        item = ((in_flight_count, fail_count, last_used_at), domain)
+        if fail_count == 0:
+            zero_failure_candidates.append(item)
+        else:
+            fallback_candidates.append(item)
 
-    if best_key is None:
+    ranked_candidates = zero_failure_candidates or fallback_candidates
+    if not ranked_candidates:
         return None
-    return random.choice(grouped_candidates[best_key])
+
+    best_key = min(key for key, _ in ranked_candidates)
+    best_domains = [domain for key, domain in ranked_candidates if key == best_key]
+    return random.choice(best_domains)
+
+
+def _reserve_selected_domain(selected: Optional[str], now: float) -> Optional[str]:
+    if not selected:
+        return None
+    state = _DOMAIN_RUNTIME_STATE.setdefault(selected, _new_domain_runtime_state())
+    _prune_stale_in_flight(state, now)
+    reserved_at_values = state.get("in_flight_reserved_at")
+    if not isinstance(reserved_at_values, list):
+        reserved_at_values = []
+    reserved_at_values.append(now)
+    state["in_flight_reserved_at"] = reserved_at_values
+    state["in_flight_count"] = len(reserved_at_values)
+    state["last_used_at"] = now
+    return selected
+
+
+def _release_domain_in_flight(state: dict, now: Optional[float] = None) -> None:
+    current_time = time.time() if now is None else now
+    _prune_stale_in_flight(state, current_time)
+    reserved_at_values = state.get("in_flight_reserved_at")
+    if not isinstance(reserved_at_values, list) or not reserved_at_values:
+        state["in_flight_reserved_at"] = []
+        state["in_flight_count"] = 0
+        return
+    reserved_at_values.pop(0)
+    state["in_flight_reserved_at"] = reserved_at_values
+    state["in_flight_count"] = len(reserved_at_values)
 
 
 def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
@@ -280,10 +336,7 @@ def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
             selected = _select_low_failure_domain(candidates)
         else:
             selected = random.choice(candidates)
-        if not selected:
-            return None
-        _DOMAIN_RUNTIME_STATE[selected]["last_used_at"] = now
-        return selected
+        return _reserve_selected_domain(selected, now)
 
 
 def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float:
@@ -355,6 +408,7 @@ def record_domain_failure(domain: str, reason: str) -> dict:
         cooldown_until = float(state.get("cooldown_until") or 0.0)
         state["last_failure_at"] = now
         state["last_failure_reason"] = normalized_reason
+        _release_domain_in_flight(state, now)
 
         if cooldown_until > now:
             _recalculate_domain_fail_count(state)
@@ -384,6 +438,7 @@ def record_domain_success(domain: str) -> dict:
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        _release_domain_in_flight(state, now)
         state["success_count"] = int(state.get("success_count") or 0) + 1
         state["last_success_at"] = now
         _recalculate_domain_fail_count(state)
@@ -395,6 +450,7 @@ def _build_domain_runtime_row(domain: str, state: dict, now: float) -> dict:
     cooldown_until = float(state.get("cooldown_until") or 0.0)
     is_disabled = is_mail_domain_disabled(domain)
     _recalculate_domain_fail_count(state)
+    _prune_stale_in_flight(state, now)
     return {
         "domain": domain,
         "fail_count": int(state.get("fail_count") or 0),
@@ -410,6 +466,7 @@ def _build_domain_runtime_row(domain: str, state: dict, now: float) -> dict:
         "last_used_at": float(state.get("last_used_at") or 0.0),
         "last_failure_at": float(state.get("last_failure_at") or 0.0),
         "last_success_at": float(state.get("last_success_at") or 0.0),
+        "in_flight_count": max(0, int(state.get("in_flight_count") or 0)),
     }
 
 
