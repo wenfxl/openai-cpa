@@ -90,6 +90,9 @@
                     <span v-if="isDarkMode" class="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> 日间模式</span>
                     <span v-else class="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg> 护眼模式</span>
                 </button>
+                <button @click="toggleLanguage" class="w-full mt-3 bg-white hover:bg-slate-50 text-indigo-600 font-bold py-2.5 px-4 rounded-xl text-sm md:text-base border border-indigo-100 shadow-sm transition-all active:scale-[0.98]">
+                    <span class="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg> {{ targetLanguageLabel() }}</span>
+                </button>
                 <div class="text-center mt-6">
                     <span class="text-[11px] md:text-xs text-slate-400 font-mono tracking-widest font-semibold">{{ appVersion }}</span>
                 </div>
@@ -122,7 +125,7 @@
                             :class="['whitespace-nowrap shrink-0 md:w-full flex items-center gap-2.5 md:gap-3 px-4 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl transition-all duration-300',
                                      currentTab === tab.id ? 'bg-white text-indigo-600 shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-200/60' : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent']">
                         <span class="text-base" :class="currentTab === tab.id ? 'scale-110 transition-transform drop-shadow-sm' : ''" v-html="tab.icon"></span>
-                        {{ tab.name }}
+                        {{ t(tab.name) }}
                     </button>
                     <div class="flex md:hidden items-center gap-2 pl-2 ml-1 border-l border-slate-200/60 shrink-0">
                         <button @click="restartSystem" class="whitespace-nowrap px-4 py-2.5 text-xs font-bold text-amber-600 bg-amber-50/50 rounded-xl border border-amber-200/60 shadow-sm active:scale-95 transition-all">
@@ -154,7 +157,7 @@
                     <div class="w-full xl:max-w-[85%] mx-auto flex flex-wrap 2xl:flex-nowrap items-center justify-between gap-4 md:gap-5">
                         <div class="flex items-center justify-between md:justify-start gap-4 md:gap-6 w-full 2xl:w-auto flex-1 min-w-[280px]">
                             <div class="bg-indigo-50/80 text-indigo-700 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-[11px] md:text-sm font-bold tracking-wide border border-indigo-100/80 truncate max-w-[60%] md:max-w-none shadow-sm flex items-center">
-                                模式: {{ stats.mode }} <span class="hidden sm:inline opacity-30 mx-2">|</span> <span class="hidden sm:inline text-slate-500">成功</span> <span class="font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span> <span class="hidden lg:inline opacity-30 mx-2">|</span> <span class="hidden lg:inline text-slate-500">总 {{stats.total}}</span>
+                                模式: {{ t(stats.mode) }} <span class="hidden sm:inline opacity-30 mx-2">|</span> <span class="hidden sm:inline text-slate-500">成功</span> <span class="font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span> <span class="hidden lg:inline opacity-30 mx-2">|</span> <span class="hidden lg:inline text-slate-500">总 {{stats.total}}</span>
                             </div>
                             <div class="flex items-center gap-3">
                                 <div class="text-sky-500 font-black text-xs md:text-sm">{{stats.progress_pct}}</div>
@@ -194,6 +197,10 @@
                                         <span class="hidden sm:inline">护眼</span>
                                     </span>
                                 </button>
+                                <button @click="toggleLanguage" class="px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-xs md:text-sm border transition-all active:scale-95 shrink-0 bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+                                    <span class="hidden sm:inline">{{ targetLanguageLabel() }}</span><span class="sm:hidden">{{ currentLanguage === 'zh-TW' ? '简' : '繁' }}</span>
+                                </button>
                                 <span v-if="isRunning" class="flex items-center gap-1.5 md:gap-2 text-emerald-600 text-[11px] md:text-sm font-bold bg-white px-2.5 py-1.5 md:px-4 md:py-1.5 rounded-full border border-slate-200 shadow-sm shrink-0 whitespace-nowrap">
                                     <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span>
                                     <span class="hidden sm:inline">运行中</span><span class="sm:hidden">运行</span>
@@ -207,7 +214,7 @@
                                         :class="isRunning ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'">
                                     <svg v-if="isRunning" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9h6v6H9V9z"></path></svg>
                                     <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    <span>{{ isRunning ? '停止' : '启动' }}</span>
+                                    <span>{{ t(isRunning ? '停止' : '启动') }}</span>
                                 </button>
                             </div>
 
@@ -348,7 +355,7 @@
                                                 {{ nodeName }}
                                             </span>
                                             <span class="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/50 shadow-sm flex items-center gap-1.5">
-                                                模式: {{ node.stats.mode }}
+                                                        模式: {{ t(node.stats.mode) }}
                                                 <span class="opacity-30">|</span>
                                                 <span class="text-slate-500">成功</span> <span class="font-black text-indigo-600">{{node.stats.success}}/{{node.stats.target}}</span>
                                                 <span class="opacity-30">|</span>

@@ -1,7 +1,254 @@
 const { createApp } = Vue;
 
-const APP_LOCALE = 'zh-CN';
+const LANGUAGE_STORAGE_KEY = 'ui_language_mode';
+const DEFAULT_LANGUAGE = 'zh-CN';
+const TRADITIONAL_LANGUAGE = 'zh-TW';
+const SUPPORTED_LANGUAGES = [DEFAULT_LANGUAGE, TRADITIONAL_LANGUAGE];
+
+function getInitialLanguage() {
+    const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return SUPPORTED_LANGUAGES.includes(savedLanguage) ? savedLanguage : DEFAULT_LANGUAGE;
+}
+
+let APP_LOCALE = getInitialLanguage();
 const APP_TIME_ZONE = 'Asia/Shanghai';
+
+const I18N_ZH_HANT_PHRASES = {
+    'Wenfxl 注册管理系统': 'Wenfxl 註冊管理系統',
+    '系统确认': '系統確認',
+    '确认执行': '確認執行',
+    '安全级控制台登录': '安全級控制台登入',
+    '访问密码': '存取密碼',
+    '请输入系统密码': '請輸入系統密碼',
+    '安全登录': '安全登入',
+    '日间模式': '日間模式',
+    '护眼模式': '護眼模式',
+    '日间': '日間',
+    '护眼': '護眼',
+    '发现新版本，点击查看！': '發現新版本，點擊查看！',
+    '发现新版': '發現新版',
+    '运行主页': '執行主頁',
+    '集群总控': '集群總控',
+    '邮箱配置': '信箱配置',
+    '微软邮箱库': '微軟信箱庫',
+    'Team 账号库': 'Team 帳號庫',
+    '账号库存': '帳號庫存',
+    '云端库存': '雲端庫存',
+    '手机接码': '手機接碼',
+    '网络代理': '網路代理',
+    '中转管仓': '中轉管倉',
+    '消息通知': '訊息通知',
+    '并发与系统': '並發與系統',
+    '重启项目': '重啟專案',
+    '检查更新': '檢查更新',
+    '检查系统更新': '檢查系統更新',
+    '退出登录': '登出',
+    '模式: 常规量产': '模式: 常規量產',
+    '常规量产': '常規量產',
+    '常规': '常規',
+    '量产': '量產',
+    '模式': '模式',
+    '成功': '成功',
+    '总': '總',
+    '运行模式切换': '執行模式切換',
+    '协议': '協議',
+    '运行中': '執行中',
+    '运行': '執行',
+    '已停止': '已停止',
+    '停止': '停止',
+    '启动': '啟動',
+    '成功率': '成功率',
+    '失败': '失敗',
+    '可用域名': '可用網域',
+    '冷却域名': '冷卻網域',
+    '风控拦截': '風控攔截',
+    '密码受阻': '密碼受阻',
+    '出现手机': '出現手機',
+    '总耗时': '總耗時',
+    '平均': '平均',
+    '保存并热重载配置': '儲存並熱重載配置',
+    '保存配置': '儲存配置',
+    '实时运行日志': '即時執行日誌',
+    '系统待命，日志将在此打印...': '系統待命，日誌將在此列印...',
+    '分布式节点通信配置': '分散式節點通訊配置',
+    '本节点名称 (Node Name)': '本節點名稱 (Node Name)',
+    '主控台地址 (Master URL)': '主控台位址 (Master URL)',
+    '集群通信密钥 (Secret)': '集群通訊密鑰 (Secret)',
+    '等待远程节点接入... (请确保子机已配置上方的主控台地址)': '等待遠端節點接入... (請確保子機已配置上方的主控台位址)',
+    '本地账号库': '本機帳號庫',
+    '刷新列表': '重新整理列表',
+    '搜索本地账号...': '搜尋本機帳號...',
+    '导出全部': '匯出全部',
+    '清空库': '清空庫',
+    '已选': '已選',
+    '导出': '匯出',
+    '账密': '帳密',
+    '推送': '推送',
+    '凭证': '憑證',
+    '删除选中': '刪除選取',
+    '账号总数': '帳號總數',
+    '未推送库存': '未推送庫存',
+    '活跃状态': '活躍狀態',
+    '已禁用': '已停用',
+    '账号 & 密码': '帳號 & 密碼',
+    '当前状态': '目前狀態',
+    '推送平台': '推送平台',
+    '入库时间': '入庫時間',
+    '操作': '操作',
+    '暂无本地记录': '暫無本機記錄',
+    '无': '無',
+    '共': '共',
+    '个': '個',
+    '第': '第',
+    '页': '頁',
+    '条/页': '筆/頁',
+    '前往': '前往',
+    '批量导入邮箱': '批次匯入信箱',
+    '在此粘贴数据...': '在此貼上資料...',
+    '微软邮箱资源库': '微軟信箱資源庫',
+    '搜索微软邮箱...': '搜尋微軟信箱...',
+    '导出 TXT': '匯出 TXT',
+    '恢复正常': '恢復正常',
+    '邮箱账号': '信箱帳號',
+    '鉴权类型': '鑑權類型',
+    '状态': '狀態',
+    '分裂次数': '分裂次數',
+    '导入时间': '匯入時間',
+    '暂无邮箱数据，请点击右上角导入': '暫無信箱資料，請點擊右上角匯入',
+    '未使用': '未使用',
+    '已注册 (被占用)': '已註冊 (被占用)',
+    '已出凭证': '已出憑證',
+    '失效/死号': '失效/死號',
+    '去授权': '去授權',
+    '上一页': '上一頁',
+    '下一页': '下一頁',
+    '基础发信设置': '基礎寄信設定',
+    'API 模式选择': 'API 模式選擇',
+    '本地微软邮箱库': '本機微軟信箱庫',
+    '发信域名池': '寄信網域池',
+    '支持逗号分隔多域名，此处必须填写你配置在 CF 的主域名': '支援逗號分隔多網域，此處必須填寫你配置在 CF 的主網域',
+    '黄金矿工模式': '黃金礦工模式',
+    '开启后按主域统计异常，并在超限后自动冷却。': '開啟後按主網域統計異常，並在超限後自動冷卻。',
+    '冷却阈值': '冷卻閾值',
+    '冷却秒数': '冷卻秒數',
+    '异常判断逻辑': '異常判斷邏輯',
+    '邮件丢弃异常': '郵件丟棄異常',
+    '网络异常': '網路異常',
+    '容量超限异常': '容量超限異常',
+    '域名列表': '網域列表',
+    '展开状态': '展開狀態',
+    '隐藏状态': '隱藏狀態',
+    '清除冷却': '清除冷卻',
+    '清空计数': '清空計數',
+    '异常': '異常',
+    '时间': '時間',
+    'CF 登录账号': 'CF 登入帳號',
+    '填写邮箱': '填寫信箱',
+    '复制': '複製',
+    '通用步骤': '通用步驟',
+    '说明': '說明',
+    '域名托管与 NS 获取': '網域代管與 NS 取得',
+    '激活 CF 电子邮件服务': '啟用 CF 電子郵件服務',
+    '域名状态与 NS 结果反馈': '網域狀態與 NS 結果回饋',
+    '关闭面板': '關閉面板',
+    '等待 NS 生效': '等待 NS 生效',
+    '多级域名泛解析模式': '多級網域泛解析模式',
+    '域名层级': '網域層級',
+    '层级随机选项': '層級隨機選項',
+    '获取邮箱使用全局代理穿透': '取得信箱使用全域代理穿透',
+    '隐藏日志中的邮箱域名': '隱藏日誌中的信箱網域',
+    '渠道专属参数': '渠道專屬參數',
+    '当前模式': '目前模式',
+    '强烈建议': '強烈建議',
+    '后端 API 基础地址': '後端 API 基礎位址',
+    '管理员鉴权': '管理員鑑權',
+    '原版部署': '原版部署',
+    '服务器地址': '伺服器位址',
+    '端口': '連接埠',
+    '接收邮箱': '接收信箱',
+    '应用专用密码': '應用程式專用密碼',
+    '创建谷歌专属密码': '建立 Google 專屬密碼',
+    '开启手动无限裂变': '開啟手動無限裂變',
+    '微软邮箱库分裂': '微軟信箱庫分裂',
+    '全局 Client ID': '全域 Client ID',
+    '裂变主邮箱账号': '裂變主信箱帳號',
+    '邮箱别名后缀生成模式': '信箱別名後綴生成模式',
+    '固定长度随机': '固定長度隨機',
+    '随机范围区间': '隨機範圍區間',
+    '高拟真模式': '高擬真模式',
+    '别名最小长度': '別名最小長度',
+    '别名最大长度': '別名最大長度',
+    '主邮箱 Refresh Token': '主信箱 Refresh Token',
+    '别名策略': '別名策略',
+    '后缀生成器设置': '後綴產生器設定',
+    '生成模式': '生成模式',
+    '最小长度': '最小長度',
+    '最大长度': '最大長度',
+    '已切换为护眼模式': '已切換為護眼模式',
+    '已切换为日间模式': '已切換為日間模式',
+    '已切换为繁体中文': '已切換為繁體中文',
+    '已切换为简体中文': '已切換為簡體中文',
+    '登录状态过期，请重新登录！': '登入狀態過期，請重新登入！',
+    '请输入密码！': '請輸入密碼！',
+    '内存预测数据获取失败': '記憶體(內存)預測資料取得失敗',
+    '内存预测 API 请求失败': '記憶體(內存)預測 API 請求失敗',
+    '未启动': '未啟動',
+    '无数据': '無資料',
+    '检查中...': '檢查中...'
+};
+
+const I18N_ZH_HANT_CHARS = {
+    '账':'帳','号':'號','库':'庫','邮':'郵','箱':'箱','运':'運','行':'行','页':'頁','总':'總','控':'控','微':'微','软':'軟','云':'雲','网':'網','络':'路','转':'轉','仓':'倉','并':'並','发':'發','与':'與','统':'統','访':'訪','问':'問','码':'碼','请':'請','输':'輸','入':'入','级':'級','录':'錄','间':'間','护':'護','眼':'眼','现':'現','版':'版','点':'點','击':'擊','查':'查','项':'項','检':'檢','退':'退','出':'出','协':'協','议':'議','启':'啟','动':'動','风':'風','拦':'攔','截':'截','败':'敗','却':'卻','域':'域','名':'名','时':'時','实':'實','热':'熱','载':'載','配':'配','置':'置','节':'節','通':'通','讯':'訊','钥':'鑰','远':'遠','确':'確','保':'保','机':'機','导':'導','删':'刪','选':'選','态':'態','禁':'禁','用':'用','当':'當','前':'前','暂':'暫','记':'記','据':'據','权':'權','鉴':'鑑','类':'類','裂':'裂','数':'數','础':'礎','择':'擇','临':'臨','连':'連','仅':'僅','显':'顯','示':'示','进':'進','程':'程','内':'內','计':'計','阈':'閾','值':'值','逻':'邏','辑':'輯','丢':'丟','弃':'棄','异':'異','额':'額','闭':'閉','复':'復','随':'隨','单':'單','专':'專','属':'屬','参':'參','强':'強','国':'國','务':'務','获':'獲','取':'取','层':'層','写':'寫','贴':'貼','资':'資','源':'源','证':'證','损':'損','坏':'壞','应':'應','创':'創','圆':'圓','长':'長','拟':'擬','真':'真','毕':'畢','须':'須','刚':'剛','换':'換','为':'為','过':'過','求':'求','预':'預','测':'測','费':'費','隐':'隱','藏':'藏','关':'關','开':'開','面':'面','板':'板','结':'結','果':'果','馈':'饋','电':'電','子':'子','件':'件','制':'製','粘':'黏','条':'筆','个':'個','这':'這','无':'無','东':'東','滤':'濾','认':'認','执':'執','轻':'輕','则':'則','压':'壓','榨':'榨','释':'釋','侧':'側','际':'際','线':'線','扩':'擴','锁':'鎖','断':'斷','设':'設','标':'標','签':'籤','组':'組','频':'頻','宽':'寬','验':'驗','变':'變','错':'錯','误':'誤','华':'華','龙':'龍','门':'門','凤':'鳳','题':'題','见':'見','乌':'烏','兰':'蘭','说':'說','们':'們','区':'區','来':'來','试':'試','绪':'緒','调':'調','链':'鏈','边':'邊','后':'後','极':'極','员':'員','历':'歷','购':'購','将':'將','对':'對','该':'該','优':'優','于':'於','价':'價','买':'買','彻':'徹','触':'觸','余':'餘','规':'規','轮':'輪','产':'產','满':'滿','负':'負','维':'維','别':'別','迟':'遲','补':'補','尝':'嘗','货':'貨','冲':'衝','会':'會','续':'續','么':'麼','旧':'舊','约':'約','许':'許','准':'準','传':'傳','储':'儲','迁':'遷','键':'鍵','备':'備'
+};
+
+Object.assign(I18N_ZH_HANT_PHRASES, {
+    '准备': '準備',
+    '模块': '模組',
+    '控製台': '控制台',
+    '控制台': '控制台',
+    '链接': '網址',
+    '机制': '機制',
+    '浏览': '瀏覽',
+    '团队': '團隊',
+    '订阅': '訂閱',
+    '叢集通訊金鑰': '集群通訊密鑰',
+    '独享池': '獨享池',
+    '登陆': '登入',
+    '耗尽': '耗盡',
+    '独立测活': '獨立測活',
+    '杂項與安全控製': '雜項與安全控制',
+    '杂项与安全控制': '雜項與安全控制',
+    '范围': '範圍',
+    '併發與系统': '並發與系統',
+    '併發與系統': '並發與系統',
+    '内存': '記憶體(內存)'
+});
+
+const I18N_ZH_HANT_EXCEPTIONS = {
+    '控製台': '控制台',
+    '杂項與安全控製': '雜項與安全控制',
+    '雜項與安全控製': '雜項與安全控制',
+    '併發與系统': '並發與系統',
+    '併發與系統': '並發與系統',
+    '叢集通訊金鑰': '集群通訊密鑰'
+};
+
+const I18N_ZH_HANT_KEYS = Object.keys(I18N_ZH_HANT_PHRASES).sort((a, b) => b.length - a.length);
+const I18N_ORIGINAL_TEXT_NODES = new WeakMap();
+const I18N_ORIGINAL_ATTRS = new WeakMap();
+
+function translateText(text, language = APP_LOCALE) {
+    if (text === null || text === undefined || language !== TRADITIONAL_LANGUAGE) return text;
+    let translated = String(text);
+    I18N_ZH_HANT_KEYS.forEach((source) => {
+        translated = translated.split(source).join(I18N_ZH_HANT_PHRASES[source]);
+    });
+    translated = translated.replace(/[\u4e00-\u9fff]/g, (char) => I18N_ZH_HANT_CHARS[char] || char);
+    Object.entries(I18N_ZH_HANT_EXCEPTIONS).forEach(([source, target]) => {
+        translated = translated.split(source).join(target);
+    });
+    return translated;
+}
 
 function formatMainlandDateTime(date, options = {}) {
     return new Intl.DateTimeFormat(APP_LOCALE, {
@@ -53,6 +300,8 @@ createApp({
             isLoggedIn: !!localStorage.getItem('auth_token'),
             loginPassword: '',
             currentTab: window.location.hash.replace('#', '') || 'console',
+            currentLanguage: getInitialLanguage(),
+            languageObserver: null,
             isDarkMode: localStorage.getItem('ui_theme_mode') === 'dark',
 			showAccountsPlaintext: false,
             isRunning: false,
@@ -280,6 +529,7 @@ createApp({
         }
     },
     async mounted() {
+        this.applyLanguage(false);
         this.applyTheme();
         await this.fetchSystemVersion();
         if (this.isLoggedIn) {
@@ -294,9 +544,12 @@ createApp({
         this.timer = setInterval(() => {
             this.nowTimestamp = Math.floor(Date.now() / 1000);
         }, 1000);
+        this.startLanguageObserver();
+        this.$nextTick(() => this.applyLanguageToDom());
     },
     beforeUnmount() {
         if(this.statsTimer) clearInterval(this.statsTimer);
+        if (this.languageObserver) this.languageObserver.disconnect();
     },
 	computed: {
         totalPages() {
@@ -340,6 +593,99 @@ createApp({
         }
     },
     methods: {
+        t(text) {
+            return translateText(text, this.currentLanguage);
+        },
+        targetLanguageLabel() {
+            return this.currentLanguage === TRADITIONAL_LANGUAGE ? '简体中文' : '繁體中文';
+        },
+        toggleLanguage() {
+            const nextLanguage = this.currentLanguage === TRADITIONAL_LANGUAGE ? DEFAULT_LANGUAGE : TRADITIONAL_LANGUAGE;
+            this.setLanguage(nextLanguage);
+            this.showToast(nextLanguage === TRADITIONAL_LANGUAGE ? '已切换为繁体中文' : '已切换为简体中文', 'info');
+        },
+        setLanguage(language) {
+            this.currentLanguage = SUPPORTED_LANGUAGES.includes(language) ? language : DEFAULT_LANGUAGE;
+            this.applyLanguage();
+        },
+        applyLanguage(translateDom = true) {
+            APP_LOCALE = this.currentLanguage;
+            localStorage.setItem(LANGUAGE_STORAGE_KEY, this.currentLanguage);
+            document.documentElement.lang = this.currentLanguage;
+            document.title = this.t('Wenfxl 注册管理系统');
+            if (translateDom) {
+                this.$nextTick(() => this.applyLanguageToDom());
+            }
+        },
+        applyLanguageToDom(root = document.body) {
+            if (!root) return;
+            const ignoredTags = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE']);
+            const translateNodeText = (node) => {
+                if (!node.nodeValue || !node.nodeValue.trim()) return;
+                if (!I18N_ORIGINAL_TEXT_NODES.has(node)) {
+                    I18N_ORIGINAL_TEXT_NODES.set(node, node.nodeValue);
+                }
+                const sourceText = I18N_ORIGINAL_TEXT_NODES.get(node);
+                node.nodeValue = translateText(sourceText, this.currentLanguage);
+            };
+            const translateAttributes = (element) => {
+                ['placeholder', 'title', 'aria-label', 'alt'].forEach((attr) => {
+                    const value = element.getAttribute(attr);
+                    if (!value) return;
+                    let originalAttrs = I18N_ORIGINAL_ATTRS.get(element);
+                    if (!originalAttrs) {
+                        originalAttrs = {};
+                        I18N_ORIGINAL_ATTRS.set(element, originalAttrs);
+                    }
+                    if (!Object.prototype.hasOwnProperty.call(originalAttrs, attr)) {
+                        originalAttrs[attr] = value;
+                    }
+                    const translatedValue = translateText(originalAttrs[attr], this.currentLanguage);
+                    if (value !== translatedValue) {
+                        element.setAttribute(attr, translatedValue);
+                    }
+                });
+            };
+
+            if (root.nodeType === Node.TEXT_NODE) {
+                translateNodeText(root);
+                return;
+            }
+            if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
+            if (root.nodeType === Node.ELEMENT_NODE) {
+                if (ignoredTags.has(root.tagName)) return;
+                translateAttributes(root);
+            }
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node) {
+                    const parent = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+                    if (parent && ignoredTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach((node) => {
+                if (node.nodeType === Node.TEXT_NODE) translateNodeText(node);
+                if (node.nodeType === Node.ELEMENT_NODE) translateAttributes(node);
+            });
+        },
+        startLanguageObserver() {
+            if (this.languageObserver) this.languageObserver.disconnect();
+            this.languageObserver = new MutationObserver((mutations) => {
+                if (this.currentLanguage !== TRADITIONAL_LANGUAGE) return;
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => this.applyLanguageToDom(node));
+                    if (mutation.type === 'attributes') this.applyLanguageToDom(mutation.target);
+                });
+            });
+            this.languageObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['placeholder', 'title', 'aria-label', 'alt']
+            });
+        },
         applyTheme() {
             const nextMode = this.isDarkMode ? 'dark' : 'light';
             document.body.classList.toggle('theme-dark', this.isDarkMode);
@@ -352,13 +698,13 @@ createApp({
         },
         showToast(message, type = 'info') {
             const id = this.toastId++;
-            this.toasts.push({ id, message, type });
+            this.toasts.push({ id, message: this.t(message), type });
             setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 3500);
         },
 
         async customConfirm(message) {
             return new Promise((resolve) => {
-                this.confirmModal = { show: true, message, resolve };
+                this.confirmModal = { show: true, message: this.t(message), resolve };
             });
         },
         handleConfirm(result) {
