@@ -285,6 +285,42 @@ def _mark_selected_domain_used(selected: Optional[str], now: float) -> Optional[
     return selected
 
 
+def _get_available_main_domain_candidates(main_domains: list[str], now: float) -> list[str]:
+    disabled_domains = _get_disabled_main_domains()
+    candidates = []
+    for domain in main_domains:
+        normalized = _normalize_main_domain(domain)
+        if not normalized or normalized in disabled_domains:
+            continue
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        cooldown_until = float(state.get("cooldown_until") or 0.0)
+        if cooldown_until > now:
+            continue
+        candidates.append(normalized)
+    return candidates
+
+
+def _select_main_domain_from_candidates(candidates: list[str]) -> Optional[str]:
+    if not candidates:
+        return None
+    if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False):
+        return _select_low_failure_domain(candidates)
+    return random.choice(candidates)
+
+
+def _preallocate_main_domains_locked(main_domains: list[str], batch_size: int, now: float) -> list[Optional[str]]:
+    allocated: list[Optional[str]] = []
+    batch_size = max(0, int(batch_size or 0))
+    for _ in range(batch_size):
+        candidates = _get_available_main_domain_candidates(main_domains, now)
+        if not candidates:
+            allocated.append(None)
+            continue
+        selected = _select_main_domain_from_candidates(candidates)
+        allocated.append(_mark_selected_domain_used(selected, now))
+    return allocated
+
+
 def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
     disabled_domains = _get_disabled_main_domains()
     if not is_mail_domain_runtime_control_enabled():
@@ -292,26 +328,27 @@ def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
         candidates = [domain for domain in normalized_domains if domain and domain not in disabled_domains]
         return random.choice(candidates) if candidates else None
 
-    candidates = []
     now = time.time()
 
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
-        for domain in main_domains:
-            normalized = _normalize_main_domain(domain)
-            if not normalized or normalized in disabled_domains:
-                continue
-            state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
-            cooldown_until = float(state.get("cooldown_until") or 0.0)
-            if cooldown_until > now:
-                continue
-            candidates.append(normalized)
-
+        candidates = _get_available_main_domain_candidates(main_domains, now)
         if not candidates:
             return None
-
-        selected = _select_low_failure_domain(candidates) if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False) else random.choice(candidates)
+        selected = _select_main_domain_from_candidates(candidates)
         return _mark_selected_domain_used(selected, now)
+
+
+def preallocate_main_domains_for_batch(main_domains: list[str], batch_size: int) -> list[Optional[str]]:
+    if batch_size <= 0:
+        return []
+    if not is_mail_domain_runtime_control_enabled():
+        return [None] * batch_size
+
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        return _preallocate_main_domains_locked(main_domains, batch_size, now)
 
 
 def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float:
@@ -699,7 +736,7 @@ def _get_ai_data_package():
 #         return None, None
 #     return result
 
-def get_email_and_token(proxies: Any = None) -> tuple:
+def get_email_and_token(proxies: Any = None, assigned_domain: Optional[str] = None) -> tuple:
 # def _raw_get_email_and_token(proxies: Any = None) -> tuple:
     """兼容五种邮箱模式的地址创建，返回 (email, token_or_id)。"""
     if getattr(cfg, 'GLOBAL_STOP', False): return None, None
@@ -999,7 +1036,7 @@ def get_email_and_token(proxies: Any = None) -> tuple:
             print(f"[{cfg.ts()}] [ERROR] 未配置主域名池，无法捏造子域！")
             return None, None
 
-        selected_main = pick_available_main_domain(main_list)
+        selected_main = _normalize_main_domain(assigned_domain) if assigned_domain else pick_available_main_domain(main_list)
         if not selected_main:
             if _all_configured_main_domains_disabled():
                 print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
@@ -1031,7 +1068,7 @@ def get_email_and_token(proxies: Any = None) -> tuple:
         if not domain_list:
             print(f"[{cfg.ts()}] [ERROR] 域名池配置为空，无法生成邮箱！")
             return None, None
-        selected_domain = pick_available_main_domain(domain_list)
+        selected_domain = _normalize_main_domain(assigned_domain) if assigned_domain else pick_available_main_domain(domain_list)
         if not selected_domain:
             if _all_configured_main_domains_disabled():
                 print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")

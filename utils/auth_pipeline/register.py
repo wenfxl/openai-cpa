@@ -19,7 +19,7 @@ from .oauth import generate_oauth_url, submit_callback_url
 from .user_utils import _generate_password
 
 
-def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
+def run(proxy: Optional[str], run_ctx: dict = None, assigned_domain: Optional[str] = None) -> tuple:
     processed_mails: set = set()
     proxy = cfg.format_docker_url(proxy)
     if proxy and proxy.startswith("socks5://"):
@@ -57,7 +57,7 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
         del s_reg
         s_reg = None
 
-        email, email_jwt = get_email_and_token(proxies)
+        email, email_jwt = get_email_and_token(proxies, assigned_domain=assigned_domain)
         if not email:
             return None, None
 

@@ -711,7 +711,7 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
         send_tg_msg_sync(success_text)
     return ret_status
 
-def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False):
+def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False, assigned_domain=None):
     proxy = format_docker_url(proxy)
     """切节点 → 注册 → 处理结果。"""
     if not skip_switch:
@@ -721,7 +721,7 @@ def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False):
     result = None
     run_ctx = {}
     try:
-        result = run(proxy, run_ctx=run_ctx)
+        result = run(proxy, run_ctx=run_ctx, assigned_domain=assigned_domain)
     except Exception as e:
         print(f"[{ts()}] [ERROR] 注册线程发生未捕获异常{e}")
         import traceback
@@ -1037,12 +1037,22 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                 )
                 print(f"[{ts()}] [INFO] 启用多线程并发 ({current_batch} 条通道)")
 
-                def _worker():
+                should_preallocate_domains = (
+                    current_batch > 1
+                    and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                    and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
+                )
+                preallocated_domains = []
+                if should_preallocate_domains:
+                    domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
+                    preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, current_batch)
+
+                def _worker(worker_index=0, assigned_domain=None):
                     if stop_event.is_set(): return "stopped"
                     if cfg.is_raw_proxy_pool_enabled():
                         borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
                         try:
-                            return run_and_refresh(p, args, False, skip_switch=True)
+                            return run_and_refresh(p, args, False, skip_switch=True, assigned_domain=assigned_domain)
                         finally:
                             if cfg.should_return_pooled_proxy(borrowed_generation):
                                 cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
@@ -1051,20 +1061,26 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                         p = cfg.PROXY_QUEUE.get()
                         proxy_url = p[-1] if isinstance(p, tuple) else p
                         try:
-                            return run_and_refresh(proxy_url, args, False, skip_switch=False)
+                            return run_and_refresh(proxy_url, args, False, skip_switch=False, assigned_domain=assigned_domain)
                         finally:
                             cfg.PROXY_QUEUE.put(p)
                             cfg.PROXY_QUEUE.task_done()
-                    return run_and_refresh(args.proxy, args, False, skip_switch=True)
+                    return run_and_refresh(args.proxy, args, False, skip_switch=True, assigned_domain=assigned_domain)
 
                 if executor is not None:
-                    futures = [executor.submit(_worker) for _ in range(current_batch)]
+                    futures = [
+                        executor.submit(_worker, idx, preallocated_domains[idx] if idx < len(preallocated_domains) else None)
+                        for idx in range(current_batch)
+                    ]
                     for f in futures:
                         if f.result() == "success":
                             success_count += 1
                 else:
                     with ThreadPoolExecutor(max_workers=current_batch) as ex:
-                        futures = [ex.submit(_worker) for _ in range(current_batch)]
+                        futures = [
+                            ex.submit(_worker, idx, preallocated_domains[idx] if idx < len(preallocated_domains) else None)
+                            for idx in range(current_batch)
+                        ]
                         for f in futures:
                             if f.result() == "success":
                                 success_count += 1
