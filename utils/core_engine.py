@@ -1303,12 +1303,20 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                 print(f"[{ts()}] [INFO] 库存不足 ({valid_count} < {cfg.MIN_ACCOUNTS_THRESHOLD})，启动补货...")
                 await asyncio.sleep(1)
 
-                def _cpa_worker():
+                def _cpa_worker(worker_index=0, assigned_domain=None, batch_id=None):
                     if async_stop_event.is_set(): return "stopped"
                     if cfg.is_raw_proxy_pool_enabled():
                         borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
                         try:
-                            return run_and_refresh(p, args, cpa_upload=True, skip_switch=True)
+                            return run_and_refresh(
+                                p,
+                                args,
+                                cpa_upload=True,
+                                skip_switch=True,
+                                assigned_domain=assigned_domain,
+                                batch_id=batch_id,
+                                worker_index=worker_index,
+                            )
                         finally:
                             if cfg.should_return_pooled_proxy(borrowed_generation):
                                 cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
@@ -1317,35 +1325,76 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                         p = cfg.PROXY_QUEUE.get()
                         proxy_url = p[-1] if isinstance(p, tuple) else p
                         try:
-                            return run_and_refresh(proxy_url, args, cpa_upload=True, skip_switch=False)
+                            return run_and_refresh(
+                                proxy_url,
+                                args,
+                                cpa_upload=True,
+                                skip_switch=False,
+                                assigned_domain=assigned_domain,
+                                batch_id=batch_id,
+                                worker_index=worker_index,
+                            )
                         finally:
                             cfg.PROXY_QUEUE.put(p)
                             cfg.PROXY_QUEUE.task_done()
-                    return run_and_refresh(args.proxy, args, cpa_upload=True, skip_switch=True)
+                    return run_and_refresh(
+                        args.proxy,
+                        args,
+                        cpa_upload=True,
+                        skip_switch=True,
+                        assigned_domain=assigned_domain,
+                        batch_id=batch_id,
+                        worker_index=worker_index,
+                    )
 
                 while success_in_this_cycle < need_to_reg and not async_stop_event.is_set() and not cfg.POOL_EXHAUSTED:
                     remaining  = need_to_reg - success_in_this_cycle
                     batch_size = min(cfg.REG_THREADS, remaining)
+                    preallocated_domains = []
+                    batch_id = None
 
                     if cfg._clash_enable and not cfg._clash_pool_mode:
                         print(f"[{ts()}] [INFO] [CPA补货] 切换全局节点...")
                         if not smart_switch_node(args.proxy):
                             print(f"[{ts()}] [WARNING] [CPA补货] 全局节点切换失败，使用当前 IP 继续...")
 
+                    if (
+                        cfg.ENABLE_MULTI_THREAD_REG
+                        and batch_size > 1
+                        and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                        and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
+                    ):
+                        batch_id = int(time.time() * 1000)
+                        domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
+                        preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
+                        print(f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains}")
+
                     if cfg.ENABLE_MULTI_THREAD_REG:
                         print(f"[{ts()}] [INFO] 多线程补货: {success_in_this_cycle}/{need_to_reg} "
                               f"({batch_size} 线程)")
                         if executor is not None:
                             reg_futures = [
-                                loop.run_in_executor(executor, _cpa_worker)
-                                for _ in range(batch_size)
+                                loop.run_in_executor(
+                                    executor,
+                                    _cpa_worker,
+                                    idx,
+                                    preallocated_domains[idx] if idx < len(preallocated_domains) else None,
+                                    batch_id,
+                                )
+                                for idx in range(batch_size)
                             ]
                             reg_results = await asyncio.gather(*reg_futures)
                         else:
                             with ThreadPoolExecutor(max_workers=batch_size) as ex:
                                 reg_futures = [
-                                    loop.run_in_executor(ex, _cpa_worker)
-                                    for _ in range(batch_size)
+                                    loop.run_in_executor(
+                                        ex,
+                                        _cpa_worker,
+                                        idx,
+                                        preallocated_domains[idx] if idx < len(preallocated_domains) else None,
+                                        batch_id,
+                                    )
+                                    for idx in range(batch_size)
                                 ]
                                 reg_results = await asyncio.gather(*reg_futures)
                         for status in reg_results:
@@ -1481,13 +1530,19 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                 print(f"[{ts()}] [INFO] 库存不足 ({valid_count} < {cfg.SUB2API_MIN_THRESHOLD})，启动补货...")
                 await asyncio.sleep(1)
 
-                def _sub2api_run_wrapper(p, skip_switch):
+                def _sub2api_run_wrapper(p, skip_switch, assigned_domain=None, batch_id=None, worker_index=None):
                     p = format_docker_url(p)
                     if not skip_switch:
                         if not smart_switch_node(p):
                             print(f"[{ts()}] [WARNING] [Sub2API补货] 全局节点切换失败...")
                     run_ctx = {}
-                    result = run(p, run_ctx=run_ctx)
+                    result = run(
+                        p,
+                        run_ctx=run_ctx,
+                        assigned_domain=assigned_domain,
+                        batch_id=batch_id,
+                        worker_index=worker_index,
+                    )
                     status = handle_registration_result(result, cpa_upload=False, run_ctx=run_ctx)
 
                     if status == "success":
@@ -1498,12 +1553,18 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                             else: print(f"[{ts()}] [ERROR] Sub2API 补货入库失败: {msg}")
                     return status
 
-                def _sub2api_worker():
+                def _sub2api_worker(worker_index=0, assigned_domain=None, batch_id=None):
                     if async_stop_event.is_set(): return "stopped"
                     if cfg.is_raw_proxy_pool_enabled():
                         borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
                         try:
-                            return _sub2api_run_wrapper(p, True)
+                            return _sub2api_run_wrapper(
+                                p,
+                                True,
+                                assigned_domain=assigned_domain,
+                                batch_id=batch_id,
+                                worker_index=worker_index,
+                            )
                         finally:
                             if cfg.should_return_pooled_proxy(borrowed_generation):
                                 cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
@@ -1512,35 +1573,72 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         p = cfg.PROXY_QUEUE.get()
                         proxy_url = p[-1] if isinstance(p, tuple) else p
                         try:
-                            return _sub2api_run_wrapper(proxy_url, False)
+                            return _sub2api_run_wrapper(
+                                proxy_url,
+                                False,
+                                assigned_domain=assigned_domain,
+                                batch_id=batch_id,
+                                worker_index=worker_index,
+                            )
                         finally:
                             cfg.PROXY_QUEUE.put(p)
                             cfg.PROXY_QUEUE.task_done()
-                    return _sub2api_run_wrapper(args.proxy, True)
+                    return _sub2api_run_wrapper(
+                        args.proxy,
+                        True,
+                        assigned_domain=assigned_domain,
+                        batch_id=batch_id,
+                        worker_index=worker_index,
+                    )
 
                 while success_in_this_cycle < need_to_reg and not async_stop_event.is_set() and not cfg.POOL_EXHAUSTED:
                     remaining  = need_to_reg - success_in_this_cycle
                     batch_size = min(cfg.REG_THREADS, remaining)
+                    preallocated_domains = []
+                    batch_id = None
 
                     if cfg._clash_enable and not cfg._clash_pool_mode:
                         print(f"[{ts()}] [INFO] [Sub2API补货] 切换全局节点...")
                         if not smart_switch_node(args.proxy):
                             print(f"[{ts()}] [WARNING] [Sub2API补货] 全局节点切换失败，使用当前 IP 继续...")
 
+                    if (
+                        cfg.ENABLE_MULTI_THREAD_REG
+                        and batch_size > 1
+                        and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                        and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
+                    ):
+                        batch_id = int(time.time() * 1000)
+                        domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
+                        preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
+                        print(f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains}")
+
                     if cfg.ENABLE_MULTI_THREAD_REG:
                         print(f"[{ts()}] [INFO] 多线程补货: {success_in_this_cycle}/{need_to_reg} "
                               f"({batch_size} 线程)")
                         if executor is not None:
                             reg_futures = [
-                                loop.run_in_executor(executor, _sub2api_worker)
-                                for _ in range(batch_size)
+                                loop.run_in_executor(
+                                    executor,
+                                    _sub2api_worker,
+                                    idx,
+                                    preallocated_domains[idx] if idx < len(preallocated_domains) else None,
+                                    batch_id,
+                                )
+                                for idx in range(batch_size)
                             ]
                             reg_results = await asyncio.gather(*reg_futures)
                         else:
                             with ThreadPoolExecutor(max_workers=batch_size) as ex:
                                 reg_futures = [
-                                    loop.run_in_executor(ex, _sub2api_worker)
-                                    for _ in range(batch_size)
+                                    loop.run_in_executor(
+                                        ex,
+                                        _sub2api_worker,
+                                        idx,
+                                        preallocated_domains[idx] if idx < len(preallocated_domains) else None,
+                                        batch_id,
+                                    )
+                                    for idx in range(batch_size)
                                 ]
                                 reg_results = await asyncio.gather(*reg_futures)
 
