@@ -299,12 +299,12 @@ def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
     return selected
 
 
-def _mark_selected_domain_used(selected: Optional[str], now: float) -> Optional[str]:
+def _mark_selected_domain_used(selected: Optional[str], now: float, increment: int = 1) -> Optional[str]:
     if not selected:
         return None
     state = _DOMAIN_RUNTIME_STATE.setdefault(selected, _new_domain_runtime_state())
     state["last_used_at"] = now
-    state["pick_count"] = max(0, int(state.get("pick_count") or 0)) + 1
+    state["pick_count"] = max(0, int(state.get("pick_count") or 0)) + max(1, int(increment or 1))
     return selected
 
 
@@ -323,7 +323,7 @@ def _get_available_main_domain_candidates(main_domains: list[str], now: float) -
     return candidates
 
 
-def _select_first_available_main_domain(main_domains: list[str], now: float) -> Optional[str]:
+def _select_first_available_main_domain(main_domains: list[str], now: float, batch_size: int = 1) -> Optional[str]:
     for domain in main_domains:
         normalized = _normalize_main_domain(domain)
         if not normalized:
@@ -333,7 +333,7 @@ def _select_first_available_main_domain(main_domains: list[str], now: float) -> 
             continue
         if normalized in _get_disabled_main_domains():
             continue
-        return _mark_selected_domain_used(normalized, now)
+        return _mark_selected_domain_used(normalized, now, increment=batch_size)
     return None
 
 
@@ -350,7 +350,7 @@ def _preallocate_main_domains_locked(main_domains: list[str], batch_size: int, n
     allocated: list[Optional[str]] = []
     batch_size = max(0, int(batch_size or 0))
     if getattr(cfg, 'MAIL_DOMAIN_PINPOINT_BURST_MODE', False):
-        selected = _select_first_available_main_domain(main_domains, now)
+        selected = _select_first_available_main_domain(main_domains, now, batch_size=batch_size)
         return [selected] * batch_size if selected else [None] * batch_size
     unique_candidates = _get_available_main_domain_candidates(main_domains, now)
     enforce_unique_within_batch = len(set(unique_candidates)) >= batch_size

@@ -940,7 +940,7 @@
                                                     <div v-for="item in mailDomainRuntimeStats" :key="item.domain" class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                                                             <div>
-                                                                <div class="text-sm font-black text-slate-800 break-all">{{ item.domain }}</div>
+                                                                <div :class="item.is_disabled ? 'text-rose-600' : (!item.is_available ? 'text-amber-600' : 'text-slate-800')" class="text-sm font-black break-all transition-colors">{{ item.domain }}</div>
                                                                 <div class="text-[11px] text-slate-400 mt-1">
                                                         最近使用: {{ item.last_used_at ? formatMainlandDateTime(new Date(item.last_used_at * 1000)) : '未使用' }}
                                                                 </div>
@@ -954,18 +954,12 @@
                                                                 </button>
                                                                 <button @click="clearMailDomainRuntimeRowCounters(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">清除异常</button>
                                                                 <button @click="clearMailDomainRuntimeRowCooldown(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-amber-200 bg-white text-amber-700 hover:bg-amber-50 transition-colors shadow-sm">清除冷却</button>
-                                                                <span :class="item.is_disabled ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black border w-max">
-                                                                    {{ item.is_disabled ? '停用' : '启用' }}
-                                                                </span>
-                                                                <span :class="item.is_available ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'" class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black border w-max">
-                                                                    {{ item.is_available ? '可用' : '冷却中' }}
-                                                                </span>
                                                             </div>
                                                         </div>
                                                         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-bold text-slate-600">
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-rose-600">{{ item.fail_count }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-emerald-600">{{ item.success_count }}</span></div>
                                                             <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">注册: <span class="text-sky-600">{{ item.pick_count || 0 }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-emerald-600">{{ item.success_count }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-rose-600">{{ item.fail_count }}</span></div>
                                                             <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">冷却: <span class="text-amber-600">{{ formatDuration(item.cooldown_remaining_sec || 0) }}</span></div>
                                                         </div>
                                                     </div>
