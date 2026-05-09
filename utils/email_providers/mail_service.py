@@ -56,6 +56,7 @@ _DOMAIN_RUNTIME_SESSION = {
     "counting_enabled": False,
     "last_started_at": 0.0,
     "last_stopped_at": 0.0,
+    "tie_break_cursor": 0,
 }
 
 _thread_data = threading.local()
@@ -191,6 +192,7 @@ def clear_mail_domain_runtime_stats() -> None:
         _DOMAIN_RUNTIME_SESSION["counting_enabled"] = False
         _DOMAIN_RUNTIME_SESSION["last_started_at"] = 0.0
         _DOMAIN_RUNTIME_SESSION["last_stopped_at"] = 0.0
+        _DOMAIN_RUNTIME_SESSION["tie_break_cursor"] = 0
 
 
 def _is_mail_domain_runtime_tracking_active() -> bool:
@@ -247,10 +249,16 @@ def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
         return None
 
     best_key = min(key for key, _ in ranked_candidates)
-    for key, domain in ranked_candidates:
-        if key == best_key:
-            return domain
-    return None
+    best_domains = [domain for key, domain in ranked_candidates if key == best_key]
+    if not best_domains:
+        return None
+    if len(best_domains) == 1:
+        return best_domains[0]
+
+    cursor = int(_DOMAIN_RUNTIME_SESSION.get("tie_break_cursor", 0) or 0)
+    selected = best_domains[cursor % len(best_domains)]
+    _DOMAIN_RUNTIME_SESSION["tie_break_cursor"] = cursor + 1
+    return selected
 
 
 def _mark_selected_domain_used(selected: Optional[str], now: float) -> Optional[str]:
