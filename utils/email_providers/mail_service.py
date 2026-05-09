@@ -311,13 +311,21 @@ def _select_main_domain_from_candidates(candidates: list[str]) -> Optional[str]:
 def _preallocate_main_domains_locked(main_domains: list[str], batch_size: int, now: float) -> list[Optional[str]]:
     allocated: list[Optional[str]] = []
     batch_size = max(0, int(batch_size or 0))
+    unique_candidates = _get_available_main_domain_candidates(main_domains, now)
+    enforce_unique_within_batch = len(set(unique_candidates)) >= batch_size
+    used_in_batch: set[str] = set()
     for _ in range(batch_size):
         candidates = _get_available_main_domain_candidates(main_domains, now)
+        if enforce_unique_within_batch:
+            candidates = [domain for domain in candidates if domain not in used_in_batch]
         if not candidates:
             allocated.append(None)
             continue
         selected = _select_main_domain_from_candidates(candidates)
-        allocated.append(_mark_selected_domain_used(selected, now))
+        marked = _mark_selected_domain_used(selected, now)
+        if marked:
+            used_in_batch.add(marked)
+        allocated.append(marked)
     return allocated
 
 
