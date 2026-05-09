@@ -874,10 +874,18 @@
                                         </div>
 
                                         <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer">
-                                            <input type="checkbox" v-model="config.mail_domain_prefer_low_failure_mode" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
+                                            <input type="checkbox" v-model="config.mail_domain_pinpoint_burst_mode" @change="applyMailDomainModeExclusion('pinpoint')" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
                                             <div>
-                                                <div class="text-sm font-black text-slate-700">优先低异常域名</div>
-                                                <div class="text-[11px] text-slate-400 mt-1">仅在黄金矿工模式开启时生效，优先选择异常计数更低的可用主域名；同分时优先最近较少使用的域名。</div>
+                                                <div class="text-sm font-black text-slate-700">定点爆破</div>
+                                                <div class="text-[11px] text-slate-400 mt-1">当前批次共用同一主域，按域名顺序轮转；跳过禁用和冷却域名。与“低异常优先”互斥，但可同时关闭。</div>
+                                            </div>
+                                        </label>
+
+                                        <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer">
+                                            <input type="checkbox" v-model="config.mail_domain_prefer_low_failure_mode" @change="applyMailDomainModeExclusion('low_failure')" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
+                                            <div>
+                                                <div class="text-sm font-black text-slate-700">低异常优先</div>
+                                                <div class="text-[11px] text-slate-400 mt-1">优先选择异常更少的可用主域；同分时优先较少使用的域名。与“定点爆破”互斥，但可同时关闭。</div>
                                             </div>
                                         </label>
 
@@ -944,7 +952,7 @@
                                                                 <button @click="toggleMailDomainDisabled(item.domain)" type="button" :class="item.is_disabled ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-rose-200 text-rose-600 hover:bg-rose-50'" class="px-3 py-1.5 text-[11px] font-black rounded-lg border bg-white transition-colors shadow-sm">
                                                                     {{ item.is_disabled ? '启用' : '禁用' }}
                                                                 </button>
-                                                                <button @click="clearMailDomainRuntimeRowCounters(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">清空计数</button>
+                                                                <button @click="clearMailDomainRuntimeRowCounters(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">清除异常</button>
                                                                 <button @click="clearMailDomainRuntimeRowCooldown(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-amber-200 bg-white text-amber-700 hover:bg-amber-50 transition-colors shadow-sm">清除冷却</button>
                                                                 <span :class="item.is_disabled ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black border w-max">
                                                                     {{ item.is_disabled ? '停用' : '启用' }}
@@ -955,10 +963,10 @@
                                                             </div>
                                                         </div>
                                                         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-bold text-slate-600">
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-slate-800">{{ item.fail_count }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-slate-800">{{ item.success_count }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">使用次数: <span class="text-slate-800">{{ item.pick_count || 0 }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">时间: <span class="text-slate-800">{{ formatDuration(item.cooldown_remaining_sec || 0) }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-rose-600">{{ item.fail_count }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-emerald-600">{{ item.success_count }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">注册: <span class="text-sky-600">{{ item.pick_count || 0 }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">冷却: <span class="text-amber-600">{{ formatDuration(item.cooldown_remaining_sec || 0) }}</span></div>
                                                         </div>
                                                     </div>
                                                 </div>

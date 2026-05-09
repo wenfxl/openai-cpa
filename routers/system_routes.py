@@ -285,8 +285,8 @@ async def clear_mail_domain_runtime_stats(token: str = Depends(verify_token)):
 async def clear_mail_domain_runtime_domain_counters(req: DomainRuntimeActionReq, token: str = Depends(verify_token)):
     item = mail_service.clear_mail_domain_runtime_domain_counters(req.domain)
     if not item:
-        return {"status": "error", "message": "未找到指定域名的运行时计数"}
-    return {"status": "success", "message": f"已清空 {item['domain']} 的计数", "item": item}
+        return {"status": "error", "message": "未找到指定域名的异常状态"}
+    return {"status": "success", "message": f"已清除 {item['domain']} 的异常", "item": item}
 
 
 @router.post("/api/config/mail_domain_runtime_stats/clear_cooldown")
@@ -312,6 +312,18 @@ async def save_config(new_config: dict, token: str = Depends(verify_token)):
             for item in new_config.get("mail_domain_failure_types", [])
             if str(item or "").strip()
         )) or ["discarded_email"]
+        def normalize_bool(value):
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                return value.strip().lower() in {"1", "true", "yes", "on"}
+            if isinstance(value, (int, float)):
+                return value != 0
+            return False
+        new_config["mail_domain_pinpoint_burst_mode"] = normalize_bool(new_config.get("mail_domain_pinpoint_burst_mode", False))
+        new_config["mail_domain_prefer_low_failure_mode"] = normalize_bool(new_config.get("mail_domain_prefer_low_failure_mode", False))
+        if new_config["mail_domain_pinpoint_burst_mode"] and new_config["mail_domain_prefer_low_failure_mode"]:
+            new_config["mail_domain_prefer_low_failure_mode"] = False
         reload_all_configs(new_config_dict=new_config)
         mail_service.sync_mail_domain_runtime_state_with_config()
 

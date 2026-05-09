@@ -323,6 +323,21 @@ def _get_available_main_domain_candidates(main_domains: list[str], now: float) -
     return candidates
 
 
+def _select_first_available_main_domain(main_domains: list[str], now: float) -> Optional[str]:
+    for domain in main_domains:
+        normalized = _normalize_main_domain(domain)
+        if not normalized:
+            continue
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        if float(state.get("cooldown_until") or 0.0) > now:
+            continue
+        if normalized in _get_disabled_main_domains():
+            continue
+        return _mark_selected_domain_used(normalized, now)
+    return None
+
+
+
 def _select_main_domain_from_candidates(candidates: list[str]) -> Optional[str]:
     if not candidates:
         return None
@@ -334,6 +349,9 @@ def _select_main_domain_from_candidates(candidates: list[str]) -> Optional[str]:
 def _preallocate_main_domains_locked(main_domains: list[str], batch_size: int, now: float) -> list[Optional[str]]:
     allocated: list[Optional[str]] = []
     batch_size = max(0, int(batch_size or 0))
+    if getattr(cfg, 'MAIL_DOMAIN_PINPOINT_BURST_MODE', False):
+        selected = _select_first_available_main_domain(main_domains, now)
+        return [selected] * batch_size if selected else [None] * batch_size
     unique_candidates = _get_available_main_domain_candidates(main_domains, now)
     enforce_unique_within_batch = len(set(unique_candidates)) >= batch_size
     used_in_batch: set[str] = set()
@@ -584,11 +602,9 @@ def clear_mail_domain_runtime_domain_counters(domain: str) -> dict:
         if not state:
             return {}
         state["fail_count"] = 0
-        state["success_count"] = 0
         state["failure_counts"] = {}
         state["last_failure_reason"] = ""
         state["last_failure_at"] = 0.0
-        state["last_success_at"] = 0.0
         return _get_domain_runtime_row_locked(normalized, now)
 
 

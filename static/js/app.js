@@ -716,8 +716,13 @@ createApp({
                 )];
                 if (this.config.enable_mail_domain_runtime_control === undefined) this.config.enable_mail_domain_runtime_control = false;
                 this.config.enable_mail_domain_runtime_control = normalizeBooleanLike(this.config.enable_mail_domain_runtime_control, false);
+                if (this.config.mail_domain_pinpoint_burst_mode === undefined) this.config.mail_domain_pinpoint_burst_mode = false;
+                this.config.mail_domain_pinpoint_burst_mode = normalizeBooleanLike(this.config.mail_domain_pinpoint_burst_mode, false);
                 if (this.config.mail_domain_prefer_low_failure_mode === undefined) this.config.mail_domain_prefer_low_failure_mode = false;
                 this.config.mail_domain_prefer_low_failure_mode = normalizeBooleanLike(this.config.mail_domain_prefer_low_failure_mode, false);
+                if (this.config.mail_domain_pinpoint_burst_mode && this.config.mail_domain_prefer_low_failure_mode) {
+                    this.config.mail_domain_prefer_low_failure_mode = false;
+                }
                 if (!Array.isArray(this.config.mail_domain_failure_types)) this.config.mail_domain_failure_types = ['discarded_email'];
                 this.config.mail_domain_failure_types = [...new Set(
                     this.config.mail_domain_failure_types
@@ -729,6 +734,24 @@ createApp({
                 if (this.config.mail_domain_fail_cooldown_sec === undefined) this.config.mail_domain_fail_cooldown_sec = 600;
             } catch (e) {}
         },
+        applyMailDomainModeExclusion(changedMode = '') {
+            if (!this.config) return;
+            this.config.mail_domain_pinpoint_burst_mode = normalizeBooleanLike(this.config.mail_domain_pinpoint_burst_mode, false);
+            this.config.mail_domain_prefer_low_failure_mode = normalizeBooleanLike(this.config.mail_domain_prefer_low_failure_mode, false);
+            if (!(this.config.mail_domain_pinpoint_burst_mode && this.config.mail_domain_prefer_low_failure_mode)) {
+                return;
+            }
+            if (changedMode === 'pinpoint') {
+                this.config.mail_domain_prefer_low_failure_mode = false;
+                return;
+            }
+            if (changedMode === 'low_failure') {
+                this.config.mail_domain_pinpoint_burst_mode = false;
+                return;
+            }
+            this.config.mail_domain_prefer_low_failure_mode = false;
+        },
+
         async fetchMailDomainRuntimeStats(options = {}) {
             const { silent = false } = options;
             if (!this.config?.enable_mail_domain_runtime_control) {
@@ -808,14 +831,14 @@ createApp({
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    this.showToast(data.message || '已清空域名计数', 'success');
+                    this.showToast(data.message || '已清除域名异常', 'success');
                     await this.fetchMailDomainRuntimeStats({ silent: true });
                     this.pollStats();
                 } else {
-                    this.showToast(data.message || '清空域名计数失败', 'error');
+                    this.showToast(data.message || '清除域名异常失败', 'error');
                 }
             } catch (e) {
-                this.showToast('清空域名计数失败，请检查网络连接', 'error');
+                this.showToast('清除域名异常失败，请检查网络连接', 'error');
             }
         },
         async clearMailDomainRuntimeRowCooldown(domain) {
@@ -865,6 +888,13 @@ createApp({
                     this.config.local_microsoft.suffix_len_max = maxLen;
                 }
                 this.config.enable_mail_domain_runtime_control = normalizeBooleanLike(this.config.enable_mail_domain_runtime_control, false);
+                if (this.config.mail_domain_pinpoint_burst_mode === undefined) this.config.mail_domain_pinpoint_burst_mode = false;
+                this.config.mail_domain_pinpoint_burst_mode = normalizeBooleanLike(this.config.mail_domain_pinpoint_burst_mode, false);
+                if (this.config.mail_domain_prefer_low_failure_mode === undefined) this.config.mail_domain_prefer_low_failure_mode = false;
+                this.config.mail_domain_prefer_low_failure_mode = normalizeBooleanLike(this.config.mail_domain_prefer_low_failure_mode, false);
+                if (this.config.mail_domain_pinpoint_burst_mode && this.config.mail_domain_prefer_low_failure_mode) {
+                    this.config.mail_domain_prefer_low_failure_mode = false;
+                }
                 if (!Array.isArray(this.config.mail_domain_failure_types)) {
                     this.config.mail_domain_failure_types = ['discarded_email'];
                 }
