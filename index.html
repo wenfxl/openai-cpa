@@ -954,10 +954,9 @@
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-bold text-slate-600">
+                                                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 text-xs font-bold text-slate-600">
                                                             <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-slate-800">{{ item.fail_count }}</span></div>
                                                             <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-slate-800">{{ item.success_count }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">占用中: <span class="text-slate-800">{{ item.in_flight_count || 0 }}</span></div>
                                                             <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">时间: <span class="text-slate-800">{{ formatDuration(item.cooldown_remaining_sec || 0) }}</span></div>
                                                         </div>
                                                     </div>
