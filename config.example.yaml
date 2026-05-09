@@ -294,6 +294,7 @@ image2api_mode:
   api_url: ""
   api_key: ""
   retain_reg_only: true
+  img_only_mode: false
 
 hero_sms:
   enabled: false
@@ -325,6 +326,7 @@ smsbower:
   max_tries: 3
   poll_timeout_sec: 120
   reuse_max: 2
+  operator: ""
 
 fivesim:
   enabled: false
@@ -340,6 +342,7 @@ fivesim:
   max_tries: 3
   poll_timeout_sec: 180
   reuse_max: 2
+  operator: ""
 
 # 常规量产模式专属配置
 normal_mode:

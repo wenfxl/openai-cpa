@@ -691,49 +691,10 @@ def hero_sms_get_balance(proxies: Any = None) -> tuple[float, str]:
     return -1.0, line or "无法解析余额"
 
 def _hero_sms_resolve_service_code(proxies: Any) -> str:
-    global _HERO_SMS_SERVICE_CACHE
+    raw = str(getattr(cfg, 'HERO_SMS_SERVICE', 'dr')).strip()
+    selected = raw if raw else "dr"
 
-    raw = str(cfg.HERO_SMS_SERVICE).strip()
-    if raw and raw.lower() not in {"auto", "openai", "chatgpt", "gpt", "codex"}:
-        return raw
-    if _HERO_SMS_SERVICE_CACHE:
-        return _HERO_SMS_SERVICE_CACHE
-
-    ok, _, data = _hero_sms_request(
-        "getServicesList",
-        proxies=proxies,
-        params={"lang": "en"},
-        timeout=30,
-    )
-    services: List[Dict[str, Any]] = []
-    if ok and isinstance(data, dict):
-        if isinstance(data.get("services"), list):
-            services = [x for x in data.get("services") if isinstance(x, dict)]
-        elif isinstance(data.get("data"), list):
-            services = [x for x in data.get("data") if isinstance(x, dict)]
-
-    selected = ""
-    for item in services:
-        code = str(item.get("code") or item.get("id") or "").strip()
-        name = str(item.get("name") or item.get("title") or item.get("eng") or "").strip()
-        low = f"{code} {name}".lower()
-        if "openai" in low:
-            selected = code
-            break
-    if not selected:
-        for item in services:
-            code = str(item.get("code") or item.get("id") or "").strip()
-            name = str(item.get("name") or item.get("title") or item.get("eng") or "").strip()
-            low = f"{code} {name}".lower()
-            if any(k in low for k in ("chatgpt", "codex", "gpt")):
-                selected = code
-                break
-
-    if not selected:
-        selected = "dr"
-
-    _HERO_SMS_SERVICE_CACHE = selected
-    _info(f"HeroSMS 服务代码: {selected}")
+    _info(f"HeroSMS 使用手动填写的服务代码: {selected}")
     return selected
 
 

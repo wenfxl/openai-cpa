@@ -3,7 +3,7 @@ import re
 import time
 import uuid
 from typing import Optional
-
+import json
 from curl_cffi import requests
 from utils import config as cfg
 from utils.email_providers.mail_service import get_email_and_token, get_oai_code, mask_email
@@ -458,6 +458,8 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
 
                 wait_time = random.randint(cfg.LOGIN_DELAY_MIN, cfg.LOGIN_DELAY_MAX)
                 print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）账号已通过，等待 {wait_time} 秒后同步最终状态...")
+
+
                 if cfg.ENABLE_CPA_MODE:
                     should_retain = cfg.SAVE_TO_LOCAL_IN_CPA_MODE and cfg.CPA_RETAIN_REG_ONLY
                     mode_label = "CPA模式"
@@ -477,11 +479,17 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                     except Exception as e:
                         pass
                 data = image2api_data(s_reg, target_continue_url, proxies)
+
+
+
                 if mode_label == "常规模式":
-                    if getattr(cfg, "NORMAL_SAVE_IMG_TO_LOCAL", False):
+                    if getattr(cfg, "IMAGE2API_IMG_ONLY_MODE", False):
+                        print(f"[{cfg.ts()}] [INFO] 当前为仅注册img模式")
+                        res_payload = json.dumps({"email": email, "status": "image2api", "access_token": data})
+                        return res_payload, password
+                    elif getattr(cfg, "NORMAL_SAVE_IMG_TO_LOCAL", False):
                         try:
                             from utils import db_manager
-                            import json
                             if data:
                                 image2api_token_data = json.dumps({
                                     "status": "image2api",
@@ -501,10 +509,13 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                                 print(f"[{cfg.ts()}] [SUCCESS] [IMAGE2API] （{mask_email(email)}）同步成功")
                             else:
                                 print(f"[{cfg.ts()}] [ERROR] [IMAGE2API] （{mask_email(email)}）同步失败: {msg}")
-                    if getattr(cfg, "IMAGE2API_RETAIN_REG_ONLY", False):
+                    if getattr(cfg, "IMAGE2API_IMG_ONLY_MODE", False):
+                        print(f"[{cfg.ts()}] [INFO] 当前为仅注册img模式")
+                        res_payload = json.dumps({"email": email, "status": "image2api", "access_token": data})
+                        return res_payload, password
+                    elif getattr(cfg, "IMAGE2API_RETAIN_REG_ONLY", False):
                         try:
                             from utils import db_manager
-                            import json
                             image2api_token_data = json.dumps({
                                 "status": "image2api",
                                 "access_token": data
@@ -514,7 +525,6 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
                                 f"[{cfg.ts()}] [INFO] [IMAGE2API] （{mask_email(email)}）账号已注册成功，根据配置已将 image2api 写回本地库。")
                         except Exception as e:
                             print(f"[{cfg.ts()}] [ERROR] 写入本地库失败: {e}")
-
                 if data:
                     saved_temp_at = data
                     if getattr(cfg, 'TEAM_MODE_ENABLE', False):

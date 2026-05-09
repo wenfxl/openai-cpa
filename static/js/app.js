@@ -1,5 +1,279 @@
 const { createApp } = Vue;
 
+const LANGUAGE_STORAGE_KEY = 'ui_language_mode';
+const DEFAULT_LANGUAGE = 'zh-CN';
+const TRADITIONAL_LANGUAGE = 'zh-TW';
+const SUPPORTED_LANGUAGES = [DEFAULT_LANGUAGE, TRADITIONAL_LANGUAGE];
+
+function getInitialLanguage() {
+    const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return SUPPORTED_LANGUAGES.includes(savedLanguage) ? savedLanguage : DEFAULT_LANGUAGE;
+}
+
+let APP_LOCALE = getInitialLanguage();
+const APP_TIME_ZONE = 'Asia/Shanghai';
+
+const I18N_ZH_HANT_PHRASES = {
+    'Wenfxl 注册管理系统': 'Wenfxl 註冊管理系統',
+    '系统确认': '系統確認',
+    '确认执行': '確認執行',
+    '安全级控制台登录': '安全級控制台登入',
+    '访问密码': '存取密碼',
+    '请输入系统密码': '請輸入系統密碼',
+    '安全登录': '安全登入',
+    '日间模式': '日間模式',
+    '护眼模式': '護眼模式',
+    '日间': '日間',
+    '护眼': '護眼',
+    '发现新版本，点击查看！': '發現新版本，點擊查看！',
+    '发现新版': '發現新版',
+    '运行主页': '執行主頁',
+    '集群总控': '集群總控',
+    '邮箱配置': '信箱配置',
+    '微软邮箱库': '微軟信箱庫',
+    'Team 账号库': 'Team 帳號庫',
+    '账号库存': '帳號庫存',
+    '云端库存': '雲端庫存',
+    '手机接码': '手機接碼',
+    '网络代理': '網路代理',
+    '中转管仓': '中轉管倉',
+    '消息通知': '訊息通知',
+    '并发与系统': '並發與系統',
+    '重启项目': '重啟專案',
+    '检查更新': '檢查更新',
+    '检查系统更新': '檢查系統更新',
+    '退出登录': '登出',
+    '模式: 常规量产': '模式: 常規量產',
+    '常规量产': '常規量產',
+    '常规': '常規',
+    '量产': '量產',
+    '模式': '模式',
+    '成功': '成功',
+    '总': '總',
+    '运行模式切换': '執行模式切換',
+    '协议': '協議',
+    '运行中': '執行中',
+    '运行': '執行',
+    '已停止': '已停止',
+    '停止': '停止',
+    '启动': '啟動',
+    '成功率': '成功率',
+    '失败': '失敗',
+    '可用域名': '可用網域',
+    '冷却域名': '冷卻網域',
+    '风控拦截': '風控攔截',
+    '密码受阻': '密碼受阻',
+    '出现手机': '出現手機',
+    '总耗时': '總耗時',
+    '平均': '平均',
+    '保存并热重载配置': '儲存並熱重載配置',
+    '保存配置': '儲存配置',
+    '实时运行日志': '即時執行日誌',
+    '系统待命，日志将在此打印...': '系統待命，日誌將在此列印...',
+    '分布式节点通信配置': '分散式節點通訊配置',
+    '本节点名称 (Node Name)': '本節點名稱 (Node Name)',
+    '主控台地址 (Master URL)': '主控台位址 (Master URL)',
+    '集群通信密钥 (Secret)': '集群通訊密鑰 (Secret)',
+    '等待远程节点接入... (请确保子机已配置上方的主控台地址)': '等待遠端節點接入... (請確保子機已配置上方的主控台位址)',
+    '本地账号库': '本機帳號庫',
+    '刷新列表': '重新整理列表',
+    '搜索本地账号...': '搜尋本機帳號...',
+    '导出全部': '匯出全部',
+    '清空库': '清空庫',
+    '已选': '已選',
+    '导出': '匯出',
+    '账密': '帳密',
+    '推送': '推送',
+    '凭证': '憑證',
+    '删除选中': '刪除選取',
+    '账号总数': '帳號總數',
+    '未推送库存': '未推送庫存',
+    '活跃状态': '活躍狀態',
+    '已禁用': '已停用',
+    '账号 & 密码': '帳號 & 密碼',
+    '当前状态': '目前狀態',
+    '推送平台': '推送平台',
+    '入库时间': '入庫時間',
+    '操作': '操作',
+    '暂无本地记录': '暫無本機記錄',
+    '无': '無',
+    '共': '共',
+    '个': '個',
+    '第': '第',
+    '页': '頁',
+    '条/页': '筆/頁',
+    '前往': '前往',
+    '批量导入邮箱': '批次匯入信箱',
+    '在此粘贴数据...': '在此貼上資料...',
+    '微软邮箱资源库': '微軟信箱資源庫',
+    '搜索微软邮箱...': '搜尋微軟信箱...',
+    '导出 TXT': '匯出 TXT',
+    '恢复正常': '恢復正常',
+    '邮箱账号': '信箱帳號',
+    '鉴权类型': '鑑權類型',
+    '状态': '狀態',
+    '分裂次数': '分裂次數',
+    '导入时间': '匯入時間',
+    '暂无邮箱数据，请点击右上角导入': '暫無信箱資料，請點擊右上角匯入',
+    '未使用': '未使用',
+    '已注册 (被占用)': '已註冊 (被占用)',
+    '已出凭证': '已出憑證',
+    '失效/死号': '失效/死號',
+    '去授权': '去授權',
+    '上一页': '上一頁',
+    '下一页': '下一頁',
+    '基础发信设置': '基礎寄信設定',
+    'API 模式选择': 'API 模式選擇',
+    '本地微软邮箱库': '本機微軟信箱庫',
+    '发信域名池': '寄信網域池',
+    '支持逗号分隔多域名，此处必须填写你配置在 CF 的主域名': '支援逗號分隔多網域，此處必須填寫你配置在 CF 的主網域',
+    '黄金矿工模式': '黃金礦工模式',
+    '开启后按主域统计异常，并在超限后自动冷却。': '開啟後按主網域統計異常，並在超限後自動冷卻。',
+    '冷却阈值': '冷卻閾值',
+    '冷却秒数': '冷卻秒數',
+    '异常判断逻辑': '異常判斷邏輯',
+    '邮件丢弃异常': '郵件丟棄異常',
+    '网络异常': '網路異常',
+    '容量超限异常': '容量超限異常',
+    '域名列表': '網域列表',
+    '展开状态': '展開狀態',
+    '隐藏状态': '隱藏狀態',
+    '清除冷却': '清除冷卻',
+    '清空计数': '清空計數',
+    '异常': '異常',
+    '时间': '時間',
+    'CF 登录账号': 'CF 登入帳號',
+    '填写邮箱': '填寫信箱',
+    '复制': '複製',
+    '通用步骤': '通用步驟',
+    '说明': '說明',
+    '域名托管与 NS 获取': '網域代管與 NS 取得',
+    '激活 CF 电子邮件服务': '啟用 CF 電子郵件服務',
+    '域名状态与 NS 结果反馈': '網域狀態與 NS 結果回饋',
+    '关闭面板': '關閉面板',
+    '等待 NS 生效': '等待 NS 生效',
+    '多级域名泛解析模式': '多級網域泛解析模式',
+    '域名层级': '網域層級',
+    '层级随机选项': '層級隨機選項',
+    '获取邮箱使用全局代理穿透': '取得信箱使用全域代理穿透',
+    '隐藏日志中的邮箱域名': '隱藏日誌中的信箱網域',
+    '渠道专属参数': '渠道專屬參數',
+    '当前模式': '目前模式',
+    '强烈建议': '強烈建議',
+    '后端 API 基础地址': '後端 API 基礎位址',
+    '管理员鉴权': '管理員鑑權',
+    '原版部署': '原版部署',
+    '服务器地址': '伺服器位址',
+    '端口': '連接埠',
+    '接收邮箱': '接收信箱',
+    '应用专用密码': '應用程式專用密碼',
+    '创建谷歌专属密码': '建立 Google 專屬密碼',
+    '开启手动无限裂变': '開啟手動無限裂變',
+    '微软邮箱库分裂': '微軟信箱庫分裂',
+    '全局 Client ID': '全域 Client ID',
+    '裂变主邮箱账号': '裂變主信箱帳號',
+    '邮箱别名后缀生成模式': '信箱別名後綴生成模式',
+    '固定长度随机': '固定長度隨機',
+    '随机范围区间': '隨機範圍區間',
+    '高拟真模式': '高擬真模式',
+    '别名最小长度': '別名最小長度',
+    '别名最大长度': '別名最大長度',
+    '主邮箱 Refresh Token': '主信箱 Refresh Token',
+    '别名策略': '別名策略',
+    '后缀生成器设置': '後綴產生器設定',
+    '生成模式': '生成模式',
+    '最小长度': '最小長度',
+    '最大长度': '最大長度',
+    '已切换为护眼模式': '已切換為護眼模式',
+    '已切换为日间模式': '已切換為日間模式',
+    '已切换为繁体中文': '已切換為繁體中文',
+    '已切换为简体中文': '已切換為簡體中文',
+    '登录状态过期，请重新登录！': '登入狀態過期，請重新登入！',
+    '请输入密码！': '請輸入密碼！',
+    '内存预测数据获取失败': '記憶體(內存)預測資料取得失敗',
+    '内存预测 API 请求失败': '記憶體(內存)預測 API 請求失敗',
+    '未启动': '未啟動',
+    '无数据': '無資料',
+    '检查中...': '檢查中...'
+};
+
+const I18N_ZH_HANT_CHARS = {
+    '账':'帳','号':'號','库':'庫','邮':'郵','箱':'箱','运':'運','行':'行','页':'頁','总':'總','控':'控','微':'微','软':'軟','云':'雲','网':'網','络':'路','转':'轉','仓':'倉','并':'並','发':'發','与':'與','统':'統','访':'訪','问':'問','码':'碼','请':'請','输':'輸','入':'入','级':'級','录':'錄','间':'間','护':'護','眼':'眼','现':'現','版':'版','点':'點','击':'擊','查':'查','项':'項','检':'檢','退':'退','出':'出','协':'協','议':'議','启':'啟','动':'動','风':'風','拦':'攔','截':'截','败':'敗','却':'卻','域':'域','名':'名','时':'時','实':'實','热':'熱','载':'載','配':'配','置':'置','节':'節','通':'通','讯':'訊','钥':'鑰','远':'遠','确':'確','保':'保','机':'機','导':'導','删':'刪','选':'選','态':'態','禁':'禁','用':'用','当':'當','前':'前','暂':'暫','记':'記','据':'據','权':'權','鉴':'鑑','类':'類','裂':'裂','数':'數','础':'礎','择':'擇','临':'臨','连':'連','仅':'僅','显':'顯','示':'示','进':'進','程':'程','内':'內','计':'計','阈':'閾','值':'值','逻':'邏','辑':'輯','丢':'丟','弃':'棄','异':'異','额':'額','闭':'閉','复':'復','随':'隨','单':'單','专':'專','属':'屬','参':'參','强':'強','国':'國','务':'務','获':'獲','取':'取','层':'層','写':'寫','贴':'貼','资':'資','源':'源','证':'證','损':'損','坏':'壞','应':'應','创':'創','圆':'圓','长':'長','拟':'擬','真':'真','毕':'畢','须':'須','刚':'剛','换':'換','为':'為','过':'過','求':'求','预':'預','测':'測','费':'費','隐':'隱','藏':'藏','关':'關','开':'開','面':'面','板':'板','结':'結','果':'果','馈':'饋','电':'電','子':'子','件':'件','制':'製','粘':'黏','条':'筆','个':'個','这':'這','无':'無','东':'東','滤':'濾','认':'認','执':'執','轻':'輕','则':'則','压':'壓','榨':'榨','释':'釋','侧':'側','际':'際','线':'線','扩':'擴','锁':'鎖','断':'斷','设':'設','标':'標','签':'籤','组':'組','频':'頻','宽':'寬','验':'驗','变':'變','错':'錯','误':'誤','华':'華','龙':'龍','门':'門','凤':'鳳','题':'題','见':'見','乌':'烏','兰':'蘭','说':'說','们':'們','区':'區','来':'來','试':'試','绪':'緒','调':'調','链':'鏈','边':'邊','后':'後','极':'極','员':'員','历':'歷','购':'購','将':'將','对':'對','该':'該','优':'優','于':'於','价':'價','买':'買','彻':'徹','触':'觸','余':'餘','规':'規','轮':'輪','产':'產','满':'滿','负':'負','维':'維','别':'別','迟':'遲','补':'補','尝':'嘗','货':'貨','冲':'衝','会':'會','续':'續','么':'麼','旧':'舊','约':'約','许':'許','准':'準','传':'傳','储':'儲','迁':'遷','键':'鍵','备':'備'
+};
+
+Object.assign(I18N_ZH_HANT_PHRASES, {
+    '准备': '準備',
+    '模块': '模組',
+    '控製台': '控制台',
+    '控制台': '控制台',
+    '链接': '網址',
+    '机制': '機制',
+    '浏览': '瀏覽',
+    '团队': '團隊',
+    '订阅': '訂閱',
+    '叢集通訊金鑰': '集群通訊密鑰',
+    '独享池': '獨享池',
+    '登陆': '登入',
+    '耗尽': '耗盡',
+    '独立测活': '獨立測活',
+    '杂項與安全控製': '雜項與安全控制',
+    '杂项与安全控制': '雜項與安全控制',
+    '范围': '範圍',
+    '併發與系统': '並發與系統',
+    '併發與系統': '並發與系統',
+    '内存': '記憶體(內存)'
+});
+
+const I18N_ZH_HANT_EXCEPTIONS = {
+    '控製台': '控制台',
+    '杂項與安全控製': '雜項與安全控制',
+    '雜項與安全控製': '雜項與安全控制',
+    '併發與系统': '並發與系統',
+    '併發與系統': '並發與系統',
+    '叢集通訊金鑰': '集群通訊密鑰'
+};
+
+const I18N_ZH_HANT_KEYS = Object.keys(I18N_ZH_HANT_PHRASES).sort((a, b) => b.length - a.length);
+const I18N_ORIGINAL_TEXT_NODES = new WeakMap();
+const I18N_ORIGINAL_ATTRS = new WeakMap();
+
+function translateText(text, language = APP_LOCALE) {
+    if (text === null || text === undefined || language !== TRADITIONAL_LANGUAGE) return text;
+    let translated = String(text);
+    I18N_ZH_HANT_KEYS.forEach((source) => {
+        translated = translated.split(source).join(I18N_ZH_HANT_PHRASES[source]);
+    });
+    translated = translated.replace(/[\u4e00-\u9fff]/g, (char) => I18N_ZH_HANT_CHARS[char] || char);
+    Object.entries(I18N_ZH_HANT_EXCEPTIONS).forEach(([source, target]) => {
+        translated = translated.split(source).join(target);
+    });
+    return translated;
+}
+
+function formatMainlandDateTime(date, options = {}) {
+    return new Intl.DateTimeFormat(APP_LOCALE, {
+        timeZone: APP_TIME_ZONE,
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        ...options
+    }).format(date).replace(/\//g, '-');
+}
+
+function formatMainlandTime(date) {
+    return new Intl.DateTimeFormat(APP_LOCALE, {
+        timeZone: APP_TIME_ZONE,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    }).format(date);
+}
+
 function normalizeBooleanLike(value, defaultValue = false) {
     if (value === true || value === false) {
         return value;
@@ -26,6 +300,8 @@ createApp({
             isLoggedIn: !!localStorage.getItem('auth_token'),
             loginPassword: '',
             currentTab: window.location.hash.replace('#', '') || 'console',
+            currentLanguage: getInitialLanguage(),
+            languageObserver: null,
             isDarkMode: localStorage.getItem('ui_theme_mode') === 'dark',
 			showAccountsPlaintext: false,
             isRunning: false,
@@ -84,7 +360,6 @@ createApp({
             accounts: [],
             selectedAccounts: [],
             hideRegisterOnlyAccounts: false,
-            accountStatusFilter: 'all',
 			currentPage: 1,
             pageSize: 10,
             totalAccounts: 0,
@@ -93,8 +368,12 @@ createApp({
                 success: 0, failed: 0, retries: 0, total: 0, target: 0,
                 pwd_blocked: 0, phone_verify: 0,
                 success_rate: '0.0%', elapsed: '0.0s', avg_time: '0.0s', progress_pct: '0%',
-                mode: '未启动'
+                mode: '未启动',
+                memory: { rss_mb: null, predicted_mid_mb: null, predicted_high_mb: null, safety_level: 'unknown', safety_label: '无数据' }
             },
+            memoryPrediction: null,
+            isLoadingMemoryPrediction: false,
+            memoryPredictionError: '',
             inventoryStats: {
                 local: { total: 0, active: 0, disabled: 0 },
                 cloud: { total: 0, cpa: 0, sub2api: 0, enabled: 0 }
@@ -128,12 +407,6 @@ createApp({
             toastId: 0,
             confirmModal: { show: false, message: '', resolve: null },
             updateInfo: { hasUpdate: false, version: '', url: '', changelog: '' },
-            gitSync: {
-                status: null,
-                loading: false,
-                actionLoading: null,
-                outputTail: []
-            },
             sub2apiGroups: [],
             gmailOAuth: {
                 authUrl: '',
@@ -176,23 +449,12 @@ createApp({
             BUILTIN_CLIENT_ID: "7feada80-d946-4d06-b134-73afa3524fb7",
             clashPool: {
                 loading: false,
-                actionLoading: '',
                 subUrl: '',
-                subscriptions: [],
-                selectedSubscriptionId: '',
-                newSubName: '',
-                newSubUrl: '',
                 target: 'all',
                 count: 5,
                 instances: [],
                 groups: [],
-                mode: '',
-                message: '',
-                activeGroup: null,
-                latencyMap: {},
-                latencyLoading: false,
-                latencyTestUrl: '',
-                latencyCache: {}
+                isDeploying: false
             },
             gmail_oauth_mode: {
                 master_email: '',
@@ -234,10 +496,8 @@ createApp({
             },
             cfTools: {
                 workerName: 'openai-cpa',
-                deleteDomains: '',
                 results: [],
                 isHosting: false,
-                isDeletingHosting: false,
                 isEnablingEmail: false,
                 isDeploying: false,
                 isSettingCatchAll: false
@@ -268,9 +528,10 @@ createApp({
             }
         }
     },
-    mounted() {
+    async mounted() {
+        this.applyLanguage(false);
         this.applyTheme();
-        this.fetchSystemVersion();
+        await this.fetchSystemVersion();
         if (this.isLoggedIn) {
             this.initApp();
         }
@@ -283,9 +544,12 @@ createApp({
         this.timer = setInterval(() => {
             this.nowTimestamp = Math.floor(Date.now() / 1000);
         }, 1000);
+        this.startLanguageObserver();
+        this.$nextTick(() => this.applyLanguageToDom());
     },
     beforeUnmount() {
         if(this.statsTimer) clearInterval(this.statsTimer);
+        if (this.languageObserver) this.languageObserver.disconnect();
     },
 	computed: {
         totalPages() {
@@ -329,6 +593,119 @@ createApp({
         }
     },
     methods: {
+        t(text) {
+            return translateText(text, this.currentLanguage);
+        },
+        targetLanguageLabel() {
+            return this.currentLanguage === TRADITIONAL_LANGUAGE ? '简体中文' : '繁體中文';
+        },
+        toggleLanguage() {
+            const nextLanguage = this.currentLanguage === TRADITIONAL_LANGUAGE ? DEFAULT_LANGUAGE : TRADITIONAL_LANGUAGE;
+            this.setLanguage(nextLanguage);
+            this.showToast(nextLanguage === TRADITIONAL_LANGUAGE ? '已切换为繁体中文' : '已切换为简体中文', 'info');
+        },
+        setLanguage(language) {
+            this.currentLanguage = SUPPORTED_LANGUAGES.includes(language) ? language : DEFAULT_LANGUAGE;
+            this.applyLanguage();
+        },
+        applyLanguage(translateDom = true) {
+            APP_LOCALE = this.currentLanguage;
+            localStorage.setItem(LANGUAGE_STORAGE_KEY, this.currentLanguage);
+            document.title = this.t('Wenfxl 注册管理系统');
+            if (translateDom) {
+                this.$nextTick(() => this.applyLanguageToDom());
+            }
+        },
+        applyLanguageToDom(root = document.body) {
+            if (!root) return;
+            const ignoredTags = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE']);
+            const translateNodeText = (node) => {
+                if (!node.nodeValue || !node.nodeValue.trim()) return;
+                if (!I18N_ORIGINAL_TEXT_NODES.has(node)) {
+                    I18N_ORIGINAL_TEXT_NODES.set(node, node.nodeValue);
+                }
+                const sourceText = I18N_ORIGINAL_TEXT_NODES.get(node);
+                node.nodeValue = translateText(sourceText, this.currentLanguage);
+            };
+            const translateAttributes = (element) => {
+                ['placeholder', 'title', 'aria-label', 'alt'].forEach((attr) => {
+                    const value = element.getAttribute(attr);
+                    if (!value) return;
+                    let originalAttrs = I18N_ORIGINAL_ATTRS.get(element);
+                    if (!originalAttrs) {
+                        originalAttrs = {};
+                        I18N_ORIGINAL_ATTRS.set(element, originalAttrs);
+                    }
+                    if (!Object.prototype.hasOwnProperty.call(originalAttrs, attr)) {
+                        originalAttrs[attr] = value;
+                    }
+                    const translatedValue = translateText(originalAttrs[attr], this.currentLanguage);
+                    if (value !== translatedValue) {
+                        element.setAttribute(attr, translatedValue);
+                    }
+                });
+            };
+
+            if (root.nodeType === Node.TEXT_NODE) {
+                translateNodeText(root);
+                return;
+            }
+            if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
+            if (root.nodeType === Node.ELEMENT_NODE) {
+                if (ignoredTags.has(root.tagName)) return;
+                translateAttributes(root);
+            }
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node) {
+                    const parent = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+                    if (parent && ignoredTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach((node) => {
+                if (node.nodeType === Node.TEXT_NODE) translateNodeText(node);
+                if (node.nodeType === Node.ELEMENT_NODE) translateAttributes(node);
+            });
+        },
+        startLanguageObserver() {
+            if (this.languageObserver) this.languageObserver.disconnect();
+            this.languageObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList') {
+                        if (this.currentLanguage === TRADITIONAL_LANGUAGE) {
+                            mutation.addedNodes.forEach((node) => this.applyLanguageToDom(node));
+                        }
+                    }
+                    else if (mutation.type === 'attributes') {
+                        if (this.currentLanguage === TRADITIONAL_LANGUAGE) {
+                            this.applyLanguageToDom(mutation.target);
+                        }
+                    }
+                    else if (mutation.type === 'characterData') {
+                        const node = mutation.target;
+                        const currentText = node.nodeValue;
+                        if (!currentText || !currentText.trim()) return;
+
+                        const originalText = I18N_ORIGINAL_TEXT_NODES.get(node);
+                        const expectedTranslation = translateText(originalText, this.currentLanguage);
+                        if (currentText === expectedTranslation) return;
+                        I18N_ORIGINAL_TEXT_NODES.set(node, currentText);
+                        if (this.currentLanguage === TRADITIONAL_LANGUAGE) {
+                            this.applyLanguageToDom(node);
+                        }
+                    }
+                });
+            });
+            this.languageObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true,
+                attributeFilter: ['placeholder', 'title', 'aria-label', 'alt']
+            });
+        },
         applyTheme() {
             const nextMode = this.isDarkMode ? 'dark' : 'light';
             document.body.classList.toggle('theme-dark', this.isDarkMode);
@@ -341,13 +718,13 @@ createApp({
         },
         showToast(message, type = 'info') {
             const id = this.toastId++;
-            this.toasts.push({ id, message, type });
+            this.toasts.push({ id, message: this.t(message), type });
             setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 3500);
         },
 
         async customConfirm(message) {
             return new Promise((resolve) => {
-                this.confirmModal = { show: true, message, resolve };
+                this.confirmModal = { show: true, message: this.t(message), resolve };
             });
         },
         handleConfirm(result) {
@@ -370,6 +747,47 @@ createApp({
                 throw new Error("Unauthorized");
             }
             return res;
+        },
+
+        formatMemoryMb(value) {
+            if (value === null || value === undefined || value === '') return 'N/A';
+            const numeric = Number(value);
+            if (Number.isNaN(numeric)) return 'N/A';
+            return `${numeric.toFixed(1)} MB`;
+        },
+
+        formatMainlandDateTime(date, options = {}) {
+            return formatMainlandDateTime(date, options);
+        },
+
+        memorySafetyClass(level) {
+            const classes = {
+                ok: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                watch: 'bg-sky-50 text-sky-700 border-sky-200',
+                warning: 'bg-amber-50 text-amber-700 border-amber-200',
+                critical: 'bg-rose-50 text-rose-700 border-rose-200',
+                unknown: 'bg-slate-50 text-slate-600 border-slate-200'
+            };
+            return classes[level] || classes.unknown;
+        },
+
+        async fetchMemoryPrediction() {
+            if (!this.isLoggedIn) return;
+            this.isLoadingMemoryPrediction = true;
+            this.memoryPredictionError = '';
+            try {
+                const res = await this.authFetch('/api/system/memory_prediction');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.memoryPrediction = data;
+                } else {
+                    this.memoryPredictionError = data.message || '内存预测数据获取失败';
+                }
+            } catch (e) {
+                this.memoryPredictionError = '内存预测 API 请求失败';
+            } finally {
+                this.isLoadingMemoryPrediction = false;
+            }
         },
 
         async handleLogin() {
@@ -418,13 +836,15 @@ createApp({
             this.fetchMailboxes();
             this.startStatsPolling();
             this.checkUpdate();
-            this.fetchGitStatus(false);
             this.fetchInventoryStats();
             if (this.config && this.config.reg_mode === 'extension') {
                 this.listenToExtension();
             }
             if (this.currentTab === 'proxy') {
                 this.fetchClashPool();
+            }
+            if (this.currentTab === 'concurrency') {
+                this.fetchMemoryPrediction();
             }
         },
         startStatsPolling() {
@@ -563,10 +983,16 @@ createApp({
                         enable: false,
                         api_url: '',
                         api_key: '',
-                        retain_reg_only: false
+                        retain_reg_only: false,
+                        img_only_mode: false
                     };
-                } else if (this.config.image2api_mode.retain_reg_only === undefined) {
-                    this.config.image2api_mode.retain_reg_only = false;
+                } else {
+                    if (this.config.image2api_mode.retain_reg_only === undefined) {
+                        this.config.image2api_mode.retain_reg_only = false;
+                    }
+                    if (this.config.image2api_mode.img_only_mode === undefined) {
+                        this.config.image2api_mode.img_only_mode = false;
+                    }
                 }
                 if (!this.config.team_mode) {
                     this.config.team_mode = { enable: false };
@@ -635,9 +1061,6 @@ createApp({
                 }
                 if (this.config.clash_proxy_pool.sub_url !== undefined) {
                     this.clashPool.subUrl = this.config.clash_proxy_pool.sub_url;
-                }
-                if (!Array.isArray(this.config.clash_proxy_pool.sub_urls)) {
-                    this.config.clash_proxy_pool.sub_urls = [];
                 }
                 if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
                     this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
@@ -789,11 +1212,6 @@ createApp({
                     this.config.clash_proxy_pool.blacklist = this.blacklistStr.split('\n').map(s => s.trim()).filter(s => s);
                     this.config.clash_proxy_pool.cluster_count = parseInt(this.clashPool.count) || 5;
                     this.config.clash_proxy_pool.sub_url = this.clashPool.subUrl;
-                    this.config.clash_proxy_pool.sub_urls = (this.clashPool.subscriptions || []).map(sub => ({
-                        id: sub.id,
-                        name: sub.name,
-                        url: sub.url
-                    }));
                 }
                 if (this.config?.sub2api_mode) {
                     this.config.sub2api_mode.default_proxy = String(this.config.sub2api_mode.default_proxy || '')
@@ -868,12 +1286,9 @@ createApp({
 
             const statusMap = {
                 'all': '全部',
-                'pushed': '已推送',
                 'unpushed': '未推送',
                 'active': '活跃',
-                'disabled': '已禁用',
-                'credential': '完整凭证',
-                'image2api': 'Image2API'
+                'disabled': '已禁用'
             };
             this.showToast(`已筛选: ${statusMap[status]}的本地账号`, 'info');
         },
@@ -955,11 +1370,11 @@ createApp({
             if (tabId === 'proxy') {
                 this.fetchClashPool();
             }
+            if (tabId === 'concurrency') {
+                this.fetchMemoryPrediction();
+            }
             if (tabId === 'team_accounts') {
                 this.fetchTeamAccounts();
-            }
-            if (tabId === 'concurrency' && !this.gitSync.status) {
-                this.fetchGitStatus(false);
             }
         },
         async exportSelectedAccounts() {
@@ -968,7 +1383,7 @@ createApp({
                 return;
             }
 
-            const emails = this.selectedAccounts.map(acc => acc.email);
+            const emails = this.selectedAccounts;
 
             try {
                 const res = await this.authFetch('/api/accounts/export_selected', {
@@ -1055,9 +1470,8 @@ createApp({
 		exportAccountsToTxt() {
 			if (this.selectedAccounts.length === 0) return;
 
-			const textContent = this.selectedAccounts
-				.map(acc => `${acc.email}----${acc.password}`)
-				.join('\n');
+			const selectedObjs = this.accounts.filter(acc => this.selectedAccounts.includes(acc.email));
+            const textContent = selectedObjs.map(acc => `${acc.email}----${acc.password}`).join('\n');
 
 			const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
 			const url = URL.createObjectURL(blob);
@@ -1081,7 +1495,7 @@ createApp({
             if (!confirmed) return;
 			this.isDeletingAccounts = true;
             try {
-                const emailsToDelete = this.selectedAccounts.map(acc => acc.email);
+                const emailsToDelete = this.selectedAccounts;
 
                 const res = await this.authFetch('/api/accounts/delete', {
                     method: 'POST',
@@ -1107,6 +1521,13 @@ createApp({
         toggleAll(event) {
             if (event.target.checked) this.selectedAccounts = [...this.filteredAccounts];
             else this.selectedAccounts = [];
+        },
+        toggleAllCloud(e) {
+            if (e.target.checked) {
+                this.selectedCloud = this.filteredCloud.map(a => String(a.id) + '|' + a.account_type);
+            } else {
+                this.selectedCloud = [];
+            }
         },
         toggleHideRegisterOnlyAccounts() {
             this.hideRegisterOnlyAccounts = !this.hideRegisterOnlyAccounts;
@@ -1139,7 +1560,7 @@ createApp({
                             const checkData = await checkRes.json();
                             if (!checkData.online) {
                                 const now = new Date();
-                                const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            const timeStr = formatMainlandTime(now);
                                 this.showToast(`🚫 启动失败：节点 [${localId}] 未连接或已掉线！`, "error");
                                 this.logs.push({
                                     parsed: true,
@@ -1196,7 +1617,7 @@ createApp({
                 this.isRunning = false;
                 await this.fetchMailDomainRuntimeStats();
                 const now = new Date();
-                const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false }); // 获取如 14:30:05 格式
+            const timeStr = formatMainlandTime(now); // 获取如 14:30:05 格式
                 this.logs.push({
                     parsed: true,
                     time: timeStr,
@@ -1221,7 +1642,8 @@ createApp({
               this.showToast("🚫 请先开启 CPA 巡检并填写 API", "warning"); return;
             }
             if (this.selectedAccounts.length === 0) return;
-            const targetAccounts = this.selectedAccounts.filter(acc => !acc.push_platform || !acc.push_platform.toUpperCase().includes('CPA'));
+            const selectedObjs = this.accounts.filter(acc => this.selectedAccounts.includes(acc.email));
+            const targetAccounts = selectedObjs.filter(acc => !acc.push_platform || !acc.push_platform.toUpperCase().includes('CPA'));
 
             if (targetAccounts.length === 0) {
                 this.showToast("⚠️ 选中的账号都已推送过 CPA，无需重复推送！", "warning");
@@ -1256,7 +1678,8 @@ createApp({
                 this.showToast("🚫 请先开启 Sub2API 模式并填写参数", "warning"); return;
             }
             if (this.selectedAccounts.length === 0) return;
-            const targetAccounts = this.selectedAccounts.filter(acc => !acc.push_platform || !acc.push_platform.toUpperCase().includes('SUB2API'));
+            const selectedObjs = this.accounts.filter(acc => this.selectedAccounts.includes(acc.email));
+            const targetAccounts = selectedObjs.filter(acc => !acc.push_platform || !acc.push_platform.toUpperCase().includes('SUB2API'));
 
             if (targetAccounts.length === 0) {
                 this.showToast("⚠️ 选中的账号都已推送过 Sub2API，无需重复推送！", "warning");
@@ -1292,7 +1715,8 @@ createApp({
                 this.showToast("🚫 请先开启 Image2API 模式并填写参数", "warning"); return;
             }
             if (this.selectedAccounts.length === 0) return;
-            const targetAccounts = this.selectedAccounts.filter(acc => !acc.push_platform || !acc.push_platform.toUpperCase().includes('IMAGE2API'));
+            const selectedObjs = this.accounts.filter(acc => this.selectedAccounts.includes(acc.email));
+            const targetAccounts = selectedObjs.filter(acc => !acc.push_platform || !acc.push_platform.toUpperCase().includes('IMAGE2API'));
 
             if (targetAccounts.length === 0) {
                 this.showToast("⚠️ 选中的账号都已推送过 Image2API，无需重复推送！", "warning");
@@ -1882,6 +2306,7 @@ createApp({
             }
         },
         async checkUpdate(isManual = false) {
+            if (this.appVersion === '检查中...' || !this.appVersion) return;
             try {
                 const res = await this.authFetch(`/api/system/check_update?current_version=${this.appVersion}`);
                 const data = await res.json();
@@ -1942,60 +2367,6 @@ createApp({
             } catch (e) {
                 this.showToast("更新指令已发送，由于后端重启，连接已断开，请稍后手动刷新。", "warning");
                 setTimeout(() => { window.location.reload(); }, 20000);
-            }
-        },
-        async fetchGitStatus(showToast = false) {
-            this.gitSync.loading = true;
-            try {
-                const res = await this.authFetch('/api/system/git_status');
-                const data = await res.json();
-                if (data.data) {
-                    this.gitSync.status = data.data;
-                }
-                if (showToast) {
-                    this.showToast(data.message || 'Git 状态已刷新', data.status || 'info');
-                }
-            } catch (e) {
-                if (showToast) this.showToast('Git 状态读取失败', 'error');
-            } finally {
-                this.gitSync.loading = false;
-            }
-        },
-        async runGitUpdate(action, restartAfter = false) {
-            const labels = {
-                fetch: '抓取远端状态',
-                reset_hard: '强制同步并重启'
-            };
-            let prompt = `确定执行「${labels[action] || action}」吗？`;
-            if (action === 'reset_hard') {
-                prompt += '\n\n⚠️ 这会直接以 origin/main 覆盖当前本地代码冲突。';
-            }
-            if (restartAfter) {
-                prompt += '\n\n操作完成后会自动重启当前项目。';
-            }
-            const confirmed = await this.customConfirm(prompt);
-            if (!confirmed) return;
-
-            this.gitSync.actionLoading = action;
-            try {
-                const res = await this.authFetch('/api/system/git_update', {
-                    method: 'POST',
-                    body: JSON.stringify({ action, restart_after: restartAfter })
-                });
-                const data = await res.json();
-                if (data.data) {
-                    this.gitSync.outputTail = data.data.output_tail || [];
-                    if (data.data.after) {
-                        this.gitSync.status = data.data.after;
-                    }
-                }
-                this.showToast(data.message || 'Git 操作已完成', data.status || 'info');
-                if (data.data && data.data.restart_scheduled) return;
-                await this.fetchGitStatus(false);
-            } catch (e) {
-                this.showToast('Git 操作执行失败', 'error');
-            } finally {
-                this.gitSync.actionLoading = null;
             }
         },
         async getGmailAuthUrl() {
@@ -2072,8 +2443,7 @@ createApp({
             }
             const d = new Date(utcStr);
             if (isNaN(d.getTime())) return dateStr;
-            const pad = (n) => n.toString().padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            return formatMainlandDateTime(d);
         },
         async exportSub2Api() {
             if (this.selectedAccounts.length === 0) {
@@ -2081,9 +2451,7 @@ createApp({
                 return;
             }
             try {
-                const emailsToExport = this.selectedAccounts.map(item =>
-                    typeof item === 'object' ? item.email : item
-                );
+                const emailsToExport = this.selectedAccounts;
 
                 const response = await this.authFetch('/api/accounts/export_sub2api', {
                     method: 'POST',
@@ -2241,7 +2609,7 @@ createApp({
 
                 if (action === 'check') {
                     this.currentTab = 'console';
-                    const now = new Date().toLocaleString('zh-CN', { hour12: false });
+            const now = formatMainlandDateTime(new Date());
                     this.localCheckTimes[acc.id] = now;
                     acc.last_check = now;
 
@@ -2287,7 +2655,10 @@ createApp({
                 return this.showToast('请先勾选需要操作的账号', 'warning');
             }
             if (action === 'delete' && !confirm(`⚠️ 危险操作：确认删除选中的 ${this.selectedCloud.length} 个账号吗？`)) return;
-
+            const actionAccounts = this.selectedCloud.map(key => {
+                const [id, type] = key.split('|');
+                return { id: String(id), type: type };
+            });
             const actionName = action === 'check' ? '测活' : (action === 'enable' ? '启用' : (action === 'disable' ? '禁用' : (action === 'refresh' ? '刷新凭证' : '删除')));
             this.showToast(`正在批量 ${actionName} ${this.selectedCloud.length} 个账号，耗时较长请耐心等待...`, 'info');
             this.isCloudActionLoading = true;
@@ -2295,11 +2666,11 @@ createApp({
             try {
                 const res = await this.authFetch('/api/cloud/action', {
                     method: 'POST',
-                    body: JSON.stringify({ accounts: this.selectedCloud, action: action })
+                    body: JSON.stringify({ accounts: actionAccounts, action: action })
                 });
                 const result = await res.json();
                 if (result.updated_details) {
-                    this.selectedCloud.forEach(selected => {
+                    actionAccounts.forEach(selected => {
                         const targetAcc = this.cloudAccounts.find(a => String(a.id) === String(selected.id) && a.account_type === selected.type);
                         if (targetAcc && result.updated_details[selected.id]) {
                             targetAcc.details = Object.assign({}, targetAcc.details, result.updated_details[selected.id]);
@@ -2308,8 +2679,8 @@ createApp({
                     });
                 }
                 if (action === 'check') {
-                    const now = new Date().toLocaleString('zh-CN', { hour12: false });
-                    this.selectedCloud.forEach(c => { this.localCheckTimes[c.id] = now; });
+                    const now = formatMainlandDateTime(new Date());
+                    actionAccounts.forEach(c => { this.localCheckTimes[c.id] = now; });
                 }
 
                 this.showToast(result.message, result.status);
@@ -2321,12 +2692,9 @@ createApp({
                 this.isCloudActionLoading = false;
             }
         },
-        toggleAllCloud(e) {
-            if (e.target.checked) {
-                this.selectedCloud = this.filteredCloud.map(a => ({ id: String(a.id), type: a.account_type }));
-            } else {
-                this.selectedCloud = [];
-            }
+        toggleAll(event) {
+            if (event.target.checked) this.selectedAccounts = this.filteredAccounts.map(a => a.email);
+            else this.selectedAccounts = [];
         },
         viewCloudDetails(acc) {
             if (!acc.details || Object.keys(acc.details).length === 0) {
@@ -2435,7 +2803,7 @@ createApp({
                     return;
                 }
                 const now = new Date();
-                const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            const timeStr = formatMainlandTime(now);
 
                 if (data.status !== 'success') {
                     this.logs.push({ parsed: true, time: timeStr, level: '总控', text: `任务生成失败: ${data.message}`, raw: `[${timeStr}] [总控] 任务生成失败: ${data.message}` });
@@ -2472,7 +2840,7 @@ createApp({
 
             } catch (error) {
                 const now = new Date();
-                const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            const timeStr = formatMainlandTime(now);
                 this.logs.push({ parsed: true, time: timeStr, level: '总控', text: `下发任务异常: ${error.message}`, raw: `[${timeStr}] [总控] 下发任务异常: ${error.message}` });
             }
         },
@@ -2506,7 +2874,7 @@ createApp({
 
                 if (event.data.type === "WORKER_READY") {
                     const now = new Date();
-                    const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            const timeStr = formatMainlandTime(now);
 
                     if (this._extDetectionTimer) {
                         clearInterval(this._extDetectionTimer);
@@ -2540,7 +2908,7 @@ createApp({
 
                 if (event.data.type === "WORKER_LOG_REPLY") {
                     const now = new Date();
-                    const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            const timeStr = formatMainlandTime(now);
                     this.logs.push({
                         parsed: true, time: timeStr, level: '节点',
                         text: event.data.log, raw: `[${timeStr}] [节点] ${event.data.log}`
@@ -2575,7 +2943,7 @@ createApp({
                             this.isRunning = false;
                             window.postMessage({ type: "CMD_STOP_WORKER" }, "*");
 
-                            const timeStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+                        const timeStr = formatMainlandTime(new Date());
                             this.logs.push({
                                 parsed: true, time: timeStr, level: '总控',
                                 text: `🛑 目标产量已达成，总控引擎已自动挂起。`,
@@ -2657,7 +3025,7 @@ createApp({
             this.fetchMailboxes();
         },
         toggleAllMailboxes(event) {
-            if (event.target.checked) this.selectedMailboxes = [...this.filteredMailboxes];
+            if (event.target.checked) this.selectedMailboxes = this.filteredMailboxes.map(m => m.email);
             else this.selectedMailboxes = [];
         },
         async submitImportMailboxes() {
@@ -2687,16 +3055,17 @@ createApp({
             if (this.selectedMailboxes.length === 0) return;
             const confirmed = await this.customConfirm(`确定要删除选中的 ${this.selectedMailboxes.length} 个邮箱吗？`);
             if (!confirmed) return;
-
-            const idsToDelete = this.selectedMailboxes.map(m => m.id || m.email);
+            const selectedObjs = this.mailboxes.filter(m => this.selectedMailboxes.includes(m.email));
+            const idsToDelete = selectedObjs.map(m => m.id || m.email);
             try {
                 const res = await this.authFetch('/api/mailboxes/delete', {
                     method: 'POST',
-                    body: JSON.stringify({ ids: idsToDelete })
+                    body: JSON.stringify({ids: idsToDelete})
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
                     this.showToast("删除成功", "success");
+                    this.selectedMailboxes = []
                     this.fetchMailboxes();
                 } else {
                     this.showToast("删除失败: " + data.message, "error");
@@ -2705,7 +3074,8 @@ createApp({
                 this.showToast("请求异常", "error");
             }
         },
-        openOutlookAuthModal(mailbox) {
+        openOutlookAuthModal(mailbox)
+        {
             const cid = mailbox.client_id || this.config?.local_microsoft?.client_id || this.BUILTIN_CLIENT_ID;
             if (!cid) {
                 this.showToast("🚫 无法获取有效的 Client ID！", "warning");
@@ -2717,7 +3087,6 @@ createApp({
             this.outlookAuth.pastedUrl = '';
             this.outlookAuth.showModal = true;
         },
-
         async generateOutlookAuthUrl() {
             this.outlookAuth.isGenerating = true;
             try {
@@ -2788,7 +3157,8 @@ createApp({
                 this.showToast("请先勾选需要导出的邮箱", "warning");
                 return;
             }
-            const textContent = this.selectedMailboxes
+            const selectedObjs = this.mailboxes.filter(m => this.selectedMailboxes.includes(m.email));
+            const textContent = selectedObjs
                 .map(m => {
                     const pwd = m.password || '';
                     const cid = m.client_id || '';
@@ -2822,7 +3192,7 @@ createApp({
             const confirmed = await this.customConfirm(`确定要将选中的 ${this.selectedMailboxes.length} 个邮箱状态重置为【正常/闲置】吗？\n(可用于解除死号误标)`);
             if (!confirmed) return;
 
-            const emailsToRecover = this.selectedMailboxes.map(m => m.email);
+            const emailsToRecover = this.selectedMailboxes;
 
             try {
                 const res = await this.authFetch('/api/mailboxes/update_status', {
@@ -2850,54 +3220,16 @@ createApp({
                 if (d.status === 'success') {
                     this.clashPool.instances = d.data.instances;
                     this.clashPool.groups = d.data.groups;
-                    this.clashPool.mode = d.data.mode || '';
-                    this.clashPool.message = d.data.message || '';
-                    this.clashPool.subscriptions = d.data.subscriptions?.items || [];
-                    this.clashPool.selectedSubscriptionId = d.data.subscriptions?.selected_id || '';
-                    this.clashPool.subUrl = d.data.subscriptions?.selected_url || this.clashPool.subUrl;
-                    if (this.config?.clash_proxy_pool) {
-                        this.config.clash_proxy_pool.sub_url = this.clashPool.subUrl;
-                        this.config.clash_proxy_pool.sub_urls = this.clashPool.subscriptions.map(sub => ({
-                            id: sub.id,
-                            name: sub.name,
-                            url: sub.url
-                        }));
-                    }
-                    if (this.clashPool.activeGroup) {
-                        const nextActive = this.clashPool.groups.find(g => g.name === this.clashPool.activeGroup.name);
-                        this.clashPool.activeGroup = nextActive || null;
-                    }
-                    const currentActiveGroupName = this.clashPool.activeGroup?.name || '';
-                    if (currentActiveGroupName && this.clashPool.latencyCache[currentActiveGroupName]) {
-                        const cache = this.clashPool.latencyCache[currentActiveGroupName];
-                        this.clashPool.latencyMap = cache.map || {};
-                        this.clashPool.latencyTestUrl = cache.testUrl || '';
-                    }
-                    if (this.clashPool.instances.length > 0) {
+                    if (this.clashPool.instances.length > 0 && !this.clashPool.isDeploying) {
                         this.clashPool.count = this.clashPool.instances.length;
                     }
                 }
             } catch (e) {}
             this.clashPool.loading = false;
         },
-        async handleClashRuntime(action) {
-            this.clashPool.actionLoading = action;
-            try {
-                const res = await this.authFetch('/api/clash/runtime', {
-                    method: 'POST',
-                    body: JSON.stringify({ action })
-                });
-                const d = await res.json();
-                this.showToast(d.message, d.status);
-                await this.fetchClashPool();
-            } catch (e) {
-                this.showToast('网络错误', 'error');
-            } finally {
-                this.clashPool.actionLoading = '';
-            }
-        },
         async handleClashDeploy() {
             this.showToast('正在调整实例规模...', 'info');
+            this.clashPool.isDeploying = true;
             try {
                 const res = await this.authFetch('/api/clash/deploy', {
                     method: 'POST',
@@ -2905,227 +3237,42 @@ createApp({
                 });
                 const d = await res.json();
                 this.showToast(d.message, d.status);
-                this.fetchClashPool();
-            } catch (e) { this.showToast('网络错误', 'error'); }
+                if (d.status === 'success') {
+                    setTimeout(() => {
+                        this.fetchClashPool();
+                        this.clashPool.isDeploying = false;
+                    }, 5000);
+                } else {
+                    this.clashPool.isDeploying = false;
+                }
+            } catch (e) {
+                this.showToast('网络错误', 'error');
+                this.clashPool.isDeploying = false;
+            }
         },
         async handleClashUpdate() {
             if (!this.clashPool.subUrl) return this.showToast('请输入订阅链接', 'error');
             this.clashPool.loading = true;
             try {
-                const previousGroupNames = (this.clashPool.groups || []).map(g => g.name).sort().join('|');
                 const res = await this.authFetch('/api/clash/update', {
                     method: 'POST',
                     body: JSON.stringify({ sub_url: this.clashPool.subUrl, target: this.clashPool.target })
                 });
                 const d = await res.json();
                 this.showToast(d.message, d.status);
-                await this.refreshClashGroupsAfterSubscriptionChange(previousGroupNames, this.clashPool.subUrl);
+                if (d.status === 'success') {
+                    setTimeout(() => {
+                        this.fetchClashPool();
+                    }, 5000);
+                }
             } catch (e) { this.showToast('网络错误', 'error'); }
             this.clashPool.loading = false;
-        },
-        async refreshCurrentClashGroups() {
-            if (!this.clashPool.subUrl) return this.showToast('请先选择订阅链接', 'warning');
-            this.clashPool.actionLoading = 'sub-refresh';
-            try {
-                const previousGroupNames = (this.clashPool.groups || []).map(g => g.name).sort().join('|');
-                const res = await this.authFetch('/api/clash/update', {
-                    method: 'POST',
-                    body: JSON.stringify({ sub_url: this.clashPool.subUrl, target: this.clashPool.target })
-                });
-                const d = await res.json();
-                this.showToast(d.message, d.status);
-                if (d.status === 'success') {
-                    await this.refreshClashGroupsAfterSubscriptionChange(previousGroupNames, this.clashPool.subUrl, true);
-                }
-            } catch (e) {
-                this.showToast('刷新策略组失败', 'error');
-            } finally {
-                this.clashPool.actionLoading = '';
-            }
-        },
-        async addClashSubscription() {
-            if (!this.clashPool.newSubUrl) return this.showToast('请输入订阅链接', 'warning');
-            this.clashPool.actionLoading = 'sub-add';
-            try {
-                const res = await this.authFetch('/api/clash/subscriptions/add', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: this.clashPool.newSubName,
-                        url: this.clashPool.newSubUrl,
-                        make_selected: true
-                    })
-                });
-                const d = await res.json();
-                this.showToast(d.message, d.status);
-                if (d.status === 'success') {
-                    this.clashPool.newSubName = '';
-                    this.clashPool.newSubUrl = '';
-                    await this.fetchClashPool();
-                }
-            } catch (e) {
-                this.showToast('新增订阅失败', 'error');
-            } finally {
-                this.clashPool.actionLoading = '';
-            }
-        },
-        async selectClashSubscription(subscription) {
-            this.clashPool.actionLoading = `sub-select:${subscription.id}`;
-            try {
-                const previousGroupNames = (this.clashPool.groups || []).map(g => g.name).sort().join('|');
-                const res = await this.authFetch('/api/clash/subscriptions/select', {
-                    method: 'POST',
-                    body: JSON.stringify({ subscription_id: subscription.id })
-                });
-                const d = await res.json();
-                if (d.status === 'success') {
-                    this.clashPool.subUrl = subscription.url;
-                    const updateRes = await this.authFetch('/api/clash/update', {
-                        method: 'POST',
-                        body: JSON.stringify({ sub_url: subscription.url, target: this.clashPool.target })
-                    });
-                    const updateData = await updateRes.json();
-                    this.showToast(`${d.message}；${updateData.message}`, updateData.status || d.status);
-                    await this.refreshClashGroupsAfterSubscriptionChange(previousGroupNames, subscription.url);
-                } else {
-                    this.showToast(d.message, d.status);
-                }
-            } catch (e) {
-                this.showToast('选择订阅失败', 'error');
-            } finally {
-                this.clashPool.actionLoading = '';
-            }
-        },
-        async deleteClashSubscription(subscription) {
-            const confirmed = await this.customConfirm(`确定删除订阅【${subscription.name}】吗？`);
-            if (!confirmed) return;
-            this.clashPool.actionLoading = `sub-del:${subscription.id}`;
-            try {
-                const res = await this.authFetch('/api/clash/subscriptions/delete', {
-                    method: 'POST',
-                    body: JSON.stringify({ subscription_id: subscription.id })
-                });
-                const d = await res.json();
-                this.showToast(d.message, d.status);
-                if (d.status === 'success') {
-                    await this.fetchClashPool();
-                }
-            } catch (e) {
-                this.showToast('删除订阅失败', 'error');
-            } finally {
-                this.clashPool.actionLoading = '';
-            }
         },
         fillProxyGroup(name) {
             if (this.config && this.config.clash_proxy_pool) {
                 this.config.clash_proxy_pool.group_name = name;
                 this.showToast(`已自动填入策略组：${name}`, 'success');
             }
-        },
-        openClashGroup(group) {
-            this.clashPool.activeGroup = group;
-            const cache = this.clashPool.latencyCache[group.name] || null;
-            this.clashPool.latencyMap = cache?.map || {};
-            this.clashPool.latencyTestUrl = cache?.testUrl || '';
-            this.fillProxyGroup(group.name);
-        },
-        closeClashGroup() {
-            this.clashPool.activeGroup = null;
-        },
-        async testActiveClashGroupLatency() {
-            if (!this.clashPool.activeGroup) return;
-            this.clashPool.latencyLoading = true;
-            try {
-                const res = await this.authFetch('/api/clash/delay', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        group_name: this.clashPool.activeGroup.name,
-                        target: this.clashPool.target
-                    })
-                });
-                const d = await res.json();
-                if (d.status === 'success') {
-                    this.clashPool.latencyMap = d.data?.results || {};
-                    this.clashPool.latencyTestUrl = d.data?.test_url || '';
-                    this.clashPool.latencyCache[this.clashPool.activeGroup.name] = {
-                        map: this.clashPool.latencyMap,
-                        testUrl: this.clashPool.latencyTestUrl
-                    };
-                    this.showToast(d.message, 'success');
-                } else {
-                    this.showToast(d.message, 'error');
-                }
-            } catch (e) {
-                this.showToast('延迟测试失败', 'error');
-            } finally {
-                this.clashPool.latencyLoading = false;
-            }
-        },
-        getClashNodeLatency(nodeName) {
-            return this.clashPool.latencyMap?.[nodeName] || null;
-        },
-        getSortedActiveClashNodes() {
-            if (!this.clashPool.activeGroup || !Array.isArray(this.clashPool.activeGroup.nodes)) return [];
-            const nodes = [...this.clashPool.activeGroup.nodes];
-            const current = this.clashPool.activeGroup.current;
-            const latencies = this.clashPool.latencyMap || {};
-            return nodes.sort((a, b) => {
-                if (a === current) return -1;
-                if (b === current) return 1;
-                const la = latencies[a];
-                const lb = latencies[b];
-                const va = la && la.status === 'ok' ? la.delay : Number.POSITIVE_INFINITY;
-                const vb = lb && lb.status === 'ok' ? lb.delay : Number.POSITIVE_INFINITY;
-                if (va !== vb) return va - vb;
-                return a.localeCompare(b);
-            });
-        },
-        async switchClashNode(nodeName) {
-            if (!this.clashPool.activeGroup || !nodeName) return;
-            this.clashPool.actionLoading = `switch:${nodeName}`;
-            try {
-                const res = await this.authFetch('/api/clash/switch', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        group_name: this.clashPool.activeGroup.name,
-                        proxy_name: nodeName,
-                        target: this.clashPool.target
-                    })
-                });
-                const d = await res.json();
-                this.showToast(d.message, d.status);
-                await this.fetchClashPool();
-                const currentGroupName = this.clashPool.activeGroup?.name || '';
-                const cache = currentGroupName ? this.clashPool.latencyCache[currentGroupName] : null;
-                if (cache) {
-                    this.clashPool.latencyMap = cache.map || {};
-                    this.clashPool.latencyTestUrl = cache.testUrl || '';
-                }
-            } catch (e) {
-                this.showToast('节点切换失败', 'error');
-            } finally {
-                this.clashPool.actionLoading = '';
-            }
-        },
-        async refreshClashGroupsAfterSubscriptionChange(previousGroupNames = '', expectedUrl = '', allowUnchangedGroups = false) {
-            const maxAttempts = 6;
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                await this.fetchClashPool();
-                const currentGroupNames = (this.clashPool.groups || []).map(g => g.name).sort().join('|');
-                const currentSelectedUrl = this.clashPool.subUrl || '';
-                const groupsReady = !!currentGroupNames;
-                const groupsChanged = currentGroupNames !== previousGroupNames;
-                const selectedReady = !expectedUrl || currentSelectedUrl === expectedUrl;
-                if (groupsReady && selectedReady && (groupsChanged || allowUnchangedGroups || attempt > 0)) {
-                    if (groupsChanged) {
-                        this.showToast('策略组已按新订阅刷新', 'success');
-                    } else if (allowUnchangedGroups) {
-                        this.showToast('策略组已按当前订阅重新刷新', 'success');
-                    }
-                    return;
-                }
-                await new Promise(resolve => setTimeout(resolve, 1200));
-            }
-            this.showToast('订阅已切换，但策略组刷新可能仍在进行中', 'warning');
         },
         syncClusterToPool() {
             if (!this.clashPool.instances || this.clashPool.instances.length === 0) {
@@ -3371,7 +3518,7 @@ createApp({
             this.showToast(`🚀 正在后端并发刷新 ${this.selectedAccounts.length} 个账号，请稍候...`, 'info');
             this.currentTab = 'console';
             try {
-                const emails = this.selectedAccounts.map(acc => acc.email);
+                const emails = this.selectedAccounts;
                 const res = await this.authFetch('/api/accounts/bulk_refresh', {
                     method: 'POST',
                     body: JSON.stringify({ emails: emails })
@@ -3687,37 +3834,6 @@ createApp({
                     this.currentTab = 'email';
                 } else this.showToast(data.message, 'error');
             } catch (e) { this.showToast('请求异常', 'error'); } finally { this.cfTools.isHosting = false; }
-        },
-        async handleCFDeleteHosting() {
-            if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 账号邮箱和 API Key！', 'warning');
-
-            const domains = String(this.cfTools.deleteDomains || '').split(',').map(s => s.trim()).filter(Boolean);
-            if (domains.length === 0) return this.showToast('没有找到可删除的域名', 'warning');
-
-            const confirmed = await this.customConfirm(`⚠️ 危险操作：\n\n将批量删除以下 ${domains.length} 个 CF 托管域名（含全部 DNS / 邮件路由配置）：\n${domains.join('\n')}\n\n确定继续吗？`);
-            if (!confirmed) return;
-
-            this.cfTools.isDeletingHosting = true;
-            this.showToast('正在批量删除 CF 托管域名...', 'info');
-            this.currentTab = 'console';
-            try {
-                const res = await this.authFetch('/api/cloudflare/delete_zones', {
-                    method: 'POST',
-                    body: JSON.stringify({ domains: this.cfTools.deleteDomains, api_email: this.config.cf_api_email, api_key: this.config.cf_api_key })
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    this.cfTools.results = data.data;
-                    this.showToast('✅ 托管域名删除完成', 'success');
-                    this.currentTab = 'email';
-                } else {
-                    this.showToast(data.message || '删除失败', 'error');
-                }
-            } catch (e) {
-                this.showToast('请求异常', 'error');
-            } finally {
-                this.cfTools.isDeletingHosting = false;
-            }
         },
         async handleCFEnableEmail() {
             if (!this.config.mail_domains) return this.showToast('发信域名池为空', 'warning');

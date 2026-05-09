@@ -313,8 +313,10 @@ def _smsbower_update_runtime(*, spent_delta: float = 0.0, balance: Optional[floa
 
 def _smsbower_resolve_service_code(proxies: Any) -> str:
     raw = str(getattr(cfg, 'SMSBOWER_SERVICE', 'dr')).strip()
-    if raw.lower() in {"openai", "chatgpt", "auto"}: return "dr"
-    return raw
+    selected = raw if raw else "dr"
+
+    _info(f"SmsBower 使用手动填写的服务代码: {selected}")
+    return selected
 
 
 def _smsbower_resolve_country_id(proxies: Any) -> int:
@@ -358,37 +360,52 @@ def _smsbower_prices_by_service(service_code: str, proxies: Any, *, force_refres
             return [dict(x) for x in _SMSBOWER_PRICE_CACHE.get("items", [])]
 
     name_map = _get_country_names_map(proxies)
+    ok, text, data = _smsbower_request("getPricesV3", proxies=proxies, params={"service": svc})
 
-    ok, text, data = _smsbower_request("getPrices", proxies=proxies, params={"service": svc})
-    rows = []
-    if ok and isinstance(data, dict):
-        for cid, entry in data.items():
-            if not str(cid).isdigit() or int(cid) in _OPENAI_SMS_BLOCKED_COUNTRY_IDS:
-                continue
-            target = entry.get(svc) if svc in entry else entry
-            if isinstance(target, dict) and "cost" in target:
-                try:
-                    c_id = int(cid)
-                    c_cost = float(target.get("cost", -1))
-                    c_count = int(target.get("count", 0))
+    if not ok or not isinstance(data, dict):
+        return []
 
-                    if c_count > 0:
-                        rows.append({
+    country_groups = {}
+
+    for cid, entry in data.items():
+        if not str(cid).isdigit() or int(cid) in _OPENAI_SMS_BLOCKED_COUNTRY_IDS:
+            continue
+
+        providers = entry.get(svc)
+        if not isinstance(providers, dict):
+            continue
+
+        for pid, info in providers.items():
+            try:
+                c_id = int(cid)
+                c_cost = float(info.get("price", -1))
+                c_count = int(info.get("count", 0))
+
+                if c_count > 0:
+                    if c_id not in country_groups:
+                        country_groups[c_id] = {
                             "country": c_id,
-                            "name": name_map.get(c_id, f"未知国家({c_id})"),
-                            "cost": c_cost,
-                            "count": c_count
-                        })
-                except:
-                    continue
+                            "name": name_map.get(c_id, f"国家{c_id}"),
+                            "total_count": 0,
+                            "routes": []
+                        }
+                    country_groups[c_id]["routes"].append({
+                        "provider": str(pid),
+                        "cost": c_cost,
+                        "count": c_count
+                    })
+                    country_groups[c_id]["total_count"] += c_count
+            except:
+                continue
 
+    rows = list(country_groups.values())
+    for r in rows:
+        r["routes"].sort(key=lambda x: (x["cost"], -x["count"]))
     if rows:
-        rows.sort(key=lambda x: (x.get("cost", 999), -x.get("count", 0)))
+        rows.sort(key=lambda x: (x["routes"][0]["cost"] if x["routes"] else 999, -x["total_count"]))
         with _SMSBOWER_PRICE_CACHE_LOCK:
             _SMSBOWER_PRICE_CACHE.update({"service": svc, "updated_at": now, "items": rows})
-
     return rows
-
 
 def _smsbower_pick_country_id(proxies: Any, *, service_code: str, preferred_country: int,
                               exclude_country_ids: Optional[set[int]] = None, force_refresh: bool = False) -> int:
@@ -436,6 +453,9 @@ def _smsbower_get_number(proxies: Any, *, service_code: str, country_id: int) ->
                 return "", "", f"价格拦截: 该国当前价格 ({actual_cost}$) 低于您的最低限价 ({limit_min}$)", ""
 
     params = {"service": service_code, "country": country_id}
+    operator_id = str(getattr(cfg, 'SMSBOWER_OPERATOR', '')).strip()
+    if operator_id:
+        params["operator"] = operator_id
     if _smsbower_order_max_price() > 0: params["maxPrice"] = _smsbower_order_max_price()
     if _smsbower_order_min_price() > 0: params["minPrice"] = _smsbower_order_min_price()
     ok, text, data = _smsbower_request("getNumberV2", proxies=proxies, params=params, timeout=30)

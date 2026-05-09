@@ -2,7 +2,7 @@ import os
 import asyncio
 import httpx
 import json
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from pydantic import BaseModel
 from cloudflare import Cloudflare
 from curl_cffi import requests as cffi_requests
@@ -240,21 +240,28 @@ def get_sub2api_groups(token: str = Depends(verify_token)):
         return {"status": "error", "message": f"Failed to fetch Sub2API groups: {exc}"}
 
 @router.get("/api/clash/status")
-async def get_clash_status(token: str = Depends(verify_token)):
+def get_clash_status(token: str = Depends(verify_token)):
     res = clash_manager.get_pool_status()
     if "error" in res:
         return {"status": "error", "message": res["error"]}
     return {"status": "success", "data": res}
 
 @router.post("/api/clash/deploy")
-async def post_clash_deploy(req: ClashDeployReq, token: str = Depends(verify_token)):
-    success, msg = clash_manager.deploy_clash_pool(req.count)
-    return {"status": "success" if success else "error", "message": msg}
+async def post_clash_deploy(req: ClashDeployReq, background_tasks: BackgroundTasks, token: str = Depends(verify_token)):
+    background_tasks.add_task(clash_manager.deploy_clash_pool, req.count)
+    return {
+        "status": "success",
+        "message": f"正在后台调整实例规模至 {req.count}，请稍后刷新查看"
+    }
 
 @router.post("/api/clash/update")
-async def post_clash_update(req: ClashUpdateReq, token: str = Depends(verify_token)):
-    success, msg = clash_manager.patch_and_update(req.sub_url, req.target)
-    return {"status": "success" if success else "error", "message": msg}
+async def post_clash_update(req: ClashUpdateReq, background_tasks: BackgroundTasks, token: str = Depends(verify_token)):
+    background_tasks.add_task(clash_manager.patch_and_update, req.sub_url, req.target)
+
+    return {
+        "status": "success",
+        "message": f"正在后台更新 {req.target} 的节点配置并重启容器，预计需要几十秒"
+    }
 
 @router.post("/api/clash/runtime")
 async def post_clash_runtime(req: ClashRuntimeReq, token: str = Depends(verify_token)):

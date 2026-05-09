@@ -904,6 +904,9 @@ def _handle_sub2api_dead_account(item: dict, client: Any, is_disabled: bool) -> 
 def process_sub2api_worker(i: int, total: int, item: dict, client: Any, args: Any) -> bool:
     """Sub2API 测活 Worker（使用 Sub2API /test SSE 接口）"""
     if hasattr(args, 'check_stop') and args.check_stop(): return False
+    creds = item.get("credentials", {})
+    if item.get("platform") != "openai" or str(creds.get("plan_type", "free")).lower() != "free":
+        return True
     name = item.get("name", "unknown")
     account_id = item.get("id")
     result, reason = client.test_account(account_id)
@@ -1152,6 +1155,7 @@ async def perform_sub2api_check(args, async_stop_event, loop, client, executor=N
         item for item in account_list
         if item.get("platform") == "openai"
            and str(item.get("credentials", {}).get("plan_type", "free")).lower() == "free"
+           and (item.get("extra") or {}).get("codex_5h_window_minutes", 0) == 0
     ]
 
     total_files = len(filtered_list)
@@ -1381,6 +1385,7 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                     item for item in account_list
                     if item.get("platform") == "openai"
                        and str(item.get("credentials", {}).get("plan_type", "free")).lower() == "free"
+                       and (item.get("extra") or {}).get("codex_5h_window_minutes", 0) == 0
                 ]
 
                 total_files = len(filtered_list)
@@ -1403,14 +1408,22 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                 print(f"[{ts()}] [INFO] 巡检结束，当前 Sub2API 仓库有效数: {valid_count}")
             else:
                 print(f"[{ts()}] [INFO] Sub2API 自动测活已关闭，直接读取云端列表进行补发判断...")
-                success, total_files = client.get_total_count()
+                success, account_list = client.get_all_accounts()
                 if not success:
-                    print(f"[{ts()}] [ERROR] 获取 Sub2API 总库存失败: {total_files}")
+                    print(f"[{ts()}] [ERROR] 获取 Sub2API 全量库存失败: {account_list}")
                     try:
                         await asyncio.wait_for(async_stop_event.wait(), timeout=60)
                     except asyncio.TimeoutError:
                         pass
                     continue
+
+                filtered_list = [
+                    item for item in account_list
+                    if item.get("platform") == "openai"
+                       and str(item.get("credentials", {}).get("plan_type", "free")).lower() == "free"
+                       and (item.get("extra") or {}).get("codex_5h_window_minutes", 0) == 0
+                ]
+                total_files = len(filtered_list)
                 valid_count = total_files
                 print(f"[{ts()}] [INFO] 当前云端总数: {total_files} (未开启自动巡检，默认全部视为有效)")
 

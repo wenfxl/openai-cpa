@@ -193,33 +193,50 @@ def fivesim_get_balance(proxies: Any = None) -> tuple[float, str]:
 def _fivesim_prices_by_service(service_code: str, proxies: Any, force_refresh: bool = False) -> list[dict]:
     svc = str(service_code or "openai").strip().lower()
     now = time.time()
-
     with _FIVESIM_PRICE_CACHE_LOCK:
         if not force_refresh and _FIVESIM_PRICE_CACHE.get("service") == svc and (
                 now - _FIVESIM_PRICE_CACHE.get("updated_at", 0)) <= 90:
             return list(_FIVESIM_PRICE_CACHE.get("items", []))
 
     ok, text, data = _fivesim_request("GET", f"guest/prices?product={svc}", proxies)
-    rows = []
+    country_groups = {}
+
     if ok and isinstance(data, dict) and svc in data:
-        countries_data = data[svc]
-        for country_name, operators in countries_data.items():
-            total_count = sum(op.get("count", 0) for op in operators.values())
-            valid_costs = [float(op.get("cost", 999)) for op in operators.values() if op.get("count", 0) > 0]
-            if total_count > 0 and valid_costs:
-                min_cost = min(valid_costs)
-                zh_name = _FIVESIM_COUNTRY_ZH.get(country_name.lower(), str(country_name).capitalize())
-                rows.append({
+        for country_name, operators in data[svc].items():
+            zh_name = _FIVESIM_COUNTRY_ZH.get(country_name.lower(), str(country_name).capitalize())
+
+            routes = []
+            min_cost = 999999.0
+            total_count = 0
+            for operator_name, op_data in operators.items():
+                count = int(op_data.get("count", 0))
+                cost = float(op_data.get("cost", 999))
+                if count > 0 and operator_name.lower() != "any":
+                    routes.append({
+                        "provider": operator_name,
+                        "cost": cost,
+                        "count": count
+                    })
+                    min_cost = min(min_cost, cost)
+                    total_count += count
+            if routes:
+                country_groups[country_name] = {
                     "country": country_name,
                     "name": zh_name,
-                    "cost": min_cost,
-                    "count": total_count
-                })
+                    "total_count": total_count,
+                    "min_cost": min_cost,
+                    "routes": routes
+                }
 
+    rows = list(country_groups.values())
     if rows:
-        rows.sort(key=lambda x: (x["cost"], -x["count"]))
+        for r in rows:
+            r["routes"].sort(key=lambda x: (x["cost"], -x["count"]))
+        rows.sort(key=lambda x: (x.get("min_cost", 999), -x["total_count"]))
+
         with _FIVESIM_PRICE_CACHE_LOCK:
             _FIVESIM_PRICE_CACHE.update({"service": svc, "updated_at": now, "items": rows})
+
     return rows
 
 
@@ -232,12 +249,13 @@ def _fivesim_pick_country(proxies: Any, service_code: str, pref_country: str, ex
     valid_options = []
     for r in rows:
         cname = r["country"]
-        if cname in excluded or r["count"] <= 0: continue
-        cost = r["cost"]
+        count = r.get("total_count", 0)
+        if cname in excluded or count <= 0: continue
+        cost = r.get("min_cost", 999.0)
         if limit_max > 0 and cost > limit_max: continue
         if limit_min > 0 and cost < limit_min: continue
 
-        score = -cost * 100 + min(r["count"], 10000) / 100.0
+        score = -cost * 100 + min(count, 10000) / 100.0
         if cname == pref_country: score += 50
         valid_options.append((score, cname))
 
@@ -250,22 +268,31 @@ def _fivesim_get_number(proxies: Any, service: str, country: str, enable_reuse: 
     str, str, str, str]:
     limit_max = _fivesim_max_price()
     limit_min = _fivesim_min_price()
-
+    operator = str(getattr(cfg, 'FIVESIM_OPERATOR', '')).strip()
     if limit_max > 0 or limit_min > 0:
         rows = _fivesim_prices_by_service(service, proxies)
         actual_cost = -1.0
         for r in rows:
             if r.get("country") == country:
-                actual_cost = float(r.get("cost", -1.0))
+                routes = r.get("routes", [])
+                for route in routes:
+                    if not operator or route.get("provider") == operator:
+                        actual_cost = float(route.get("cost", -1.0))
+                        if not operator:
+                            operator = route.get("provider")
+                        break
                 break
+
         if actual_cost > 0:
             if limit_max > 0 and actual_cost > limit_max:
-                return "", "", f"价格拦截: 当前国家价格 ({actual_cost}$) 高于最高限价 ({limit_max}$)", ""
+                return "", "", f"价格拦截: 当前线路价格 ({actual_cost}$) 高于最高限价 ({limit_max}$)", ""
             if limit_min > 0 and actual_cost < limit_min:
-                return "", "", f"价格拦截: 当前国家价格 ({actual_cost}$) 低于最低限价 ({limit_min}$)", ""
+                return "", "", f"价格拦截: 当前线路价格 ({actual_cost}$) 低于最低限价 ({limit_min}$)", ""
 
     c = country or "any"
-    endpoint = f"user/buy/activation/{c}/any/{service}"
+    op = operator if operator else "any"
+    endpoint = f"user/buy/activation/{c}/{op}/{service}"
+
     params = {}
     if limit_max > 0: params["maxPrice"] = limit_max
     if enable_reuse: params["reuse"] = "1"
@@ -381,6 +408,8 @@ def try_verify_phone_via_fivesim(session: requests.Session, *, proxies: Any, hin
 
     try:
         service_code = str(getattr(cfg, 'FIVESIM_SERVICE', 'openai')).strip()
+        if not service_code:
+            service_code = "openai"
         pref_country = str(getattr(cfg, 'FIVESIM_COUNTRY', 'any')).strip()
         excluded = set()
         last_reason = "验证失败"

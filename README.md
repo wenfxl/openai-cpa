@@ -276,6 +276,8 @@ services:
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+      - .:${PWD}
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "com.centurylinklabs.watchtower.scope=openai-cpa"
@@ -287,6 +289,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --label-enable --scope openai-cpa --interval 86400 --cleanup
+
 
 
 ```
@@ -305,13 +308,21 @@ services:
     ports:
       - "${WEB_PORT:-8000}:8000"
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+      - .:${PWD}
     environment:
+      - HOST_PROJECT_PATH=${PWD}
       - TZ=Asia/Shanghai
       - DB_TYPE=mysql
-      - DB_HOST=MySQL IP
+      - DB_HOST=你的云端MySQL地址
       - DB_PORT=3306
       - DB_USER=root
-      - DB_PASS=password
+      - DB_PASS=你的数据库密码
       - DB_NAME=wenfxl_manager
 ```
 

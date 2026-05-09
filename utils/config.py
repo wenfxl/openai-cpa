@@ -178,7 +178,7 @@ def init_config():
                 print(f"[{ts()}] [WARNING] 自动补全配置文件写入失败: {e}")
 
     return user_config
-APP_VERSION = "v14.3.1"
+APP_VERSION = "v14.3.3"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False
@@ -271,6 +271,7 @@ ENABLE_IMAGE2API_MODE: bool = False
 IMAGE2API_URL: str = ""
 IMAGE2API_KEY: str = ""
 IMAGE2API_RETAIN_REG_ONLY: bool = False
+IMAGE2API_IMG_ONLY_MODE: bool = False
 
 LUCKMAIL_PREFERRED_DOMAIN: str = ""
 LUCKMAIL_EMAIL_TYPE: str = ""
@@ -313,6 +314,7 @@ SMSBOWER_MIN_BALANCE = 0.0
 SMSBOWER_MAX_TRIES = 3
 SMSBOWER_POLL_TIMEOUT_SEC = 180
 SMSBOWER_MIN_PRICE = 0.05
+SMSBOWER_OPERATOR = ""
 
 # 5SIM
 FIVESIM_ENABLED = False
@@ -327,6 +329,7 @@ FIVESIM_MIN_PRICE = 0.0
 FIVESIM_MIN_BALANCE = 10.0
 FIVESIM_MAX_TRIES = 3
 FIVESIM_POLL_TIMEOUT_SEC = 180
+FIVESIM_OPERATOR = ""
 
 NORMAL_SLEEP_MIN: int = 5
 NORMAL_SLEEP_MAX: int = 30
@@ -428,7 +431,7 @@ def reload_all_configs(new_config_dict=None):
     global SUB2API_ACCOUNT_CONCURRENCY, SUB2API_ACCOUNT_LOAD_FACTOR, SUB2API_ACCOUNT_PRIORITY, SUB2API_DEFAULT_PROXY
     global SUB2API_DEFAULT_PROXY_POOL
     global SUB2API_ACCOUNT_RATE_MULTIPLIER, SUB2API_ACCOUNT_GROUP_IDS, SUB2API_ENABLE_WS_MODE
-    global ENABLE_IMAGE2API_MODE, IMAGE2API_URL, IMAGE2API_KEY, IMAGE2API_RETAIN_REG_ONLY
+    global ENABLE_IMAGE2API_MODE, IMAGE2API_URL, IMAGE2API_KEY, IMAGE2API_RETAIN_REG_ONLY, IMAGE2API_IMG_ONLY_MODE
 
     global LUCKMAIL_API_KEY, LUCKMAIL_PREFERRED_DOMAIN, LUCKMAIL_EMAIL_TYPE, LUCKMAIL_VARIANT_MODE, LUCKMAIL_REUSE_PURCHASED, LUCKMAIL_TAG_ID
     global HERO_SMS_ENABLED, HERO_SMS_API_KEY, HERO_SMS_BASE_URL, HERO_SMS_COUNTRY, HERO_SMS_SERVICE
@@ -454,11 +457,11 @@ def reload_all_configs(new_config_dict=None):
     global GMAIL_OAUTH_SUFFIX_MODE, GMAIL_OAUTH_SUFFIX_LEN_MIN, GMAIL_OAUTH_SUFFIX_LEN_MAX
     global DISABLE_FORCED_TAKEOVER
     global SMSBOWER_ENABLED, SMSBOWER_API_KEY, SMSBOWER_BASE_URL, SMSBOWER_COUNTRY, SMSBOWER_SERVICE
-    global SMSBOWER_AUTO_PICK_COUNTRY, SMSBOWER_VERIFY_ON_REGISTER, SMSBOWER_REUSE_PHONE
+    global SMSBOWER_AUTO_PICK_COUNTRY, SMSBOWER_VERIFY_ON_REGISTER, SMSBOWER_REUSE_PHONE, SMSBOWER_OPERATOR
     global SMSBOWER_MAX_PRICE, SMSBOWER_MIN_BALANCE, SMSBOWER_MAX_TRIES, SMSBOWER_POLL_TIMEOUT_SEC, SMSBOWER_MIN_PRICE
     global FIVESIM_ENABLED, FIVESIM_API_KEY, FIVESIM_SERVICE, FIVESIM_COUNTRY
     global FIVESIM_AUTO_PICK_COUNTRY, FIVESIM_VERIFY_ON_REGISTER, FIVESIM_REUSE_PHONE
-    global FIVESIM_MAX_PRICE, FIVESIM_MIN_PRICE, FIVESIM_MIN_BALANCE
+    global FIVESIM_MAX_PRICE, FIVESIM_MIN_PRICE, FIVESIM_MIN_BALANCE, FIVESIM_OPERATOR
     global FIVESIM_MAX_TRIES, FIVESIM_POLL_TIMEOUT_SEC
     global SMSBOWER_REUSE_PHONE, SMSBOWER_REUSE_MAX
     global HERO_SMS_REUSE_PHONE, HERO_SMS_REUSE_MAX
@@ -703,6 +706,7 @@ def reload_all_configs(new_config_dict=None):
     IMAGE2API_URL = format_docker_url(str(_image2api.get("api_url", "")).strip()).rstrip("/")
     IMAGE2API_KEY = str(_image2api.get("api_key", "")).strip()
     IMAGE2API_RETAIN_REG_ONLY = safe_bool(_image2api.get("retain_reg_only", False))
+    IMAGE2API_IMG_ONLY_MODE = safe_bool(_image2api.get("img_only_mode", False))
 
     reset_sub2api_proxy_rotation()
     _normal = _c.get("normal_mode", {})
@@ -802,6 +806,7 @@ def reload_all_configs(new_config_dict=None):
     SMSBOWER_POLL_TIMEOUT_SEC = safe_int(_smsbower.get("poll_timeout_sec", 120), default=120)
     SMSBOWER_MIN_PRICE = safe_float(_smsbower.get("min_price", 0.05), default=0.05)
     SMSBOWER_REUSE_MAX = safe_int(_smsbower.get("reuse_max", 2), default=2)
+    SMSBOWER_OPERATOR = str(_smsbower.get("operator", ) or "").strip()
 
     _fivesim = _c.get("fivesim", {})
     FIVESIM_ENABLED = safe_bool(_fivesim.get("enabled", False), default=False)
@@ -817,6 +822,7 @@ def reload_all_configs(new_config_dict=None):
     FIVESIM_MAX_TRIES = safe_int(_fivesim.get("max_tries", 3), default=3)
     FIVESIM_POLL_TIMEOUT_SEC = safe_int(_fivesim.get("poll_timeout_sec", 180), default=180)
     FIVESIM_REUSE_MAX = safe_int(_fivesim.get("reuse_max", 2), default=2)
+    FIVESIM_OPERATOR = str(_fivesim.get("operator", ) or "").strip()
 
 
     _ai = _c.get("ai_service", {})
