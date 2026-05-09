@@ -210,6 +210,7 @@ def _new_domain_runtime_state() -> dict:
         "last_used_at": 0.0,
         "last_failure_at": 0.0,
         "last_success_at": 0.0,
+        "in_flight_count": 0,
     }
 
 
@@ -235,27 +236,42 @@ def _get_domain_state(domain: str) -> dict:
 
 def _format_domain_debug_snapshot(domain: str, state: dict, now: float) -> str:
     fail_count = _recalculate_domain_fail_count(state)
+    in_flight_count = max(0, int(state.get("in_flight_count") or 0))
     last_used_at = float(state.get("last_used_at") or 0.0)
     cooldown_until = float(state.get("cooldown_until") or 0.0)
     cooldown_remaining = max(0, int(cooldown_until - now)) if cooldown_until > now else 0
     last_used_text = datetime.fromtimestamp(last_used_at).strftime("%H:%M:%S") if last_used_at > 0 else "never"
-    return f"{domain}(fail={fail_count},last={last_used_text},cooldown={cooldown_remaining}s)"
+    return f"{domain}(fail={fail_count},inflight={in_flight_count},last={last_used_text},cooldown={cooldown_remaining}s)"
+
+
+def _get_domain_selection_key(state: dict) -> tuple[int, float]:
+    in_flight_count = max(0, int(state.get("in_flight_count") or 0))
+    last_used_at = float(state.get("last_used_at") or 0.0)
+    return in_flight_count, last_used_at
 
 
 def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
     if not candidates:
         return None
 
-    ranked_candidates = []
+    clean_domains = []
+    degraded_domains = []
     for domain in candidates:
         state = _DOMAIN_RUNTIME_STATE.setdefault(domain, _new_domain_runtime_state())
         fail_count = _recalculate_domain_fail_count(state)
-        last_used_at_raw = state.get("last_used_at")
-        last_used_at = float(last_used_at_raw) if last_used_at_raw else 0.0
-        ranked_candidates.append(((fail_count, last_used_at), domain))
+        if fail_count <= 0:
+            clean_domains.append(domain)
+        else:
+            degraded_domains.append(domain)
 
-    if not ranked_candidates:
+    prioritized = clean_domains if clean_domains else degraded_domains
+    if not prioritized:
         return None
+
+    ranked_candidates = []
+    for domain in prioritized:
+        state = _DOMAIN_RUNTIME_STATE.setdefault(domain, _new_domain_runtime_state())
+        ranked_candidates.append((_get_domain_selection_key(state), domain))
 
     best_key = min(key for key, _ in ranked_candidates)
     best_domains = [domain for key, domain in ranked_candidates if key == best_key]
@@ -275,6 +291,7 @@ def _mark_selected_domain_used(selected: Optional[str], now: float) -> Optional[
         return None
     state = _DOMAIN_RUNTIME_STATE.setdefault(selected, _new_domain_runtime_state())
     state["last_used_at"] = now
+    state["in_flight_count"] = max(0, int(state.get("in_flight_count") or 0)) + 1
     return selected
 
 
@@ -368,7 +385,12 @@ def _build_domain_result(domain: str, state: dict, cooldown_until: float, cooldo
         "cooldown_reason": str(state.get("cooldown_reason") or ""),
         "cooldown_until": cooldown_until,
         "cooldown_triggered": cooldown_triggered,
+        "in_flight_count": max(0, int(state.get("in_flight_count") or 0)),
     }
+
+
+def _release_domain_in_flight(state: dict) -> None:
+    state["in_flight_count"] = max(0, int(state.get("in_flight_count") or 0) - 1)
 
 
 def record_domain_failure(domain: str, reason: str) -> dict:
@@ -393,6 +415,7 @@ def record_domain_failure(domain: str, reason: str) -> dict:
         if not isinstance(failure_counts, dict):
             failure_counts = {}
             state["failure_counts"] = failure_counts
+        _release_domain_in_flight(state)
         cooldown_until = float(state.get("cooldown_until") or 0.0)
         fail_before = _recalculate_domain_fail_count(state)
         state["last_failure_at"] = now
@@ -431,6 +454,7 @@ def record_domain_success(domain: str) -> dict:
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        _release_domain_in_flight(state)
         state["success_count"] = int(state.get("success_count") or 0) + 1
         state["last_success_at"] = now
         _recalculate_domain_fail_count(state)
@@ -457,6 +481,7 @@ def _build_domain_runtime_row(domain: str, state: dict, now: float) -> dict:
         "last_used_at": float(state.get("last_used_at") or 0.0),
         "last_failure_at": float(state.get("last_failure_at") or 0.0),
         "last_success_at": float(state.get("last_success_at") or 0.0),
+        "in_flight_count": max(0, int(state.get("in_flight_count") or 0)),
     }
 
 
