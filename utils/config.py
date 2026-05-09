@@ -579,6 +579,7 @@ def reload_all_configs(new_config_dict=None):
     MAIL_DOMAINS = _c.get("mail_domains", "")
     DISABLED_MAIL_DOMAINS = normalize_domain_list(_c.get("disabled_mail_domains", []))
     ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL = safe_bool(_c.get("enable_mail_domain_runtime_control", False), default=False)
+    MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE = safe_bool(_c.get("mail_domain_prefer_low_failure_mode", False), default=False)
     MAIL_DOMAIN_FAILURE_TYPES = [
         str(item or "").strip().lower()
         for item in (_c.get("mail_domain_failure_types", ["discarded_email"]) or ["discarded_email"])

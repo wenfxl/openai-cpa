@@ -14,6 +14,7 @@ email_api_mode: "cloudflare_temp_email"
 mail_domains: "domain1.com,domain2.xyz,domain3.net"
 disabled_mail_domains: []
 enable_mail_domain_runtime_control: false
+mail_domain_prefer_low_failure_mode: false
 mail_domain_failure_types:
   - discarded_email
 mail_domain_fail_threshold: 3

@@ -231,6 +231,26 @@ def _get_domain_state(domain: str) -> dict:
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
         return dict(state)
 
+def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
+    if not candidates:
+        return None
+
+    grouped_candidates: dict[tuple[int, float], list[str]] = {}
+    best_key: Optional[tuple[int, float]] = None
+    for domain in candidates:
+        state = _DOMAIN_RUNTIME_STATE.setdefault(domain, _new_domain_runtime_state())
+        fail_count = _recalculate_domain_fail_count(state)
+        last_used_at = float(state.get("last_used_at") or 0.0)
+        key = (fail_count, last_used_at)
+        grouped_candidates.setdefault(key, []).append(domain)
+        if best_key is None or key < best_key:
+            best_key = key
+
+    if best_key is None:
+        return None
+    return random.choice(grouped_candidates[best_key])
+
+
 def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
     disabled_domains = _get_disabled_main_domains()
     if not is_mail_domain_runtime_control_enabled():
@@ -256,7 +276,12 @@ def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
         if not candidates:
             return None
 
-        selected = random.choice(candidates)
+        if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False):
+            selected = _select_low_failure_domain(candidates)
+        else:
+            selected = random.choice(candidates)
+        if not selected:
+            return None
         _DOMAIN_RUNTIME_STATE[selected]["last_used_at"] = now
         return selected
 

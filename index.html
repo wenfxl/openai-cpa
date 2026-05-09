@@ -873,6 +873,14 @@
                                             </div>
                                         </div>
 
+                                        <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer">
+                                            <input type="checkbox" v-model="config.mail_domain_prefer_low_failure_mode" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
+                                            <div>
+                                                <div class="text-sm font-black text-slate-700">优先低异常域名</div>
+                                                <div class="text-[11px] text-slate-400 mt-1">仅在黄金矿工模式开启时生效，优先选择异常计数更低的可用主域名；同分时优先最近较少使用的域名。</div>
+                                            </div>
+                                        </label>
+
                                         <div>
                                             <label class="block text-slate-700 text-xs font-black mb-3 uppercase tracking-wider">异常判断逻辑</label>
                                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">

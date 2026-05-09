@@ -716,6 +716,8 @@ createApp({
                 )];
                 if (this.config.enable_mail_domain_runtime_control === undefined) this.config.enable_mail_domain_runtime_control = false;
                 this.config.enable_mail_domain_runtime_control = normalizeBooleanLike(this.config.enable_mail_domain_runtime_control, false);
+                if (this.config.mail_domain_prefer_low_failure_mode === undefined) this.config.mail_domain_prefer_low_failure_mode = false;
+                this.config.mail_domain_prefer_low_failure_mode = normalizeBooleanLike(this.config.mail_domain_prefer_low_failure_mode, false);
                 if (!Array.isArray(this.config.mail_domain_failure_types)) this.config.mail_domain_failure_types = ['discarded_email'];
                 this.config.mail_domain_failure_types = [...new Set(
                     this.config.mail_domain_failure_types
