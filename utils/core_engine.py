@@ -1055,7 +1055,14 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                     preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, current_batch)
                     exclusion_report = mail_service.get_main_domain_exclusion_report(domain_pool)
                     rank_debug = mail_service.get_main_domain_rank_debug(domain_pool)
-                    print(f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={current_batch} | assigned={preallocated_domains} | disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | rank={rank_debug}")
+                    selection_debug = mail_service.get_main_domain_selection_debug(domain_pool)
+                    print(
+                        f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={current_batch} | assigned={preallocated_domains} | "
+                        f"disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | "
+                        f"prefer_low_failure={selection_debug['prefer_low_failure']} | "
+                        f"selection_mode={selection_debug['selection_mode']} | "
+                        f"candidate_count={selection_debug['candidate_count']} | rank={rank_debug}"
+                    )
 
                 def _worker(worker_index=0, assigned_domain=None):
                     if stop_event.is_set(): return "stopped"
@@ -1376,7 +1383,14 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                         preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
                         exclusion_report = mail_service.get_main_domain_exclusion_report(domain_pool)
                         rank_debug = mail_service.get_main_domain_rank_debug(domain_pool)
-                        print(f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains} | disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | rank={rank_debug}")
+                        selection_debug = mail_service.get_main_domain_selection_debug(domain_pool)
+                        print(
+                            f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains} | "
+                            f"disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | "
+                            f"prefer_low_failure={selection_debug['prefer_low_failure']} | "
+                            f"selection_mode={selection_debug['selection_mode']} | "
+                            f"candidate_count={selection_debug['candidate_count']} | rank={rank_debug}"
+                        )
 
                     if cfg.ENABLE_MULTI_THREAD_REG:
                         print(f"[{ts()}] [INFO] 多线程补货: {success_in_this_cycle}/{need_to_reg} "
@@ -1628,7 +1642,14 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
                         exclusion_report = mail_service.get_main_domain_exclusion_report(domain_pool)
                         rank_debug = mail_service.get_main_domain_rank_debug(domain_pool)
-                        print(f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains} | disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | rank={rank_debug}")
+                        selection_debug = mail_service.get_main_domain_selection_debug(domain_pool)
+                        print(
+                            f"[{ts()}] [INFO] [域名分配] batch={batch_id} | size={batch_size} | assigned={preallocated_domains} | "
+                            f"disabled={exclusion_report['disabled']} | cooling={exclusion_report['cooling']} | "
+                            f"prefer_low_failure={selection_debug['prefer_low_failure']} | "
+                            f"selection_mode={selection_debug['selection_mode']} | "
+                            f"candidate_count={selection_debug['candidate_count']} | rank={rank_debug}"
+                        )
 
                     if cfg.ENABLE_MULTI_THREAD_REG:
                         print(f"[{ts()}] [INFO] 多线程补货: {success_in_this_cycle}/{need_to_reg} "

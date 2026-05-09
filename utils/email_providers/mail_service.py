@@ -437,6 +437,25 @@ def get_main_domain_rank_debug(main_domains: list[str]) -> str:
     return _format_domain_rank_debug(main_domains)
 
 
+def get_main_domain_selection_debug(main_domains: list[str]) -> dict:
+    if not is_mail_domain_runtime_control_enabled():
+        return {
+            "prefer_low_failure": False,
+            "selection_mode": "runtime_control_disabled",
+            "candidate_count": 0,
+        }
+
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        candidates = _get_available_main_domain_candidates(main_domains, now)
+        return {
+            "prefer_low_failure": bool(getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)),
+            "selection_mode": "low_failure" if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False) else "random",
+            "candidate_count": len(candidates),
+        }
+
+
 def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float:
     cooldown_until = time.time() + max(int(cooldown_sec or 0), 0)
     state["fail_count"] = 0
