@@ -926,7 +926,7 @@
                                                             <div>
                                                                 <div class="text-sm font-black text-slate-800 break-all">{{ item.domain }}</div>
                                                                 <div class="text-[11px] text-slate-400 mt-1">
-                                                                    最近使用: {{ item.last_used_at ? new Date(item.last_used_at * 1000).toLocaleString('zh-CN', { hour12: false }) : '未使用' }}
+                                                        最近使用: {{ item.last_used_at ? formatMainlandDateTime(new Date(item.last_used_at * 1000)) : '未使用' }}
                                                                 </div>
                                                                 <div v-if="isMailDomainRuntimePristine(item)" class="text-[11px] text-sky-500 mt-1 font-medium">
                                                                     尚未参与运行，等待首次分配。
@@ -3628,6 +3628,69 @@
                             </div>
                         </div>
                         <div v-show="currentTab === 'concurrency'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-cyan-500 bg-gradient-to-br from-cyan-50/30 to-white lg:col-span-2">
+                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-cyan-700 flex items-center gap-2 tracking-tight">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 7h10v10H7z"></path></svg>
+                                            内存预测与实测监控
+                                        </h3>
+                                        <p class="text-xs text-slate-500 font-medium mt-2">根据当前配置估算低/中/高内存占用，并通过 psutil 显示当前 Python 进程 RSS。</p>
+                                    </div>
+                                    <button @click="fetchMemoryPrediction" :disabled="isLoadingMemoryPrediction" class="px-4 py-2.5 rounded-xl bg-cyan-600 text-white text-sm font-black shadow-md shadow-cyan-500/20 hover:bg-cyan-700 active:scale-95 disabled:opacity-60 disabled:cursor-wait transition-all flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': isLoadingMemoryPrediction}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        重新估算
+                                    </button>
+                                </div>
+
+                                <div v-if="memoryPredictionError" class="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold">
+                                    {{ memoryPredictionError }}
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                    <div class="bg-white p-4 rounded-xl border border-cyan-100 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">当前 RSS</div>
+                                        <div class="text-2xl font-black text-cyan-700">{{ formatMemoryMb(memoryPrediction?.actual?.rss_mb ?? stats.memory?.rss_mb) }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">预测中标</div>
+                                        <div class="text-2xl font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.mid ?? stats.memory?.predicted_mid_mb) }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">预测高标</div>
+                                        <div class="text-2xl font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.high ?? stats.memory?.predicted_high_mb) }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border shadow-sm" :class="memorySafetyClass(memoryPrediction?.safety?.level ?? stats.memory?.safety_level)">
+                                        <div class="text-[11px] font-black uppercase tracking-wider mb-2 opacity-70">安全状态</div>
+                                        <div class="text-2xl font-black">{{ memoryPrediction?.safety?.label ?? stats.memory?.safety_label ?? '无数据' }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                    <div class="lg:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">预测分解</div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200"><span class="block text-[10px] text-slate-400 font-black uppercase mb-1">低标</span><span class="font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.low) }}</span></div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200"><span class="block text-[10px] text-slate-400 font-black uppercase mb-1">中标</span><span class="font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.mid) }}</span></div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200"><span class="block text-[10px] text-slate-400 font-black uppercase mb-1">高标</span><span class="font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.high) }}</span></div>
+                                        </div>
+                                        <p class="text-xs text-slate-500 leading-relaxed font-medium">{{ memoryPrediction?.safety?.message || memoryPrediction?.prediction?.model_note || '切换到本页后会自动获取完整预测数据。' }}</p>
+                                        <p v-if="memoryPrediction?.actual?.note" class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3 font-bold">{{ memoryPrediction.actual.note }}</p>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">配置快照</div>
+                                        <div class="space-y-2 text-xs font-bold text-slate-600">
+                                            <div class="flex justify-between gap-3"><span>REG Threads</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.reg_threads ?? config.reg_threads }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>CPA Threads</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.cpa_threads ?? config.cpa_mode?.threads }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>Sub2API Threads</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.sub2api_threads ?? config.sub2api_mode?.threads }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>Proxy Pool</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.proxy_pool_size ?? 'N/A' }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>Max Logs</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.max_log_lines ?? config.max_log_lines }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>DB Type</span><span class="text-cyan-700 uppercase">{{ memoryPrediction?.prediction?.config_snapshot?.db_type ?? config.database?.type }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>系统使用率</span><span class="text-cyan-700">{{ memoryPrediction?.actual?.system_used_percent ?? 'N/A' }}%</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-indigo-500 bg-gradient-to-br from-indigo-50/20 to-white lg:col-span-2">
                                 <h3 class="text-lg md:text-xl font-black text-indigo-700 mb-6 flex items-center gap-2 tracking-tight"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7c0-1.105 3.582-2 8-2s8 .895 8 2-3.582 2-8 2-8-.895-8-2zm0 5c0 1.105 3.582 2 8 2s8-.895 8-2m-16 5c0 1.105 3.582 2 8 2s8-.895 8-2"></path></svg> 数据库存储引擎 <span class="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded border border-rose-100 ml-2">修改后需点左下角重启项目后生效</span></h3>
 
