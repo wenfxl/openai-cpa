@@ -112,29 +112,6 @@ def pop_last_domain_failure_event() -> dict:
     return dict(event) if isinstance(event, dict) else {}
 
 
-def _format_domain_assignment_trace(
-    email_or_domain: str,
-    batch_id: Optional[int] = None,
-    worker_index: Optional[int] = None,
-    assigned_domain: Optional[str] = None,
-) -> str:
-    trace_parts = []
-    if batch_id is not None:
-        trace_parts.append(f"batch={batch_id}")
-    if worker_index is not None:
-        trace_parts.append(f"worker={worker_index}")
-    normalized_assigned = _normalize_main_domain(assigned_domain) if assigned_domain else ""
-    if normalized_assigned:
-        trace_parts.append(f"assigned={normalized_assigned}")
-    if email_or_domain:
-        normalized_actual = _normalize_main_domain(email_or_domain)
-        if normalized_actual:
-            trace_parts.append(f"actual={normalized_actual}")
-    if not trace_parts:
-        return ""
-    return " [域名分配] " + " | ".join(trace_parts)
-
-
 def _get_configured_main_domains() -> list[str]:
     seen = set()
     domains = []
@@ -1149,7 +1126,6 @@ def get_email_and_token(
         if getattr(cfg, 'CM_LOCAL_WEBHOOK', False):
             print(
                 f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 cloudmail 指定创建邮箱: {mask_email(email_str)}"
-                f"{_format_domain_assignment_trace(email_str, batch_id, worker_index, assigned_domain)}"
             )
             return email_str, ""
         else:
@@ -1190,7 +1166,6 @@ def get_email_and_token(
                     res.raise_for_status()
                     print(
                         f"[{cfg.ts()}] [INFO] 成功通过 Freemail 指定创建邮箱: {mask_email(email_str)}"
-                        f"{_format_domain_assignment_trace(email_str, batch_id, worker_index, assigned_domain)}"
                     )
                     return email_str, ""
                 except Exception as e:
@@ -1234,7 +1209,6 @@ def get_email_and_token(
                     set_last_email(email)
                     print(
                         f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {mask_email(email)}"
-                        f"{_format_domain_assignment_trace(email, batch_id, worker_index, assigned_domain)}"
                     )
                     return email, jwt
                 terminal_failure_reason = "cloudflare_temp_email_network"
