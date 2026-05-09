@@ -1046,7 +1046,6 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                 should_preallocate_domains = (
                     current_batch > 1
                     and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
-                    and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
                 )
                 preallocated_domains = []
                 batch_id = None
@@ -1358,11 +1357,17 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                         if not smart_switch_node(args.proxy):
                             print(f"[{ts()}] [WARNING] [CPA补货] 全局节点切换失败，使用当前 IP 继续...")
 
+                    print(
+                        f"[{ts()}] [DEBUG] [CPA补货域名诊断] "
+                        f"enable_multi_thread={cfg.ENABLE_MULTI_THREAD_REG} | "
+                        f"runtime_control={getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)} | "
+                        f"batch_size={batch_size} | email_mode={getattr(cfg, 'EMAIL_API_MODE', '')}"
+                    )
+
                     if (
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
                         and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
-                        and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
                     ):
                         batch_id = int(time.time() * 1000)
                         domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
@@ -1602,11 +1607,17 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         if not smart_switch_node(args.proxy):
                             print(f"[{ts()}] [WARNING] [Sub2API补货] 全局节点切换失败，使用当前 IP 继续...")
 
+                    print(
+                        f"[{ts()}] [DEBUG] [Sub2API补货域名诊断] "
+                        f"enable_multi_thread={cfg.ENABLE_MULTI_THREAD_REG} | "
+                        f"runtime_control={getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)} | "
+                        f"batch_size={batch_size} | email_mode={getattr(cfg, 'EMAIL_API_MODE', '')}"
+                    )
+
                     if (
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
                         and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
-                        and getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False)
                     ):
                         batch_id = int(time.time() * 1000)
                         domain_pool = [d.strip() for d in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(',') if d.strip()]
