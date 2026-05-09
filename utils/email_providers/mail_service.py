@@ -233,6 +233,15 @@ def _get_domain_state(domain: str) -> dict:
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
         return dict(state)
 
+def _format_domain_debug_snapshot(domain: str, state: dict, now: float) -> str:
+    fail_count = _recalculate_domain_fail_count(state)
+    last_used_at = float(state.get("last_used_at") or 0.0)
+    cooldown_until = float(state.get("cooldown_until") or 0.0)
+    cooldown_remaining = max(0, int(cooldown_until - now)) if cooldown_until > now else 0
+    last_used_text = datetime.fromtimestamp(last_used_at).strftime("%H:%M:%S") if last_used_at > 0 else "never"
+    return f"{domain}(fail={fail_count},last={last_used_text},cooldown={cooldown_remaining}s)"
+
+
 def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
     if not candidates:
         return None
@@ -281,21 +290,38 @@ def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
 
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
+        skipped_domains = []
         for domain in main_domains:
             normalized = _normalize_main_domain(domain)
-            if not normalized or normalized in disabled_domains:
+            if not normalized:
+                skipped_domains.append(f"{domain}->invalid")
+                continue
+            if normalized in disabled_domains:
+                skipped_domains.append(f"{normalized}->disabled")
                 continue
             state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
             cooldown_until = float(state.get("cooldown_until") or 0.0)
             if cooldown_until > now:
+                skipped_domains.append(f"{normalized}->cooldown:{max(0, int(cooldown_until - now))}s")
                 continue
             candidates.append(normalized)
 
         if not candidates:
+            if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False):
+                skipped_text = ", ".join(skipped_domains) if skipped_domains else "none"
+                print(f"[{cfg.ts()}] [域名调试] 候选为空，跳过详情: {skipped_text}")
             return None
 
         if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False):
+            candidate_debug = []
+            for candidate in candidates:
+                state = _DOMAIN_RUNTIME_STATE.setdefault(candidate, _new_domain_runtime_state())
+                candidate_debug.append(_format_domain_debug_snapshot(candidate, state, now))
             selected = _select_low_failure_domain(candidates)
+            skipped_text = ", ".join(skipped_domains) if skipped_domains else "none"
+            selected_state = _DOMAIN_RUNTIME_STATE.setdefault(selected, _new_domain_runtime_state()) if selected else {}
+            selected_debug = _format_domain_debug_snapshot(selected, selected_state, now) if selected else "none"
+            print(f"[{cfg.ts()}] [域名调试] 候选: {'; '.join(candidate_debug)} | 跳过: {skipped_text} | 选中: {selected_debug}")
         else:
             selected = random.choice(candidates)
         return _mark_selected_domain_used(selected, now)
@@ -368,6 +394,7 @@ def record_domain_failure(domain: str, reason: str) -> dict:
             failure_counts = {}
             state["failure_counts"] = failure_counts
         cooldown_until = float(state.get("cooldown_until") or 0.0)
+        fail_before = _recalculate_domain_fail_count(state)
         state["last_failure_at"] = now
         state["last_failure_reason"] = normalized_reason
 
@@ -376,7 +403,9 @@ def record_domain_failure(domain: str, reason: str) -> dict:
             state["fail_count"] = 0
             if not state.get("cooldown_reason"):
                 state["cooldown_reason"] = normalized_reason
-            return _build_domain_result(normalized, state, cooldown_until, False)
+            result = _build_domain_result(normalized, state, cooldown_until, False)
+            print(f"[{cfg.ts()}] [域名调试] 失败写回(冷却中): {normalized} reason={normalized_reason} before={fail_before} after={result.get('fail_count', 0)} cooldown={max(0, int(cooldown_until - now))}s")
+            return result
 
         failure_counts[normalized_reason] = int(failure_counts.get(normalized_reason) or 0) + 1
         fail_count = _recalculate_domain_fail_count(state)
@@ -386,7 +415,10 @@ def record_domain_failure(domain: str, reason: str) -> dict:
             cooldown_triggered = True
         else:
             cooldown_until = float(state.get("cooldown_until") or 0.0)
-        return _build_domain_result(normalized, state, cooldown_until, cooldown_triggered)
+        result = _build_domain_result(normalized, state, cooldown_until, cooldown_triggered)
+        cooldown_debug = max(0, int(cooldown_until - now)) if cooldown_until > now else 0
+        print(f"[{cfg.ts()}] [域名调试] 失败写回: {normalized} reason={normalized_reason} before={fail_before} after={fail_count} cooldown_triggered={cooldown_triggered} cooldown={cooldown_debug}s")
+        return result
 
 
 def record_domain_success(domain: str) -> dict:
