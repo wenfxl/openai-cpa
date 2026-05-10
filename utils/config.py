@@ -188,6 +188,13 @@ EMAIL_API_MODE: str = ""
 MAIL_DOMAINS: str = ""
 DISABLED_MAIL_DOMAINS: list[str] = []
 ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL: bool = False
+ENABLE_MAIL_DOMAIN_GROUPING: bool = False
+MAIL_DOMAIN_GROUP_COUNT: int = 2
+MAIL_DOMAIN_GROUP_MODE: str = "auto"
+MAIL_DOMAIN_GROUP_STRATEGY: str = "round_robin"
+MAIL_DOMAIN_GROUPS: list[str] = []
+MAIL_DOMAIN_PINPOINT_BURST_MODE: bool = False
+MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE: bool = False
 MAIL_DOMAIN_FAILURE_TYPES: list[str] = ["discarded_email"]
 MAIL_DOMAIN_FAIL_THRESHOLD: int = 3
 MAIL_DOMAIN_FAIL_COOLDOWN_SEC: int = 600
@@ -405,6 +412,10 @@ def reload_all_configs(new_config_dict=None):
     global EMAIL_API_MODE, MAIL_DOMAINS, GPTMAIL_BASE, ADMIN_AUTH
     global DISABLED_MAIL_DOMAINS
     global ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL
+    global ENABLE_MAIL_DOMAIN_GROUPING, MAIL_DOMAIN_GROUP_COUNT, MAIL_DOMAIN_GROUP_MODE
+    global MAIL_DOMAIN_GROUP_STRATEGY, MAIL_DOMAIN_GROUPS
+    global MAIL_DOMAIN_PINPOINT_BURST_MODE
+    global MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE
     global MAIL_DOMAIN_FAILURE_TYPES, MAIL_DOMAIN_FAIL_THRESHOLD, MAIL_DOMAIN_FAIL_COOLDOWN_SEC
     global ENABLE_SUB_DOMAINS, SUB_DOMAIN_COUNT
     global IMAP_SERVER, IMAP_PORT, IMAP_USER, IMAP_PASS
@@ -548,6 +559,16 @@ def reload_all_configs(new_config_dict=None):
                 domains.append(text)
         return domains
 
+    def normalize_mail_domain_string(value):
+        seen = set()
+        domains = []
+        for part in str(value or "").split(","):
+            text = str(part or "").strip().lower().strip(".")
+            if text and text not in seen:
+                seen.add(text)
+                domains.append(text)
+        return domains
+
     def safe_bool(value, default=False):
         if isinstance(value, bool):
             return value
@@ -580,6 +601,30 @@ def reload_all_configs(new_config_dict=None):
     MAIL_DOMAINS = _c.get("mail_domains", "")
     DISABLED_MAIL_DOMAINS = normalize_domain_list(_c.get("disabled_mail_domains", []))
     ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL = safe_bool(_c.get("enable_mail_domain_runtime_control", False), default=False)
+    ENABLE_MAIL_DOMAIN_GROUPING = safe_bool(_c.get("enable_mail_domain_grouping", False), default=False)
+    MAIL_DOMAIN_GROUP_COUNT = safe_int(_c.get("mail_domain_group_count", 2), default=2, minimum=1)
+    MAIL_DOMAIN_GROUP_COUNT = min(10, MAIL_DOMAIN_GROUP_COUNT)
+    MAIL_DOMAIN_GROUP_MODE = str(_c.get("mail_domain_group_mode", "auto") or "auto").strip().lower()
+    if MAIL_DOMAIN_GROUP_MODE not in {"auto", "manual"}:
+        MAIL_DOMAIN_GROUP_MODE = "auto"
+    MAIL_DOMAIN_GROUP_STRATEGY = str(_c.get("mail_domain_group_strategy", "round_robin") or "round_robin").strip().lower()
+    if MAIL_DOMAIN_GROUP_STRATEGY not in {"round_robin", "exhaust_then_next"}:
+        MAIL_DOMAIN_GROUP_STRATEGY = "round_robin"
+    raw_mail_domain_groups = _c.get("mail_domain_groups", [])
+    if not isinstance(raw_mail_domain_groups, list):
+        raw_mail_domain_groups = []
+    MAIL_DOMAIN_GROUPS = [
+        ",".join(normalize_mail_domain_string(item))
+        for item in raw_mail_domain_groups[:MAIL_DOMAIN_GROUP_COUNT]
+    ]
+    while len(MAIL_DOMAIN_GROUPS) < MAIL_DOMAIN_GROUP_COUNT:
+        MAIL_DOMAIN_GROUPS.append("")
+    MAIL_DOMAIN_PINPOINT_BURST_MODE = safe_bool(_c.get("mail_domain_pinpoint_burst_mode", False), default=False)
+    MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE = safe_bool(_c.get("mail_domain_prefer_low_failure_mode", False), default=False)
+    if ENABLE_MAIL_DOMAIN_GROUPING:
+        MAIL_DOMAIN_PINPOINT_BURST_MODE = False
+    if MAIL_DOMAIN_PINPOINT_BURST_MODE and MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE:
+        MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE = False
     MAIL_DOMAIN_FAILURE_TYPES = [
         str(item or "").strip().lower()
         for item in (_c.get("mail_domain_failure_types", ["discarded_email"]) or ["discarded_email"])

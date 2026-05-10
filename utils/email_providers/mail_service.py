@@ -52,10 +52,21 @@ _CM_TOKEN_CACHE: Optional[str] = None
 _DOMAIN_RUNTIME_LOCK = threading.Lock()
 _DOMAIN_RUNTIME_STATE = {}
 _MAIL_DOMAIN_FAILURE_TYPES = {"discarded_email", "cloudflare_temp_email_network", "capacity_exceeded"}
+_MAIL_DOMAIN_CONFIG_CACHE = {
+    "key": None,
+    "main_domains": (),
+    "main_domain_set": frozenset(),
+    "disabled_main_domains": frozenset(),
+    "selected_failure_types": frozenset(),
+    "effective_groups": (),
+}
 _DOMAIN_RUNTIME_SESSION = {
     "counting_enabled": False,
     "last_started_at": 0.0,
     "last_stopped_at": 0.0,
+    "tie_break_cursor": 0,
+    "group_cursor": 0,
+    "group_sticky_cursor": 0,
 }
 
 _thread_data = threading.local()
@@ -111,15 +122,162 @@ def pop_last_domain_failure_event() -> dict:
     return dict(event) if isinstance(event, dict) else {}
 
 
-def _get_configured_main_domains() -> list[str]:
+def _parse_mail_domain_items(raw_value: Any) -> list[str]:
     seen = set()
     domains = []
-    for part in str(getattr(cfg, 'MAIL_DOMAINS', '') or '').split(','):
+    for part in str(raw_value or '').split(','):
         root = str(part or '').strip().lower().strip('.')
         if root and root not in seen:
             seen.add(root)
             domains.append(root)
     return domains
+
+
+def _get_mail_domain_config_cache() -> dict[str, Any]:
+    mail_domains_raw = str(getattr(cfg, 'MAIL_DOMAINS', '') or '')
+    disabled_raw = tuple(
+        str(item or '').strip().lower().strip('.')
+        for item in (getattr(cfg, 'DISABLED_MAIL_DOMAINS', []) or [])
+    )
+    selected_failure_raw = tuple(
+        str(item or '').strip().lower()
+        for item in (getattr(cfg, 'MAIL_DOMAIN_FAILURE_TYPES', []) or [])
+    )
+    grouping_enabled = bool(
+        is_mail_domain_runtime_control_enabled()
+        and getattr(cfg, 'ENABLE_MAIL_DOMAIN_GROUPING', False)
+    )
+    group_count = max(1, min(10, int(getattr(cfg, 'MAIL_DOMAIN_GROUP_COUNT', 2) or 2)))
+    group_mode = str(getattr(cfg, 'MAIL_DOMAIN_GROUP_MODE', 'auto') or 'auto').strip().lower()
+    group_strategy = str(getattr(cfg, 'MAIL_DOMAIN_GROUP_STRATEGY', 'round_robin') or 'round_robin').strip().lower()
+    raw_groups = tuple(str(item or '') for item in (getattr(cfg, 'MAIL_DOMAIN_GROUPS', []) or []))
+
+    cache_key = (
+        mail_domains_raw,
+        disabled_raw,
+        selected_failure_raw,
+        grouping_enabled,
+        group_count,
+        group_mode,
+        group_strategy,
+        raw_groups,
+    )
+    cached_key = _MAIL_DOMAIN_CONFIG_CACHE.get("key")
+    if cached_key == cache_key:
+        return _MAIL_DOMAIN_CONFIG_CACHE
+
+    main_domains = tuple(_parse_mail_domain_items(mail_domains_raw))
+    main_domain_set = frozenset(main_domains)
+
+    disabled_main_domains = frozenset(
+        domain
+        for domain in disabled_raw
+        if domain in main_domain_set
+    )
+
+    selected_failure_types = frozenset(
+        item for item in selected_failure_raw
+        if item in _MAIL_DOMAIN_FAILURE_TYPES
+    )
+
+    effective_groups: tuple[tuple[str, ...], ...]
+    if not grouping_enabled:
+        effective_groups = (main_domains,) if main_domains else ()
+    elif group_mode == 'manual':
+        groups = _build_manual_domain_groups(list(main_domains), list(raw_groups))
+        effective_groups = tuple(tuple(group) for group in (groups if groups else ([list(main_domains)] if main_domains else [])))
+    else:
+        groups = _build_auto_domain_groups(list(main_domains), group_count)
+        effective_groups = tuple(tuple(group) for group in (groups if groups else ([list(main_domains)] if main_domains else [])))
+
+    _MAIL_DOMAIN_CONFIG_CACHE["key"] = cache_key
+    _MAIL_DOMAIN_CONFIG_CACHE["main_domains"] = main_domains
+    _MAIL_DOMAIN_CONFIG_CACHE["main_domain_set"] = main_domain_set
+    _MAIL_DOMAIN_CONFIG_CACHE["disabled_main_domains"] = disabled_main_domains
+    _MAIL_DOMAIN_CONFIG_CACHE["selected_failure_types"] = selected_failure_types
+    _MAIL_DOMAIN_CONFIG_CACHE["effective_groups"] = effective_groups
+    return _MAIL_DOMAIN_CONFIG_CACHE
+
+
+def _get_configured_main_domains() -> list[str]:
+    return list(_get_mail_domain_config_cache()["main_domains"])
+
+
+def get_configured_main_domains_snapshot() -> list[str]:
+    return list(_get_mail_domain_config_cache()["main_domains"])
+
+
+def _is_mail_domain_grouping_enabled() -> bool:
+    return bool(
+        is_mail_domain_runtime_control_enabled()
+        and getattr(cfg, 'ENABLE_MAIL_DOMAIN_GROUPING', False)
+    )
+
+
+def _get_mail_domain_group_strategy() -> str:
+    strategy = str(getattr(cfg, 'MAIL_DOMAIN_GROUP_STRATEGY', 'round_robin') or 'round_robin').strip().lower()
+    if strategy not in {'round_robin', 'exhaust_then_next'}:
+        return 'round_robin'
+    return strategy
+
+
+def _build_auto_domain_groups(main_domains: list[str], group_count: int) -> list[list[str]]:
+    if not main_domains or group_count <= 0:
+        return []
+    groups = [[] for _ in range(group_count)]
+    for index, domain in enumerate(main_domains):
+        groups[index % group_count].append(domain)
+    return [group for group in groups if group]
+
+
+def _build_manual_domain_groups(main_domains: list[str], raw_groups: list[Any]) -> list[list[str]]:
+    master_set = set(main_domains)
+    groups = []
+    assigned = set()
+    for raw_group in raw_groups:
+        group = []
+        for domain in _parse_mail_domain_items(raw_group):
+            if domain in master_set and domain not in assigned:
+                assigned.add(domain)
+                group.append(domain)
+        if group:
+            groups.append(group)
+    return groups
+
+
+def _get_effective_domain_groups(main_domains: list[str]) -> list[list[str]]:
+    normalized_domains = tuple(_normalize_main_domain(domain) for domain in main_domains)
+    cache = _get_mail_domain_config_cache()
+    cached_main_domains = cache["main_domains"]
+    if normalized_domains == cached_main_domains:
+        return [list(group) for group in cache["effective_groups"]]
+    if not _is_mail_domain_grouping_enabled():
+        return [list(normalized_domains)] if normalized_domains else []
+    group_count = max(1, min(10, int(getattr(cfg, 'MAIL_DOMAIN_GROUP_COUNT', 2) or 2)))
+    group_mode = str(getattr(cfg, 'MAIL_DOMAIN_GROUP_MODE', 'auto') or 'auto').strip().lower()
+    main_domain_list = [domain for domain in normalized_domains if domain]
+    if group_mode == 'manual':
+        groups = _build_manual_domain_groups(main_domain_list, getattr(cfg, 'MAIL_DOMAIN_GROUPS', []) or [])
+        return groups if groups else [main_domain_list]
+    groups = _build_auto_domain_groups(main_domain_list, group_count)
+    return groups if groups else [main_domain_list]
+
+
+def _get_mail_domain_group_label(domain: str) -> str:
+    normalized = _normalize_main_domain(domain)
+    if not normalized or not getattr(cfg, 'ENABLE_MAIL_DOMAIN_GROUPING', False):
+        return ""
+    groups = _get_mail_domain_config_cache()["effective_groups"]
+    for index, group in enumerate(groups):
+        if normalized in group:
+            return f"[{index + 1}]"
+    return ""
+
+
+def _format_grouped_mail_log(label: str, email: str) -> str:
+    group_label = _get_mail_domain_group_label(label)
+    masked_email = mask_email(email)
+    return f"{group_label} {masked_email}" if group_label else masked_email
 
 
 def _normalize_main_domain(domain: str) -> str:
@@ -132,7 +290,7 @@ def _normalize_main_domain(domain: str) -> str:
         if not text:
             return ""
 
-    configured = _get_configured_main_domains()
+    configured = _get_mail_domain_config_cache()["main_domains"]
     for root in configured:
         if text == root or text.endswith(f".{root}"):
             return root
@@ -140,12 +298,7 @@ def _normalize_main_domain(domain: str) -> str:
 
 
 def _get_disabled_main_domains() -> set[str]:
-    normalized = set()
-    for domain in getattr(cfg, 'DISABLED_MAIL_DOMAINS', []) or []:
-        root = _normalize_main_domain(domain)
-        if root:
-            normalized.add(root)
-    return normalized
+    return set(_get_mail_domain_config_cache()["disabled_main_domains"])
 
 
 def _all_configured_main_domains_disabled() -> bool:
@@ -191,6 +344,9 @@ def clear_mail_domain_runtime_stats() -> None:
         _DOMAIN_RUNTIME_SESSION["counting_enabled"] = False
         _DOMAIN_RUNTIME_SESSION["last_started_at"] = 0.0
         _DOMAIN_RUNTIME_SESSION["last_stopped_at"] = 0.0
+        _DOMAIN_RUNTIME_SESSION["tie_break_cursor"] = 0
+        _DOMAIN_RUNTIME_SESSION["group_cursor"] = 0
+        _DOMAIN_RUNTIME_SESSION["group_sticky_cursor"] = 0
 
 
 def _is_mail_domain_runtime_tracking_active() -> bool:
@@ -201,6 +357,7 @@ def _new_domain_runtime_state() -> dict:
     return {
         "fail_count": 0,
         "success_count": 0,
+        "pick_count": 0,
         "failure_counts": {},
         "last_failure_reason": "",
         "cooldown_until": 0.0,
@@ -212,10 +369,10 @@ def _new_domain_runtime_state() -> dict:
 
 
 def _prune_expired_domain_records(now: float) -> None:
-    expired_domains = [
-        domain for domain, state in _DOMAIN_RUNTIME_STATE.items()
-        if float(state.get("cooldown_until") or 0.0) > 0 and float(state.get("cooldown_until") or 0.0) <= now
-    ]
+    expired_domains = []
+    for domain, state in _DOMAIN_RUNTIME_STATE.items():
+        if float(state.get("cooldown_until") or 0.0) > 0 and float(state.get("cooldown_until") or 0.0) <= now:
+            expired_domains.append(domain)
     for domain in expired_domains:
         _DOMAIN_RUNTIME_STATE.pop(domain, None)
 
@@ -231,6 +388,178 @@ def _get_domain_state(domain: str) -> dict:
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
         return dict(state)
 
+def _get_domain_selection_key(state: dict) -> tuple[int, float]:
+    pick_count = max(0, int(state.get("pick_count") or 0))
+    last_used_at = float(state.get("last_used_at") or 0.0)
+    return pick_count, last_used_at
+
+
+def _select_low_failure_domain(candidates: list[str]) -> Optional[str]:
+    if not candidates:
+        return None
+
+    selected_failure_types = _get_selected_mail_domain_failure_types()
+    prioritized_clean = True
+    best_key = None
+    best_domains: list[str] = []
+
+    for domain in candidates:
+        state = _DOMAIN_RUNTIME_STATE.setdefault(domain, _new_domain_runtime_state())
+        fail_count = _recalculate_domain_fail_count(state, selected_failure_types)
+        domain_is_clean = fail_count <= 0
+        selection_key = _get_domain_selection_key(state)
+
+        if best_key is None:
+            prioritized_clean = domain_is_clean
+            best_key = selection_key
+            best_domains = [domain]
+            continue
+
+        if prioritized_clean and not domain_is_clean:
+            continue
+        if domain_is_clean and not prioritized_clean:
+            prioritized_clean = True
+            best_key = selection_key
+            best_domains = [domain]
+            continue
+        if selection_key < best_key:
+            best_key = selection_key
+            best_domains = [domain]
+            continue
+        if selection_key == best_key:
+            best_domains.append(domain)
+
+    if not best_domains:
+        return None
+    if len(best_domains) == 1:
+        return best_domains[0]
+
+    cursor = int(_DOMAIN_RUNTIME_SESSION.get("tie_break_cursor", 0) or 0)
+    selected = best_domains[cursor % len(best_domains)]
+    _DOMAIN_RUNTIME_SESSION["tie_break_cursor"] = cursor + 1
+    return selected
+
+
+def _mark_selected_domain_used(selected: Optional[str], now: float, increment: int = 1) -> Optional[str]:
+    if not selected:
+        return None
+    state = _DOMAIN_RUNTIME_STATE.setdefault(selected, _new_domain_runtime_state())
+    state["last_used_at"] = now
+    state["pick_count"] = max(0, int(state.get("pick_count") or 0)) + max(1, int(increment or 1))
+    return selected
+
+
+def _get_available_main_domain_candidates(main_domains: list[str], now: float) -> list[str]:
+    disabled_domains = _get_disabled_main_domains()
+    candidates = []
+    for domain in main_domains:
+        normalized = _normalize_main_domain(domain)
+        if not normalized or normalized in disabled_domains:
+            continue
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        cooldown_until = float(state.get("cooldown_until") or 0.0)
+        if cooldown_until > now:
+            continue
+        candidates.append(normalized)
+    return candidates
+
+
+def _select_round_robin_group_candidates(groups: list[list[str]], now: float) -> list[str]:
+    if not groups:
+        return []
+    cursor = int(_DOMAIN_RUNTIME_SESSION.get("group_cursor", 0) or 0)
+    if cursor >= len(groups) or cursor < 0:
+        cursor = 0
+    for offset in range(len(groups)):
+        group_index = (cursor + offset) % len(groups)
+        candidates = _get_available_main_domain_candidates(groups[group_index], now)
+        if candidates:
+            _DOMAIN_RUNTIME_SESSION["group_cursor"] = (group_index + 1) % len(groups)
+            return candidates
+    return []
+
+
+def _select_exhaust_then_next_group_candidates(groups: list[list[str]], now: float) -> list[str]:
+    if not groups:
+        return []
+    cursor = int(_DOMAIN_RUNTIME_SESSION.get("group_sticky_cursor", 0) or 0)
+    if cursor >= len(groups) or cursor < 0:
+        cursor = 0
+    current_candidates = _get_available_main_domain_candidates(groups[cursor], now)
+    if current_candidates:
+        _DOMAIN_RUNTIME_SESSION["group_sticky_cursor"] = cursor
+        return current_candidates
+    for offset in range(1, len(groups) + 1):
+        group_index = (cursor + offset) % len(groups)
+        candidates = _get_available_main_domain_candidates(groups[group_index], now)
+        if candidates:
+            _DOMAIN_RUNTIME_SESSION["group_sticky_cursor"] = group_index
+            return candidates
+    return []
+
+
+def _select_group_candidates_from_groups(groups: list[list[str]], now: float) -> list[str]:
+    if not groups:
+        return []
+    if _get_mail_domain_group_strategy() == 'exhaust_then_next':
+        return _select_exhaust_then_next_group_candidates(groups, now)
+    return _select_round_robin_group_candidates(groups, now)
+
+
+def _select_group_candidates(main_domains: list[str], now: float) -> list[str]:
+    groups = _get_effective_domain_groups(main_domains)
+    return _select_group_candidates_from_groups(groups, now)
+
+
+def _select_first_available_main_domain(main_domains: list[str], now: float, batch_size: int = 1) -> Optional[str]:
+    disabled_domains = _get_disabled_main_domains()
+    for domain in main_domains:
+        normalized = _normalize_main_domain(domain)
+        if not normalized or normalized in disabled_domains:
+            continue
+        state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
+        if float(state.get("cooldown_until") or 0.0) > now:
+            continue
+        return _mark_selected_domain_used(normalized, now, increment=batch_size)
+    return None
+
+
+
+def _select_main_domain_from_candidates(candidates: list[str]) -> Optional[str]:
+    if not candidates:
+        return None
+    if getattr(cfg, 'MAIL_DOMAIN_PREFER_LOW_FAILURE_MODE', False):
+        return _select_low_failure_domain(candidates)
+    return random.choice(candidates)
+
+
+def _preallocate_main_domains_locked(main_domains: list[str], batch_size: int, now: float) -> list[Optional[str]]:
+    allocated: list[Optional[str]] = []
+    batch_size = max(0, int(batch_size or 0))
+    if getattr(cfg, 'MAIL_DOMAIN_PINPOINT_BURST_MODE', False):
+        selected = _select_first_available_main_domain(main_domains, now, batch_size=batch_size)
+        return [selected] * batch_size if selected else [None] * batch_size
+
+    groups = _get_effective_domain_groups(main_domains) if _is_mail_domain_grouping_enabled() else []
+    batch_candidates = _select_group_candidates_from_groups(groups, now) if groups else _get_available_main_domain_candidates(main_domains, now)
+    enforce_unique_within_batch = len(set(batch_candidates)) >= batch_size
+    used_in_batch: set[str] = set()
+
+    for _ in range(batch_size):
+        candidates = list(batch_candidates)
+        if enforce_unique_within_batch:
+            candidates = [domain for domain in candidates if domain not in used_in_batch]
+        if not candidates:
+            allocated.append(None)
+            continue
+        selected = _select_main_domain_from_candidates(candidates)
+        marked = _mark_selected_domain_used(selected, now)
+        if marked:
+            used_in_batch.add(marked)
+        allocated.append(marked)
+    return allocated
+
+
 def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
     disabled_domains = _get_disabled_main_domains()
     if not is_mail_domain_runtime_control_enabled():
@@ -238,27 +567,27 @@ def pick_available_main_domain(main_domains: list[str]) -> Optional[str]:
         candidates = [domain for domain in normalized_domains if domain and domain not in disabled_domains]
         return random.choice(candidates) if candidates else None
 
-    candidates = []
     now = time.time()
 
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
-        for domain in main_domains:
-            normalized = _normalize_main_domain(domain)
-            if not normalized or normalized in disabled_domains:
-                continue
-            state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
-            cooldown_until = float(state.get("cooldown_until") or 0.0)
-            if cooldown_until > now:
-                continue
-            candidates.append(normalized)
-
+        candidates = _select_group_candidates(main_domains, now) if _is_mail_domain_grouping_enabled() else _get_available_main_domain_candidates(main_domains, now)
         if not candidates:
             return None
+        selected = _select_main_domain_from_candidates(candidates)
+        return _mark_selected_domain_used(selected, now)
 
-        selected = random.choice(candidates)
-        _DOMAIN_RUNTIME_STATE[selected]["last_used_at"] = now
-        return selected
+
+def preallocate_main_domains_for_batch(main_domains: list[str], batch_size: int) -> list[Optional[str]]:
+    if batch_size <= 0:
+        return []
+    if not is_mail_domain_runtime_control_enabled():
+        return [None] * batch_size
+
+    now = time.time()
+    with _DOMAIN_RUNTIME_LOCK:
+        _prune_expired_domain_records(now)
+        return _preallocate_main_domains_locked(main_domains, batch_size, now)
 
 
 def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float:
@@ -270,20 +599,15 @@ def _apply_domain_cooldown(state: dict, reason: str, cooldown_sec: int) -> float
 
 
 def _get_selected_mail_domain_failure_types() -> set[str]:
-    selected = {
-        str(item or "").strip().lower()
-        for item in (getattr(cfg, 'MAIL_DOMAIN_FAILURE_TYPES', []) or [])
-        if str(item or "").strip()
-    }
-    return {item for item in selected if item in _MAIL_DOMAIN_FAILURE_TYPES}
+    return set(_get_mail_domain_config_cache()["selected_failure_types"])
 
 
-def _recalculate_domain_fail_count(state: dict) -> int:
+def _recalculate_domain_fail_count(state: dict, selected_failure_types: Optional[set[str]] = None) -> int:
     failure_counts = state.get("failure_counts")
     if not isinstance(failure_counts, dict):
         failure_counts = {}
         state["failure_counts"] = failure_counts
-    selected = _get_selected_mail_domain_failure_types()
+    selected = selected_failure_types if selected_failure_types is not None else _get_selected_mail_domain_failure_types()
     fail_count = sum(
         max(0, int(failure_counts.get(reason) or 0))
         for reason in selected
@@ -297,6 +621,7 @@ def _build_domain_result(domain: str, state: dict, cooldown_until: float, cooldo
         "domain": domain,
         "fail_count": int(state.get("fail_count") or 0),
         "success_count": int(state.get("success_count") or 0),
+        "pick_count": max(0, int(state.get("pick_count") or 0)),
         "failure_counts": dict(state.get("failure_counts") or {}),
         "last_failure_reason": str(state.get("last_failure_reason") or ""),
         "cooldown_reason": str(state.get("cooldown_reason") or ""),
@@ -318,6 +643,7 @@ def record_domain_failure(domain: str, reason: str) -> dict:
 
     threshold = int(getattr(cfg, 'MAIL_DOMAIN_FAIL_THRESHOLD', 0) or 0)
     cooldown_sec = int(getattr(cfg, 'MAIL_DOMAIN_FAIL_COOLDOWN_SEC', 0) or 0)
+    selected_failure_types = _get_selected_mail_domain_failure_types()
     now = time.time()
 
     with _DOMAIN_RUNTIME_LOCK:
@@ -328,18 +654,19 @@ def record_domain_failure(domain: str, reason: str) -> dict:
             failure_counts = {}
             state["failure_counts"] = failure_counts
         cooldown_until = float(state.get("cooldown_until") or 0.0)
+        _recalculate_domain_fail_count(state, selected_failure_types)
         state["last_failure_at"] = now
         state["last_failure_reason"] = normalized_reason
 
         if cooldown_until > now:
-            _recalculate_domain_fail_count(state)
+            _recalculate_domain_fail_count(state, selected_failure_types)
             state["fail_count"] = 0
             if not state.get("cooldown_reason"):
                 state["cooldown_reason"] = normalized_reason
             return _build_domain_result(normalized, state, cooldown_until, False)
 
         failure_counts[normalized_reason] = int(failure_counts.get(normalized_reason) or 0) + 1
-        fail_count = _recalculate_domain_fail_count(state)
+        fail_count = _recalculate_domain_fail_count(state, selected_failure_types)
         cooldown_triggered = False
         if threshold > 0 and fail_count >= threshold:
             cooldown_until = _apply_domain_cooldown(state, normalized_reason, cooldown_sec)
@@ -354,6 +681,7 @@ def record_domain_success(domain: str) -> dict:
     if not normalized or not is_mail_domain_runtime_control_enabled() or not _is_mail_domain_runtime_tracking_active():
         return {}
 
+    selected_failure_types = _get_selected_mail_domain_failure_types()
     now = time.time()
 
     with _DOMAIN_RUNTIME_LOCK:
@@ -361,19 +689,20 @@ def record_domain_success(domain: str) -> dict:
         state = _DOMAIN_RUNTIME_STATE.setdefault(normalized, _new_domain_runtime_state())
         state["success_count"] = int(state.get("success_count") or 0) + 1
         state["last_success_at"] = now
-        _recalculate_domain_fail_count(state)
+        _recalculate_domain_fail_count(state, selected_failure_types)
         cooldown_until = float(state.get("cooldown_until") or 0.0)
         return _build_domain_result(normalized, state, cooldown_until, False)
 
 
 def _build_domain_runtime_row(domain: str, state: dict, now: float) -> dict:
     cooldown_until = float(state.get("cooldown_until") or 0.0)
-    is_disabled = is_mail_domain_disabled(domain)
-    _recalculate_domain_fail_count(state)
+    is_disabled = domain in _get_disabled_main_domains()
+    _recalculate_domain_fail_count(state, _get_selected_mail_domain_failure_types())
     return {
         "domain": domain,
         "fail_count": int(state.get("fail_count") or 0),
         "success_count": int(state.get("success_count") or 0),
+        "pick_count": max(0, int(state.get("pick_count") or 0)),
         "failure_counts": dict(state.get("failure_counts") or {}),
         "last_failure_reason": str(state.get("last_failure_reason") or ""),
         "cooldown_until": cooldown_until,
@@ -460,11 +789,9 @@ def clear_mail_domain_runtime_domain_counters(domain: str) -> dict:
         if not state:
             return {}
         state["fail_count"] = 0
-        state["success_count"] = 0
         state["failure_counts"] = {}
         state["last_failure_reason"] = ""
         state["last_failure_at"] = 0.0
-        state["last_success_at"] = 0.0
         return _get_domain_runtime_row_locked(normalized, now)
 
 
@@ -513,13 +840,33 @@ def get_mail_domain_runtime_stats() -> list[dict]:
         return []
 
     sync_mail_domain_runtime_state_with_config()
+    selected_failure_types = _get_selected_mail_domain_failure_types()
+    disabled_domains = _get_disabled_main_domains()
     now = time.time()
     rows = []
     with _DOMAIN_RUNTIME_LOCK:
         _prune_expired_domain_records(now)
         for domain in sorted(_DOMAIN_RUNTIME_STATE.keys()):
             state = _DOMAIN_RUNTIME_STATE[domain]
-            rows.append(_build_domain_runtime_row(domain, state, now))
+            cooldown_until = float(state.get("cooldown_until") or 0.0)
+            _recalculate_domain_fail_count(state, selected_failure_types)
+            rows.append({
+                "domain": domain,
+                "fail_count": int(state.get("fail_count") or 0),
+                "success_count": int(state.get("success_count") or 0),
+                "pick_count": max(0, int(state.get("pick_count") or 0)),
+                "failure_counts": dict(state.get("failure_counts") or {}),
+                "last_failure_reason": str(state.get("last_failure_reason") or ""),
+                "cooldown_until": cooldown_until,
+                "cooldown_remaining_sec": max(0, int(cooldown_until - now)) if cooldown_until > now else 0,
+                "cooldown_reason": str(state.get("cooldown_reason") or ""),
+                "is_available": cooldown_until <= now,
+                "is_disabled": domain in disabled_domains,
+                "is_enabled": domain not in disabled_domains,
+                "last_used_at": float(state.get("last_used_at") or 0.0),
+                "last_failure_at": float(state.get("last_failure_at") or 0.0),
+                "last_success_at": float(state.get("last_success_at") or 0.0),
+            })
     return rows
 
 
@@ -643,7 +990,12 @@ def _get_ai_data_package():
 #         return None, None
 #     return result
 
-def get_email_and_token(proxies: Any = None) -> tuple:
+def get_email_and_token(
+    proxies: Any = None,
+    assigned_domain: Optional[str] = None,
+    batch_id: Optional[int] = None,
+    worker_index: Optional[int] = None,
+) -> tuple:
 # def _raw_get_email_and_token(proxies: Any = None) -> tuple:
     """兼容五种邮箱模式的地址创建，返回 (email, token_or_id)。"""
     if getattr(cfg, 'GLOBAL_STOP', False): return None, None
@@ -932,6 +1284,9 @@ def get_email_and_token(proxies: Any = None) -> tuple:
     prefix, ai_enabled = _get_ai_data_package()
     use_domain_runtime_control = is_mail_domain_runtime_control_enabled(mode)
 
+    batch_preallocated = batch_id is not None and worker_index is not None
+    skip_domain_fallback = batch_preallocated and assigned_domain is None
+
     if cfg.ENABLE_SUB_DOMAINS:
         # sticky = getattr(_thread_data, 'sticky_domain', None)
         # if sticky:
@@ -943,7 +1298,10 @@ def get_email_and_token(proxies: Any = None) -> tuple:
             print(f"[{cfg.ts()}] [ERROR] 未配置主域名池，无法捏造子域！")
             return None, None
 
-        selected_main = pick_available_main_domain(main_list)
+        if skip_domain_fallback:
+            return None, None
+
+        selected_main = _normalize_main_domain(assigned_domain) if assigned_domain is not None else pick_available_main_domain(main_list)
         if not selected_main:
             if _all_configured_main_domains_disabled():
                 print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
@@ -975,7 +1333,9 @@ def get_email_and_token(proxies: Any = None) -> tuple:
         if not domain_list:
             print(f"[{cfg.ts()}] [ERROR] 域名池配置为空，无法生成邮箱！")
             return None, None
-        selected_domain = pick_available_main_domain(domain_list)
+        if skip_domain_fallback:
+            return None, None
+        selected_domain = _normalize_main_domain(assigned_domain) if assigned_domain is not None else pick_available_main_domain(domain_list)
         if not selected_domain:
             if _all_configured_main_domains_disabled():
                 print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
@@ -1002,7 +1362,9 @@ def get_email_and_token(proxies: Any = None) -> tuple:
 
     if mode == "cloudmail":
         if getattr(cfg, 'CM_LOCAL_WEBHOOK', False):
-            print(f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 cloudmail 指定创建邮箱: {mask_email(email_str)}")
+            print(
+                f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 cloudmail 指定创建邮箱: {mask_email(email_str)}"
+            )
             return email_str, ""
         else:
             token = get_cm_token(mail_proxies)
@@ -1040,7 +1402,9 @@ def get_email_and_token(proxies: Any = None) -> tuple:
                                         json={"email": email_str}, headers=headers,
                                         proxies=mail_proxies, verify=_ssl_verify(), timeout=15)
                     res.raise_for_status()
-                    print(f"[{cfg.ts()}] [INFO] 成功通过 Freemail 指定创建邮箱: {mask_email(email_str)}")
+                    print(
+                        f"[{cfg.ts()}] [INFO] 成功通过 Freemail 指定创建邮箱: {mask_email(email_str)}"
+                    )
                     return email_str, ""
                 except Exception as e:
                     print(f"[{cfg.ts()}] [ERROR] Freemail 邮箱创建异常: {e}")
@@ -1081,7 +1445,9 @@ def get_email_and_token(proxies: Any = None) -> tuple:
                     email = data["address"].strip()
                     jwt = data.get("jwt", "").strip()
                     set_last_email(email)
-                    print(f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {mask_email(email)}")
+                    print(
+                        f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {_format_grouped_mail_log(selected_domain, email)}"
+                    )
                     return email, jwt
                 terminal_failure_reason = "cloudflare_temp_email_network"
                 print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email邮箱申请失败 (尝试 {attempt + 1}/5): {res.text}")

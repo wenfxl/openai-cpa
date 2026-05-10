@@ -14,6 +14,13 @@ email_api_mode: "cloudflare_temp_email"
 mail_domains: "domain1.com,domain2.xyz,domain3.net"
 disabled_mail_domains: []
 enable_mail_domain_runtime_control: false
+enable_mail_domain_grouping: false
+mail_domain_group_count: 2
+mail_domain_group_mode: "auto"
+mail_domain_group_strategy: "round_robin"
+mail_domain_groups: []
+mail_domain_pinpoint_burst_mode: false
+mail_domain_prefer_low_failure_mode: false
 mail_domain_failure_types:
   - discarded_email
 mail_domain_fail_threshold: 3

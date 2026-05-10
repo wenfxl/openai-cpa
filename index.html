@@ -867,18 +867,103 @@
                                     <div v-if="config.enable_mail_domain_runtime_control" class="border-t border-amber-100/60 pt-5 mt-2 space-y-5">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label class="block text-slate-700 text-xs font-black mb-2 uppercase tracking-wider">冷却阈值</label>
-                                                <input type="number" min="0" v-model.number="config.mail_domain_fail_threshold"
-                                                       class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm"
-                                                       placeholder="例如 3">
+                                                <div class="flex items-stretch rounded-lg shadow-sm overflow-hidden">
+                                                    <div class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-mono text-sm font-black">冷却阈值</div>
+                                                    <input type="number" min="0" v-model.number="config.mail_domain_fail_threshold"
+                                                           class="flex-1 appearance-none bg-white border border-slate-200 text-slate-700 rounded-r-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm"
+                                                           placeholder="例如 3">
+                                                </div>
                                                 <p class="text-[11px] text-slate-400 mt-2 font-medium">同一主域异常达到该次数后暂停使用，0 表示关闭。</p>
                                             </div>
                                             <div>
-                                                <label class="block text-slate-700 text-xs font-black mb-2 uppercase tracking-wider">冷却秒数</label>
-                                                <input type="number" min="0" v-model.number="config.mail_domain_fail_cooldown_sec"
-                                                       class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm"
-                                                       placeholder="例如 600">
+                                                <div class="flex items-stretch rounded-lg shadow-sm overflow-hidden">
+                                                    <div class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-mono text-sm font-black">冷却秒数</div>
+                                                    <input type="number" min="0" v-model.number="config.mail_domain_fail_cooldown_sec"
+                                                           class="flex-1 appearance-none bg-white border border-slate-200 text-slate-700 rounded-r-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm"
+                                                           placeholder="例如 600">
+                                                </div>
                                                 <p class="text-[11px] text-slate-400 mt-2 font-medium">触发阈值后，该主域暂停使用的时长。</p>
+                                            </div>
+                                        </div>
+
+                                        <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer">
+                                            <input type="checkbox" v-model="config.mail_domain_pinpoint_burst_mode" @change="applyMailDomainModeExclusion('pinpoint')" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
+                                            <div>
+                                                <div class="text-sm font-black text-slate-700">定点爆破</div>
+                                                <div class="text-[11px] text-slate-400 mt-1">当前批次共用同一主域，按域名顺序轮转；跳过禁用和冷却域名。与“低异常优先”“域名分组”互斥，但可同时关闭。</div>
+                                            </div>
+                                        </label>
+
+                                        <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer">
+                                            <input type="checkbox" v-model="config.mail_domain_prefer_low_failure_mode" @change="applyMailDomainModeExclusion('low_failure')" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
+                                            <div>
+                                                <div class="text-sm font-black text-slate-700">低异常优先</div>
+                                                <div class="text-[11px] text-slate-400 mt-1">优先选择异常更少的可用主域；同分时优先较少使用的域名。与“定点爆破”互斥，可与“域名分组”同时开启。</div>
+                                            </div>
+                                        </label>
+
+                                        <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+                                            <label class="flex items-start gap-3 cursor-pointer">
+                                                <input type="checkbox" v-model="config.enable_mail_domain_grouping" @change="applyMailDomainModeExclusion('grouping')" class="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30">
+                                                <div>
+                                                    <div class="text-sm font-black text-slate-700">域名分组</div>
+                                                    <div class="text-[11px] text-slate-400 mt-1">按组轮换主域；与“定点爆破”互斥，可配合“低异常优先”。</div>
+                                                </div>
+                                            </label>
+                                            <div v-if="config.enable_mail_domain_grouping" class="space-y-4 border-t border-slate-100 pt-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <div class="flex items-stretch rounded-lg shadow-sm overflow-hidden">
+                                                            <div class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-mono text-sm font-black">组数</div>
+                                                            <input type="number" min="1" max="10" v-model.number="config.mail_domain_group_count" @change="applyMailDomainModeConstraints()"
+                                                                   class="flex-1 appearance-none bg-white border border-slate-200 text-slate-700 rounded-r-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm"
+                                                                   placeholder="例如 2">
+                                                        </div>
+                                                        <p class="text-[11px] text-slate-400 mt-2 font-medium">最多 10 组，自动模式下不能超过有效主域数量。</p>
+                                                    </div>
+                                                    <div>
+                                                        <div class="flex items-stretch rounded-lg shadow-sm overflow-hidden">
+                                                            <div class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-mono text-sm font-black">模式</div>
+                                                            <select v-model="config.mail_domain_group_mode" @change="applyMailDomainModeConstraints()"
+                                                                    class="flex-1 appearance-none bg-white border border-slate-200 text-slate-700 rounded-r-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm">
+                                                                <option value="auto">自动</option>
+                                                                <option value="manual">手动</option>
+                                                            </select>
+                                                        </div>
+                                                        <p class="text-[11px] text-slate-400 mt-2 font-medium">自动按 `mail_domains` 顺序分组；手动模式需覆盖全部主域。</p>
+                                                    </div>
+                                                    <div>
+                                                        <div class="flex items-stretch rounded-lg shadow-sm overflow-hidden">
+                                                            <div class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-mono text-sm font-black">策略</div>
+                                                            <select v-model="config.mail_domain_group_strategy" @change="applyMailDomainModeConstraints()"
+                                                                    class="flex-1 appearance-none bg-white border border-slate-200 text-slate-700 rounded-r-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm">
+                                                                <option value="round_robin">轮转</option>
+                                                                <option value="exhaust_then_next">耗尽后切组</option>
+                                                            </select>
+                                                        </div>
+                                                        <p class="text-[11px] text-slate-400 mt-2 font-medium">轮转每轮切组；耗尽后切组会先跑完当前组。</p>
+                                                    </div>
+                                                </div>
+                                                <div v-if="config.mail_domain_group_mode === 'manual'" class="space-y-3">
+                                                    <div v-for="(_, index) in config.mail_domain_groups" :key="`mail-domain-group-${index}`">
+                                                        <div class="flex items-stretch rounded-lg shadow-sm overflow-hidden">
+                                                            <div class="flex items-center px-3 bg-slate-100 border border-r-0 border-slate-200 text-slate-500 font-mono text-sm">[{{ index + 1 }}]</div>
+                                                            <input type="text" v-model="config.mail_domain_groups[index]" @blur="normalizeMailDomainGroupInput(index)"
+                                                                   class="flex-1 appearance-none bg-white border border-slate-200 text-slate-700 font-mono rounded-r-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors"
+                                                                   placeholder="例如 domain1.com,domain2.xyz">
+                                                        </div>
+                                                    </div>
+                                                    <p class="text-[11px] text-slate-400 font-medium">录入格式与 `mail_domains` 一致；仅允许填写已配置主域名，且不能跨组重复。</p>
+                                                </div>
+                                                <div v-else class="space-y-3">
+                                                    <div v-if="autoMailDomainGroupsPreview.length > 0" class="space-y-3">
+                                                        <div v-for="(group, index) in autoMailDomainGroupsPreview" :key="`mail-domain-auto-group-${index}`">
+                                                            <input type="text" :value="`[${index + 1}] ${group.join(',')}`" readonly
+                                                                   class="w-full appearance-none bg-slate-100 border border-slate-200 text-slate-500 font-mono rounded-lg py-2.5 px-3 shadow-sm cursor-not-allowed">
+                                                        </div>
+                                                    </div>
+                                                    <p v-else class="text-[11px] text-amber-600 font-medium bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">请先填写有效的 `mail_domains`，且分组数量不能大于有效主域名数量。</p>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -929,11 +1014,16 @@
                                                 <div v-if="mailDomainRuntimeStatsError" class="text-xs text-rose-500 font-medium bg-rose-50 border border-rose-200 rounded-xl px-4 py-4 mb-3">
                                                     {{ mailDomainRuntimeStatsError }}
                                                 </div>
-                                                <div v-if="mailDomainRuntimeStats.length > 0" class="space-y-3">
-                                                    <div v-for="item in mailDomainRuntimeStats" :key="item.domain" class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                                <div v-if="sortedMailDomainRuntimeStats.length > 0" class="space-y-3">
+                                                    <div v-for="item in sortedMailDomainRuntimeStats" :key="item.domain" class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                                                             <div>
-                                                                <div class="text-sm font-black text-slate-800 break-all">{{ item.domain }}</div>
+                                                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                                    <div :class="item.is_disabled ? 'text-rose-600' : (!item.is_available ? 'text-amber-600' : 'text-slate-800')" class="text-sm font-black break-all transition-colors">
+                                                                        <span v-if="mailDomainGroupLabelMap[item.domain]" class="text-slate-500 font-mono mr-1">{{ mailDomainGroupLabelMap[item.domain] }}</span>{{ item.domain }}
+                                                                    </div>
+                                                                    <div v-if="!item.is_disabled && (item.cooldown_remaining_sec || 0) > 0" class="text-[11px] font-bold text-amber-600">冷却中 {{ formatDuration(item.cooldown_remaining_sec || 0) }}</div>
+                                                                </div>
                                                                 <div class="text-[11px] text-slate-400 mt-1">
                                                         最近使用: {{ item.last_used_at ? formatMainlandDateTime(new Date(item.last_used_at * 1000)) : '未使用' }}
                                                                 </div>
@@ -945,20 +1035,14 @@
                                                                 <button @click="toggleMailDomainDisabled(item.domain)" type="button" :class="item.is_disabled ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-rose-200 text-rose-600 hover:bg-rose-50'" class="px-3 py-1.5 text-[11px] font-black rounded-lg border bg-white transition-colors shadow-sm">
                                                                     {{ item.is_disabled ? '启用' : '禁用' }}
                                                                 </button>
-                                                                <button @click="clearMailDomainRuntimeRowCounters(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">清空计数</button>
+                                                                <button @click="clearMailDomainRuntimeRowCounters(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">清除异常</button>
                                                                 <button @click="clearMailDomainRuntimeRowCooldown(item.domain)" type="button" class="px-3 py-1.5 text-[11px] font-black rounded-lg border border-amber-200 bg-white text-amber-700 hover:bg-amber-50 transition-colors shadow-sm">清除冷却</button>
-                                                                <span :class="item.is_disabled ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-emerald-100 text-emerald-700 border-emerald-200'" class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black border w-max">
-                                                                    {{ item.is_disabled ? '停用' : '启用' }}
-                                                                </span>
-                                                                <span :class="item.is_available ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'" class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black border w-max">
-                                                                    {{ item.is_available ? '可用' : '冷却中' }}
-                                                                </span>
                                                             </div>
                                                         </div>
-                                                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 text-xs font-bold text-slate-600">
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-slate-800">{{ item.fail_count }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-slate-800">{{ item.success_count }}</span></div>
-                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">时间: <span class="text-slate-800">{{ formatDuration(item.cooldown_remaining_sec || 0) }}</span></div>
+                                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold text-slate-600">
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">注册: <span class="text-sky-600">{{ item.pick_count || 0 }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">成功: <span class="text-emerald-600">{{ item.success_count }}</span></div>
+                                                            <div class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">异常: <span class="text-rose-600">{{ item.fail_count }}</span></div>
                                                         </div>
                                                     </div>
                                                 </div>
