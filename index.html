@@ -2737,23 +2737,31 @@
                                             <span class="text-xs text-slate-500 font-medium">{{ clashPool.message || '暂无运行说明' }}</span>
                                         </div>
                                     </div>
-                                    <div class="flex gap-2 w-full sm:w-auto">
-                                        <button @click="handleClashRuntime('start')" :disabled="clashPool.runtimeActionLoading" class="text-sm bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 active:scale-95 transition-all shadow-sm font-bold flex items-center gap-2 disabled:opacity-60">
-                                            启动
-                                        </button>
-                                        <button @click="handleClashRuntime('restart')" :disabled="clashPool.runtimeActionLoading" class="text-sm bg-amber-600 text-white px-4 py-2 rounded-xl hover:bg-amber-700 active:scale-95 transition-all shadow-sm font-bold flex items-center gap-2 disabled:opacity-60">
-                                            重启
-                                        </button>
-                                        <button @click="handleClashRuntime('stop')" :disabled="clashPool.runtimeActionLoading" class="text-sm bg-rose-600 text-white px-4 py-2 rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-sm font-bold flex items-center gap-2 disabled:opacity-60">
-                                            停止
-                                        </button>
+                                    <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto sm:justify-end">
+                                        <div class="inline-flex items-center gap-2 rounded-2xl bg-white/80 border border-slate-200 px-2.5 py-2 shadow-sm backdrop-blur-sm">
+                                            <button @click="handleClashRuntime('start')" :disabled="clashPool.runtimeActionLoading" class="h-10 px-4 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition-all shadow-sm shadow-emerald-500/20 font-black text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-5.197-3.03A1 1 0 008 9.03v6.94a1 1 0 001.555.832l5.197-3.03a1 1 0 000-1.664z"></path></svg>
+                                                启动
+                                            </button>
+                                            <button @click="handleClashRuntime('restart')" :disabled="clashPool.runtimeActionLoading" class="h-10 px-4 rounded-xl bg-amber-400 text-amber-950 hover:bg-amber-500 active:scale-95 transition-all shadow-sm shadow-amber-500/20 font-black text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20v-5h-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.64 19A9 9 0 0019 18.36L20 15"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.36 5A9 9 0 005 5.64L4 9"></path></svg>
+                                                重启
+                                            </button>
+                                            <button @click="handleClashRuntime('stop')" :disabled="clashPool.runtimeActionLoading" class="h-10 px-4 rounded-xl bg-rose-500 text-white hover:bg-rose-600 active:scale-95 transition-all shadow-sm shadow-rose-500/20 font-black text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1" stroke-width="2"></rect></svg>
+                                                停止
+                                            </button>
+                                        </div>
                                         <button @click="syncClusterToPool"
                                                 :disabled="!config.clash_proxy_pool.pool_mode"
-                                                class="flex-1 sm:flex-none text-xs bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 active:scale-95 transition-all shadow-lg shadow-purple-500/20 font-black flex items-center justify-center gap-2">
-                                            <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 13a5 5 0 007.07 0l2.12-2.12a5 5 0 00-7.07-7.07L10.5 5.43"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11a5 5 0 00-7.07 0L4.81 13.12a5 5 0 007.07 7.07l1.62-1.62"></path></svg></span> 同步至独享池模式独立端口池列队
+                                                class="h-10 px-5 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:from-fuchsia-600 hover:to-violet-600 active:scale-95 transition-all shadow-md shadow-fuchsia-500/20 font-black text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 13a5 5 0 007.07 0l2.12-2.12a5 5 0 00-7.07-7.07L10.5 5.43"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11a5 5 0 00-7.07 0L4.81 13.12a5 5 0 007.07 7.07l1.62-1.62"></path></svg></span>
+                                            <span class="hidden md:inline">同步至独享池模式独立端口池列队</span>
+                                            <span class="md:hidden">同步端口池</span>
                                         </button>
-                                        <button @click="fetchClashPool" class="text-sm bg-white border border-sky-200 text-sky-600 px-4 py-2 rounded-xl hover:bg-sky-50 active:scale-95 transition-all shadow-sm font-bold flex items-center gap-2">
-                                            <span class="inline-flex items-center justify-center" :class="{'animate-spin': clashPool.loading}"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20v-5h-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.64 19A9 9 0 0019 18.36L20 15"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.36 5A9 9 0 005 5.64L4 9"></path></svg></span> 刷新状态
+                                        <button @click="fetchClashPool" class="h-10 px-4 rounded-2xl bg-white border border-sky-200 text-sky-600 hover:bg-sky-50 active:scale-95 transition-all shadow-sm font-black text-sm inline-flex items-center gap-2">
+                                            <span class="inline-flex items-center justify-center" :class="{'animate-spin': clashPool.loading}"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20v-5h-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.64 19A9 9 0 0019 18.36L20 15"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.36 5A9 9 0 005 5.64L4 9"></path></svg></span>
+                                            刷新状态
                                         </button>
                                     </div>
                                 </div>
