@@ -818,7 +818,17 @@ def patch_and_update(url, target, subscription_id: str = ""):
         proxies = _build_requests_proxies()
         if proxies:
             request_kwargs["proxies"] = proxies
-        r = cffi_requests.get(normalized_url, **request_kwargs)
+        try:
+            r = cffi_requests.get(normalized_url, **request_kwargs)
+        except Exception as proxy_error:
+            if not proxies:
+                raise
+            fallback_kwargs = dict(request_kwargs)
+            fallback_kwargs.pop("proxies", None)
+            try:
+                r = cffi_requests.get(normalized_url, **fallback_kwargs)
+            except Exception:
+                raise proxy_error
         if r.status_code >= 400:
             return False, f"订阅拉取失败：HTTP {r.status_code}，目标站点拒绝了服务器请求。"
         raw_text = str(r.text or "")
