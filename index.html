@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Wenfxl 注册管理系统</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260510-5">
-    <script src="/static/js/tailwind.min.js?v=20260510-5"></script>
-    <script src="/static/js/vue.global.js?v=20260510-5"></script>
-    <script src="/static/js/jszip.min.js?v=20260510-5"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260510-12">
+    <script src="/static/js/tailwind.min.js?v=20260510-12"></script>
+    <script src="/static/js/vue.global.js?v=20260510-12"></script>
+    <script src="/static/js/jszip.min.js?v=20260510-12"></script>
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -375,6 +375,116 @@
                 <div class="flex justify-end gap-3">
                     <button @click="handleConfirm(false)" class="px-5 py-2.5 rounded-xl text-sm md:text-base font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all">取消</button>
                     <button @click="handleConfirm(true)" class="px-5 py-2.5 rounded-xl text-sm md:text-base font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">确认执行</button>
+                </div>
+            </div>
+        </div>
+        <div v-if="authResetModal.show" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 transform transition-all">
+                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h3 class="text-lg font-black text-rose-600 flex items-center gap-2">
+                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 一键重置授权
+                    </h3>
+                    <button @click="authResetModal.show = false" class="text-slate-400 hover:text-rose-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6">
+                    <p class="text-sm text-slate-600 mb-6 font-medium bg-rose-50 p-3 rounded-lg border border-rose-100">
+                        请勾选需要从数据库彻底清除的凭据数据：
+                    </p>
+
+                    <div class="space-y-4">
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input type="checkbox" v-model="authResetModal.clearLicense" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除授权文件 (License)</span>
+                                <span class="block text-xs text-slate-500 mt-0.5">清空上传的卡密凭证内容</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input type="checkbox" v-model="authResetModal.clearHwid" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除机器码 (HWID)</span>
+                                <span class="block text-xs text-slate-500 mt-0.5">清空当前生成的设备硬件特征码</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input type="checkbox" v-model="authResetModal.clearLease" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除租约数据 (Lease)</span>
+                                <span class="block text-xs text-slate-500 mt-0.5">清空与服务端通讯的Token</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <button @click="authResetModal.show = false" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm active:scale-95">取消</button>
+                    <button @click="submitAuthReset" class="px-5 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-md hover:bg-rose-600 transition-all active:scale-95">确认清除</button>
+                </div>
+            </div>
+        </div>
+        <div v-if="outlookAuth && outlookAuth.showModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span> 为账号授权 (OAuth 2.0)
+                    </h3>
+                    <button @click="outlookAuth.showModal = false" class="text-slate-400 hover:text-rose-500 focus:outline-none transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                        <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">正在授权账号</span>
+                        <span class="text-base font-mono font-black text-indigo-900">{{ outlookAuth.mailbox?.email }}</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-sm">1</div>
+                            <span class="text-sm font-bold text-slate-800">获取并在浏览器中打开授权链接</span>
+                        </div>
+                        <div v-if="!outlookAuth.authUrl">
+                            <button @click="generateOutlookAuthUrl" :disabled="outlookAuth.isGenerating" class="w-full py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-2">
+                                <svg v-if="outlookAuth.isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                                {{ outlookAuth.isGenerating ? '生成中...' : '点击生成专属授权链接' }}
+                            </button>
+                        </div>
+                        <div v-else class="relative">
+                            <textarea readonly class="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:outline-none resize-none shadow-inner">{{ outlookAuth.authUrl }}</textarea>
+                            <a :href="outlookAuth.authUrl" target="_blank" class="absolute bottom-3 right-3 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-1">
+                                在浏览器中打开 ↗
+                            </a>
+                        </div>
+                        <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-2 ml-8 shadow-sm">
+                            <span class="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg></span>
+                            <p class="text-[11px] text-amber-800 font-medium leading-relaxed">
+                                请确保在浏览器中登录的是上方指定的邮箱账号。授权后浏览器会跳转到一个<span class="text-rose-600 font-bold">无法访问的错误页面</span>，这是正常的！
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-sm">2</div>
+                            <span class="text-sm font-bold text-slate-800">粘贴回传网址换取 Token</span>
+                        </div>
+                        <div class="ml-8">
+                            <input type="text" v-model="outlookAuth.pastedUrl" placeholder="请将跳转后浏览器地址栏的网址完整粘贴到这里" class="w-full bg-white border-2 border-slate-200 text-slate-800 rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-indigo-500 text-sm font-mono shadow-sm transition-colors">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <button @click="outlookAuth.showModal = false" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm active:scale-95">取消</button>
+                    <button @click="submitOutlookAuthCode" :disabled="outlookAuth.isLoading || !outlookAuth.pastedUrl" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95">
+                        <span v-if="outlookAuth.isLoading" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                        确认换取并保存 Token
+                    </button>
                 </div>
             </div>
         </div>
@@ -2388,8 +2498,9 @@
                                     <div class="text-[11px] text-rose-800 mt-4 font-bold bg-rose-50 border border-rose-100 p-3 rounded-lg leading-relaxed shadow-sm text-center">
                                         <a href="https://mails.luckyous.com/" class="text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1.5 text-sm" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a15 15 0 010 18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a15 15 0 000 18"></path></svg> mails.luckyous.com</a>
                                     </div>
+                                </div>
 
-                            <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 overflow-hidden mb-4 flex flex-col">
+                            <div class="mt-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 overflow-hidden mb-8 flex flex-col">
                                 <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-200/60 flex justify-between items-center shrink-0">
                                     <div class="flex items-center gap-3">
                                         <span><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-600 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="7" y="8" width="10" height="8" rx="2" ry="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8V6a3 3 0 016 0v2"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2"></path><circle cx="10" cy="12" r="1"></circle><circle cx="14" cy="12" r="1"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6"></path></svg></span>
@@ -2460,25 +2571,33 @@
                                     <span class="text-slate-400 text-sm font-bold tracking-wide">AI 增强已关闭，将使用本地随机策略</span>
                                 </div>
 
-                                <div class="mt-6 p-5 md:p-6 bg-gradient-to-br from-rose-50/90 to-white rounded-2xl border border-rose-100 shadow-sm">
+                            </div>
+                            <div class="mt-6 p-5 md:p-6 bg-gradient-to-br from-rose-50/90 to-white rounded-2xl border border-rose-100 shadow-sm">
+                                <div class="flex flex-col gap-4">
                                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                         <div class="space-y-1">
                                             <h4 class="text-sm md:text-base font-black text-rose-700 tracking-tight flex items-center gap-2">
                                                 <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16"></path></svg></span>
                                                 批量删除 CF 托管域名
                                             </h4>
-                                            <p class="text-xs md:text-sm text-slate-500 font-medium leading-relaxed">删除发信域名池中已托管到 CF 的域名及其 DNS / 邮件路由配置。</p>
+                                            <p class="text-xs md:text-sm text-slate-500 font-medium leading-relaxed">仅删除你在下方填写的域名，不会直接拿发信域名池整批删除。</p>
                                         </div>
                                         <button @click="handleCFDeleteHosting" :disabled="cfTools.isDeletingHosting"
-                                                class="w-full sm:w-auto px-5 py-3 bg-rose-600 text-white text-sm font-black rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                class="w-full sm:w-auto min-w-[124px] px-5 py-3 bg-rose-600 text-white text-sm font-black rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/25 flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
                                             <span v-if="cfTools.isDeletingHosting" class="inline-flex items-center justify-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                                             </span>
-                                            {{ cfTools.isDeletingHosting ? '删除中...' : '执行删除' }}
+                                            <span>{{ cfTools.isDeletingHosting ? '删除中...' : '执行删除' }}</span>
                                         </button>
                                     </div>
+                                    <div>
+                                        <label class="block text-[11px] font-black text-rose-700 uppercase tracking-widest mb-2">待删除域名</label>
+                                        <textarea v-model="cfTools.deleteDomains"
+                                                  class="w-full min-h-[96px] appearance-none bg-white border border-rose-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300 resize-y"
+                                                  placeholder="每行一个域名，或用逗号分隔&#10;例如：a.com&#10;b.net"></textarea>
+                                        <p class="mt-2 text-[11px] text-rose-500/80 font-medium">这里填你要从 Cloudflare 删除托管的域名，不会自动读取上方发信域名池。</p>
+                                    </div>
                                 </div>
-
                             </div>
                         </div>
                         </div>
@@ -4682,116 +4801,6 @@
                 </div>
             </main>
         </div>
-        <div v-if="outlookAuth && outlookAuth.showModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200">
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span> 为账号授权 (OAuth 2.0)
-                    </h3>
-                    <button @click="outlookAuth.showModal = false" class="text-slate-400 hover:text-rose-500 focus:outline-none transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
-
-                <div class="p-6 space-y-6">
-                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                        <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">正在授权账号</span>
-                        <span class="text-base font-mono font-black text-indigo-900">{{ outlookAuth.mailbox?.email }}</span>
-                    </div>
-
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-sm">1</div>
-                            <span class="text-sm font-bold text-slate-800">获取并在浏览器中打开授权链接</span>
-                        </div>
-                        <div v-if="!outlookAuth.authUrl">
-                            <button @click="generateOutlookAuthUrl" :disabled="outlookAuth.isGenerating" class="w-full py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-2">
-                                <svg v-if="outlookAuth.isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
-                                {{ outlookAuth.isGenerating ? '生成中...' : '点击生成专属授权链接' }}
-                            </button>
-                        </div>
-                        <div v-else class="relative animate-fade-in">
-                            <textarea readonly class="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:outline-none resize-none shadow-inner">{{ outlookAuth.authUrl }}</textarea>
-                            <a :href="outlookAuth.authUrl" target="_blank" class="absolute bottom-3 right-3 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-1">
-                                在浏览器中打开 ↗
-                            </a>
-                        </div>
-                        <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-2 ml-8 shadow-sm">
-                            <span class="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg></span>
-                            <p class="text-[11px] text-amber-800 font-medium leading-relaxed">
-                                请确保在浏览器中登录的是上方指定的邮箱账号。授权后浏览器会跳转到一个<span class="text-rose-600 font-bold">无法访问的错误页面</span>，这是正常的！
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-sm">2</div>
-                            <span class="text-sm font-bold text-slate-800">粘贴回传网址换取 Token</span>
-                        </div>
-                        <div class="ml-8">
-                            <input type="text" v-model="outlookAuth.pastedUrl" placeholder="请将跳转后浏览器地址栏的网址完整粘贴到这里" class="w-full bg-white border-2 border-slate-200 text-slate-800 rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-indigo-500 text-sm font-mono shadow-sm transition-colors">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                    <button @click="outlookAuth.showModal = false" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm active:scale-95">取消</button>
-                    <button @click="submitOutlookAuthCode" :disabled="outlookAuth.isLoading || !outlookAuth.pastedUrl" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95">
-                        <span v-if="outlookAuth.isLoading" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-                        确认换取并保存 Token
-                    </button>
-                </div>
-            </div>
-        </div>
-        <div v-if="authResetModal.show" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 transform transition-all">
-                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 class="text-lg font-black text-rose-600 flex items-center gap-2">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 一键重置授权
-                    </h3>
-                    <button @click="authResetModal.show = false" class="text-slate-400 hover:text-rose-500 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
-
-                <div class="p-6">
-                    <p class="text-sm text-slate-600 mb-6 font-medium bg-rose-50 p-3 rounded-lg border border-rose-100">
-                        请勾选需要从数据库彻底清除的凭据数据：
-                    </p>
-
-                    <div class="space-y-4">
-                        <label class="flex items-start gap-3 cursor-pointer group">
-                            <input type="checkbox" v-model="authResetModal.clearLicense" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
-                            <div>
-                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除授权文件 (License)</span>
-                                <span class="block text-xs text-slate-500 mt-0.5">清空上传的卡密凭证内容</span>
-                            </div>
-                        </label>
-                        <label class="flex items-start gap-3 cursor-pointer group">
-                            <input type="checkbox" v-model="authResetModal.clearHwid" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
-                            <div>
-                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除机器码 (HWID)</span>
-                                <span class="block text-xs text-slate-500 mt-0.5">清空当前生成的设备硬件特征码</span>
-                            </div>
-                        </label>
-                        <label class="flex items-start gap-3 cursor-pointer group">
-                            <input type="checkbox" v-model="authResetModal.clearLease" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
-                            <div>
-                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除租约数据 (Lease)</span>
-                                <span class="block text-xs text-slate-500 mt-0.5">清空与服务端通讯的Token</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                    <button @click="authResetModal.show = false" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm active:scale-95">取消</button>
-                    <button @click="submitAuthReset" class="px-5 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-md hover:bg-rose-600 transition-all active:scale-95">确认清除</button>
-                </div>
-            </div>
-    </div>
     </div>
     </div>
     </div>
@@ -4804,6 +4813,6 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/static/js/app.js?v=20260510-5"></script>
+    <script src="/static/js/app.js?v=20260510-12"></script>
 </body>
 </html>

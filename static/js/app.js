@@ -537,6 +537,7 @@ createApp({
             },
             cfTools: {
                 workerName: 'openai-cpa',
+                deleteDomains: '',
                 results: [],
                 isHosting: false,
                 isEnablingEmail: false,
@@ -4352,10 +4353,11 @@ createApp({
             } catch (e) { this.showToast('请求异常', 'error'); } finally { this.cfTools.isEnablingEmail = false; }
         },
         async handleCFDeleteHosting() {
-            if (!this.config.mail_domains) return this.showToast('发信域名池为空', 'warning');
+            const targetDomains = String(this.cfTools.deleteDomains || '').trim();
+            if (!targetDomains) return this.showToast('请先填写需要删除的 CF 托管域名！', 'warning');
             if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 账号邮箱和 API Key！', 'warning');
 
-            const confirmed = await this.customConfirm(`⚠️ 危险操作：\n\n即将删除发信域名池中所有已托管到 CF 的域名及其 DNS / 邮件路由配置，确定继续吗？`);
+            const confirmed = await this.customConfirm(`⚠️ 危险操作：\n\n即将删除你在下方填写的 CF 托管域名及其 DNS / 邮件路由配置，确定继续吗？`);
             if (!confirmed) return;
 
             this.cfTools.isDeletingHosting = true;
@@ -4364,7 +4366,7 @@ createApp({
             try {
                 const res = await this.authFetch('/api/cloudflare/delete_zones', {
                     method: 'POST',
-                    body: JSON.stringify({ domains: this.config.mail_domains, api_email: this.config.cf_api_email, api_key: this.config.cf_api_key })
+                    body: JSON.stringify({ domains: targetDomains, api_email: this.config.cf_api_email, api_key: this.config.cf_api_key })
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
