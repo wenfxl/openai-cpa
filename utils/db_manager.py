@@ -227,7 +227,6 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                 conditions.append("token_data LIKE '%\"access_token\"%' AND token_data NOT LIKE '%\"image2api\"%'")
             elif status_filter == "image2api":
                 conditions.append("token_data LIKE '%\"image2api\"%'")
-
             where_clause = ""
             if conditions:
                 where_clause = " WHERE " + " AND ".join(conditions)
