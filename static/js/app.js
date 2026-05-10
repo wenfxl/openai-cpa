@@ -737,6 +737,15 @@ createApp({
         targetLanguageLabel() {
             return this.currentLanguage === TRADITIONAL_LANGUAGE ? '简体中文' : '繁體中文';
         },
+        resolveClashSubscriptionUrl(rawUrl) {
+            const text = String(rawUrl || '').trim();
+            if (!text) return '';
+            if (/^https?:\/\//i.test(text)) return text;
+            if (text.startsWith('//')) return `${window.location.protocol}${text}`;
+            const base = window.location.origin.replace(/\/+$/, '');
+            if (text.startsWith('/')) return `${base}${text}`;
+            return `${base}/${text.replace(/^\.?\//, '')}`;
+        },
         toggleLanguage() {
             const nextLanguage = this.currentLanguage === TRADITIONAL_LANGUAGE ? DEFAULT_LANGUAGE : TRADITIONAL_LANGUAGE;
             this.setLanguage(nextLanguage);
@@ -3739,7 +3748,11 @@ async exportSub2Api() {
                 if (d.status === 'success') {
                     this.clashPool.instances = d.data.instances;
                     this.clashPool.groups = d.data.groups;
-                    this.clashPool.subscriptions = d.data.subscriptions?.items || [];
+                    this.clashPool.subscriptions = (d.data.subscriptions?.items || []).map((item) => ({
+                        ...item,
+                        raw_url: item.url,
+                        url: this.resolveClashSubscriptionUrl(item.url)
+                    }));
                     this.clashPool.mode = d.data.mode || '';
                     this.clashPool.message = d.data.message || '';
                     if (this.clashPool.instances.length > 0 && !this.clashPool.isDeploying) {
@@ -3876,11 +3889,12 @@ async exportSub2Api() {
             }
             this.clashPool.subscriptionActionLoading = true;
             try {
+                const normalizedUrl = this.resolveClashSubscriptionUrl(this.clashPool.newSubscriptionUrl);
                 const res = await this.authFetch('/api/clash/subscriptions/add', {
                     method: 'POST',
                     body: JSON.stringify({
                         name: this.clashPool.newSubscriptionName,
-                        url: this.clashPool.newSubscriptionUrl,
+                        url: normalizedUrl,
                         make_selected: this.clashPool.makeSelectedSubscription
                     })
                 });
@@ -3903,9 +3917,14 @@ async exportSub2Api() {
                 this.clashPool.activeGroupName = '';
                 this.clashPool.view = 'groups';
                 this.clashPool.delayResults = {};
+                const subscription = this.clashPool.subscriptions.find(item => item.id === subscriptionId);
                 const res = await this.authFetch('/api/clash/subscriptions/select', {
                     method: 'POST',
-                    body: JSON.stringify({ subscription_id: subscriptionId, target: this.clashPool.target })
+                    body: JSON.stringify({
+                        subscription_id: subscriptionId,
+                        target: this.clashPool.target,
+                        resolved_url: subscription?.url || ''
+                    })
                 });
                 const data = await res.json();
                 this.showToast(data.message || '订阅已切换', data.status);

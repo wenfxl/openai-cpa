@@ -83,6 +83,17 @@ def _normalize_subscriptions(raw_items, selected_url: str = "") -> list[dict]:
     return items
 
 
+def _normalize_single_subscription_url(url: str, resolved_url: str = "") -> str:
+    explicit = str(resolved_url or "").strip()
+    if explicit:
+        return explicit
+    raw = str(url or "").strip()
+    parsed = urllib.parse.urlparse(raw)
+    if parsed.scheme in {"http", "https"}:
+        return raw
+    return raw
+
+
 def get_subscription_state() -> dict:
     config_data = _read_runtime_config()
     clash_conf = config_data.get("clash_proxy_pool", {}) if isinstance(config_data.get("clash_proxy_pool"), dict) else {}
@@ -151,7 +162,7 @@ def delete_subscription(subscription_id: str) -> tuple[bool, str]:
     return True, "订阅已删除。"
 
 
-def select_subscription(subscription_id: str, target: str = "all") -> tuple[bool, str]:
+def select_subscription(subscription_id: str, target: str = "all", resolved_url: str = "") -> tuple[bool, str]:
     sub_id = str(subscription_id or "").strip()
     if not sub_id:
         return False, "订阅标识不能为空。"
@@ -160,11 +171,15 @@ def select_subscription(subscription_id: str, target: str = "all") -> tuple[bool
     subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), clash_conf.get("sub_url", ""))
     for item in subscriptions:
         if item["id"] == sub_id:
-            clash_conf["sub_url"] = item["url"]
+            final_url = _normalize_single_subscription_url(item.get("url", ""), resolved_url)
+            if not final_url:
+                return False, "订阅链接为空，无法切换。"
+            item["url"] = final_url
+            clash_conf["sub_url"] = final_url
             clash_conf["sub_urls"] = subscriptions
             config_data["clash_proxy_pool"] = clash_conf
             cfg.reload_all_configs(new_config_dict=config_data)
-            success, message = patch_and_update(item["url"], target)
+            success, message = patch_and_update(final_url, target)
             if success:
                 return True, f"已切换到订阅 [{item['name']}]，并同步刷新当前策略组。"
             return False, f"订阅已切换为 [{item['name']}]，但同步新策略组失败：{message}"
@@ -771,6 +786,10 @@ def patch_and_update(url, target):
     client = get_client()
     mode = _detect_runtime_mode(client)
     try:
+        normalized_url = _normalize_single_subscription_url(url)
+        parsed = urllib.parse.urlparse(normalized_url)
+        if parsed.scheme not in {"http", "https"}:
+            return False, "订阅链接不是完整的 http/https URL，无法在服务器端直接拉取。"
         headers = {
             "User-Agent": "Clash-meta",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -779,10 +798,10 @@ def patch_and_update(url, target):
         proxies = _build_requests_proxies()
         if proxies:
             request_kwargs["proxies"] = proxies
-        r = requests.get(url, **request_kwargs)
+        r = requests.get(normalized_url, **request_kwargs)
         r.raise_for_status()
         raw_text = str(r.text or "")
-        _persist_sub_url(url)
+        _persist_sub_url(normalized_url)
         os.makedirs(BASE_PATH, exist_ok=True)
         with open(MANUAL_SUBSCRIPTION_PATH, "w", encoding="utf-8") as f:
             f.write(raw_text)

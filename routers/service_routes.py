@@ -31,7 +31,7 @@ class ClashSwitchReq(BaseModel): group_name: str; proxy_name: str; target: str =
 class ClashDelayReq(BaseModel): group_name: str; target: str = "all"
 class ClashTestedNodesClearReq(BaseModel): group_name: str
 class ClashSubscriptionAddReq(BaseModel): name: str = ""; url: str; make_selected: bool = False
-class ClashSubscriptionSelectReq(BaseModel): subscription_id: str; target: str = "all"
+class ClashSubscriptionSelectReq(BaseModel): subscription_id: str; target: str = "all"; resolved_url: str = ""
 class ClashSubscriptionDeleteReq(BaseModel): subscription_id: str
 class TestTgReq(BaseModel):token: str; chat_id: str
 class GmailCredentialsReq(BaseModel):content: str
@@ -297,7 +297,7 @@ async def post_clash_subscription_add(req: ClashSubscriptionAddReq, token: str =
 
 @router.post("/api/clash/subscriptions/select")
 async def post_clash_subscription_select(req: ClashSubscriptionSelectReq, token: str = Depends(verify_token)):
-    success, msg = clash_manager.select_subscription(req.subscription_id, req.target)
+    success, msg = clash_manager.select_subscription(req.subscription_id, req.target, req.resolved_url)
     return {"status": "success" if success else "error", "message": msg}
 
 @router.post("/api/clash/subscriptions/delete")
