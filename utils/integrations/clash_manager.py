@@ -46,12 +46,14 @@ def _read_runtime_config() -> dict:
         return {}
 
 
-def _persist_sub_url(url: str) -> None:
+def _persist_sub_url(url: str, subscription_id: str = "") -> None:
     config_data = _read_runtime_config()
     clash_conf = config_data.get("clash_proxy_pool", {})
     if not isinstance(clash_conf, dict):
         clash_conf = {}
     clash_conf["sub_url"] = str(url or "").strip()
+    if subscription_id:
+        clash_conf["selected_subscription_id"] = str(subscription_id).strip()
     clash_conf["sub_urls"] = _normalize_subscriptions(clash_conf.get("sub_urls", []), clash_conf["sub_url"])
     config_data["clash_proxy_pool"] = clash_conf
     cfg.reload_all_configs(new_config_dict=config_data)
@@ -98,12 +100,24 @@ def get_subscription_state() -> dict:
     config_data = _read_runtime_config()
     clash_conf = config_data.get("clash_proxy_pool", {}) if isinstance(config_data.get("clash_proxy_pool"), dict) else {}
     selected_url = str(clash_conf.get("sub_url") or "").strip()
+    selected_subscription_id = str(clash_conf.get("selected_subscription_id") or "").strip()
     subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), selected_url)
     selected_id = ""
-    for item in subscriptions:
-        item["selected"] = item["url"] == selected_url
-        if item["selected"]:
-            selected_id = item["id"]
+    matched = False
+    if selected_subscription_id:
+        for item in subscriptions:
+            if item["id"] == selected_subscription_id:
+                item["selected"] = True
+                selected_id = item["id"]
+                matched = True
+            else:
+                item["selected"] = False
+    if not matched:
+        for item in subscriptions:
+            item["selected"] = item["url"] == selected_url
+            if item["selected"]:
+                selected_id = item["id"]
+                matched = True
     return {
         "selected_id": selected_id,
         "selected_url": selected_url,
@@ -124,6 +138,7 @@ def add_subscription(name: str, url: str, make_selected: bool = False) -> tuple[
             item["name"] = name
             if make_selected:
                 clash_conf["sub_url"] = url
+                clash_conf["selected_subscription_id"] = item["id"]
             clash_conf["sub_urls"] = subscriptions
             config_data["clash_proxy_pool"] = clash_conf
             cfg.reload_all_configs(new_config_dict=config_data)
@@ -132,6 +147,7 @@ def add_subscription(name: str, url: str, make_selected: bool = False) -> tuple[
     clash_conf["sub_urls"] = subscriptions
     if make_selected or not str(clash_conf.get("sub_url") or "").strip():
         clash_conf["sub_url"] = url
+        clash_conf["selected_subscription_id"] = subscriptions[-1]["id"]
     config_data["clash_proxy_pool"] = clash_conf
     cfg.reload_all_configs(new_config_dict=config_data)
     return True, "订阅已添加。"
@@ -155,6 +171,8 @@ def delete_subscription(subscription_id: str) -> tuple[bool, str]:
     if not removed:
         return False, "未找到要删除的订阅。"
     clash_conf["sub_urls"] = remained
+    if str(clash_conf.get("selected_subscription_id") or "").strip() == removed["id"]:
+        clash_conf["selected_subscription_id"] = remained[0]["id"] if remained else ""
     if selected_url == removed["url"]:
         clash_conf["sub_url"] = remained[0]["url"] if remained else ""
     config_data["clash_proxy_pool"] = clash_conf
@@ -176,10 +194,11 @@ def select_subscription(subscription_id: str, target: str = "all", resolved_url:
                 return False, "订阅链接为空，无法切换。"
             item["url"] = final_url
             clash_conf["sub_url"] = final_url
+            clash_conf["selected_subscription_id"] = item["id"]
             clash_conf["sub_urls"] = subscriptions
             config_data["clash_proxy_pool"] = clash_conf
             cfg.reload_all_configs(new_config_dict=config_data)
-            success, message = patch_and_update(final_url, target)
+            success, message = patch_and_update(final_url, target, item["id"])
             if success:
                 return True, f"已切换到订阅 [{item['name']}]，并同步刷新当前策略组。"
             return False, f"订阅已切换为 [{item['name']}]，但同步新策略组失败：{message}"
@@ -782,7 +801,7 @@ def deploy_clash_pool(count):
     return True, f"成功同步 {count} 个实例"
 
 
-def patch_and_update(url, target):
+def patch_and_update(url, target, subscription_id: str = ""):
     client = get_client()
     mode = _detect_runtime_mode(client)
     try:
@@ -801,7 +820,7 @@ def patch_and_update(url, target):
         r = requests.get(normalized_url, **request_kwargs)
         r.raise_for_status()
         raw_text = str(r.text or "")
-        _persist_sub_url(normalized_url)
+        _persist_sub_url(normalized_url, subscription_id)
         os.makedirs(BASE_PATH, exist_ok=True)
         with open(MANUAL_SUBSCRIPTION_PATH, "w", encoding="utf-8") as f:
             f.write(raw_text)
