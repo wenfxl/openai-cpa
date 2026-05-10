@@ -420,7 +420,8 @@ createApp({
                 data: null,
                 error: '',
                 lastAction: '',
-                outputTail: []
+                outputTail: [],
+                restartAfter: true
             },
             sub2apiGroups: [],
             gmailOAuth: {
@@ -954,7 +955,7 @@ createApp({
         async runGitSyncAction(action) {
             const isReset = action === 'reset_hard';
             const confirmText = isReset
-                ? '⚠️ 危险操作：\n\n确定要强制覆盖本地代码并同步到远端跟踪分支吗？\n这会直接丢弃当前未提交改动。'
+                ? `⚠️ 危险操作：\n\n确定要强制覆盖本地代码并同步到远端跟踪分支吗？\n这会直接丢弃当前未提交改动。${this.gitSync.restartAfter ? '\n同步完成后会自动重启项目。' : ''}`
                 : '确定要抓取远端最新 Git 状态吗？';
             const confirmed = await this.customConfirm(confirmText);
             if (!confirmed) return;
@@ -964,13 +965,17 @@ createApp({
             try {
                 const res = await this.authFetch('/api/system/git_update', {
                     method: 'POST',
-                    body: JSON.stringify({ action, restart_after: false })
+                    body: JSON.stringify({ action, restart_after: isReset ? !!this.gitSync.restartAfter : false })
                 });
                 const payload = await res.json();
                 this.gitSync.outputTail = payload?.data?.output_tail || [];
                 if (payload.status === 'success') {
                     this.gitSync.data = payload?.data?.after || this.gitSync.data;
                     this.showToast(payload.message || 'Git 操作完成', 'success');
+                    if (payload?.data?.restart_scheduled) {
+                        this.showToast('项目正在重启，页面将在几秒后自动刷新...', 'info');
+                        setTimeout(() => window.location.reload(), 8000);
+                    }
                 } else {
                     this.gitSync.data = payload?.data?.after || this.gitSync.data;
                     this.gitSync.error = payload.message || 'Git 操作失败';

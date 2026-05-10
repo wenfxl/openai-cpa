@@ -4031,6 +4031,11 @@
                                         </button>
                                     </div>
                                 </div>
+                                <label class="mt-1 relative inline-flex items-center cursor-pointer w-full md:w-auto">
+                                    <input type="checkbox" v-model="gitSync.restartAfter" class="sr-only peer">
+                                    <div class="relative w-10 h-5 bg-slate-200 rounded-full peer-checked:bg-violet-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-5"></div>
+                                    <span class="ml-3 text-xs font-bold text-violet-800">强制同步覆盖后自动重启项目</span>
+                                </label>
 
                                 <div v-if="gitSync.error" class="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold">
                                     {{ gitSync.error }}
