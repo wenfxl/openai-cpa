@@ -2769,6 +2769,42 @@
                                     </div>
                                 </div>
 
+                                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6">
+                                    <div class="bg-violet-50/50 p-5 rounded-2xl border border-violet-100 shadow-inner">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <label class="block text-xs text-violet-900 font-black uppercase tracking-wider mb-2">运行模式</label>
+                                                <div class="text-lg font-black text-violet-700">
+                                                    {{
+                                                        clashPool.mode === 'docker_pool' ? 'Docker 集群' :
+                                                        clashPool.mode === 'linux_single_core' ? 'Linux 单核心' :
+                                                        clashPool.mode === 'local_gui' ? '本地 GUI' : '未知'
+                                                    }}
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button @click="handleClashRuntime('start')" :disabled="clashPool.runtimeActionLoading" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 active:scale-95 disabled:opacity-60 transition-all">启动</button>
+                                                <button @click="handleClashRuntime('restart')" :disabled="clashPool.runtimeActionLoading" class="px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-black hover:bg-amber-700 active:scale-95 disabled:opacity-60 transition-all">重启</button>
+                                                <button @click="handleClashRuntime('stop')" :disabled="clashPool.runtimeActionLoading" class="px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-black hover:bg-rose-700 active:scale-95 disabled:opacity-60 transition-all">停止</button>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-violet-700/80 mt-3 leading-relaxed font-medium">{{ clashPool.message || '暂无运行说明' }}</p>
+                                    </div>
+                                    <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 shadow-inner">
+                                        <label class="block text-xs text-indigo-900 font-black uppercase tracking-wider mb-3">订阅管理</label>
+                                        <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3">
+                                            <input type="text" v-model="clashPool.newSubscriptionName" placeholder="订阅名称（可选）" class="appearance-none bg-white border border-indigo-200 text-slate-800 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 transition-colors shadow-sm text-sm">
+                                            <input type="text" v-model="clashPool.newSubscriptionUrl" placeholder="YAML 订阅链接" class="appearance-none bg-white border border-indigo-200 text-slate-800 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono">
+                                            <button @click="addClashSubscription" :disabled="clashPool.subscriptionActionLoading" class="px-4 py-3 rounded-xl bg-indigo-600 text-white text-sm font-black hover:bg-indigo-700 active:scale-95 disabled:opacity-60 transition-all">保存</button>
+                                        </div>
+                                        <label class="mt-3 relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="clashPool.makeSelectedSubscription" class="sr-only peer">
+                                            <div class="relative w-10 h-5 bg-slate-200 rounded-full peer-checked:bg-indigo-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-5"></div>
+                                            <span class="ml-3 text-xs font-bold text-indigo-800">保存后直接设为当前订阅</span>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col mb-8 overflow-hidden">
                                     <div class="grid grid-cols-12 bg-slate-50 text-slate-500 border-b border-slate-200 px-5 py-4 text-xs md:text-sm uppercase tracking-wider font-black shrink-0">
                                         <div class="col-span-3">实例名称</div>
@@ -2795,17 +2831,75 @@
                                     </div>
                                 </div>
 
+                                <div v-if="clashPool.subscriptions.length > 0" class="mb-8">
+                                    <label class="block text-sm text-slate-700 font-black uppercase tracking-wider mb-4">已保存订阅</label>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                        <div v-for="sub in clashPool.subscriptions" :key="sub.id" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <div class="font-black text-slate-800 truncate">{{ sub.name || ('订阅 ' + sub.id) }}</div>
+                                                    <div class="text-[11px] text-slate-500 mt-2 break-all font-mono leading-relaxed">{{ sub.url }}</div>
+                                                </div>
+                                                <span v-if="sub.selected" class="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black shrink-0">当前</span>
+                                            </div>
+                                            <div class="flex gap-2 mt-4">
+                                                <button @click="selectClashSubscription(sub.id)" :disabled="clashPool.subscriptionActionLoading || sub.selected" class="flex-1 px-3 py-2 rounded-xl bg-sky-600 text-white text-xs font-black hover:bg-sky-700 active:scale-95 disabled:opacity-60 transition-all">切换</button>
+                                                <button @click="deleteClashSubscription(sub)" :disabled="clashPool.subscriptionActionLoading" class="px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-black hover:bg-rose-700 active:scale-95 disabled:opacity-60 transition-all">删除</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div v-if="clashPool.groups.length > 0" class="pt-6 border-t border-slate-200/60">
                                     <label class="block text-sm text-slate-700 font-black uppercase tracking-wider mb-5 flex items-center gap-2">
                                         <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-width="2"></circle><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v2"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12h-2"></path></svg></span> 当前订阅有效策略组 <span class="text-[11px] font-bold text-slate-400 normal-case bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">(点击选用)</span>
                                     </label>
                                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-                                        <div v-for="g in clashPool.groups" @click="fillProxyGroup(g.name)" class="p-4 md:p-5 bg-white border-2 border-slate-100 rounded-xl hover:border-sky-400 hover:shadow-md cursor-pointer transition-all shadow-sm group">
+                                        <div v-for="g in clashPool.groups" :key="g.name" @click="setActiveClashGroup(g)" class="p-4 md:p-5 bg-white border-2 rounded-xl hover:border-sky-400 hover:shadow-md cursor-pointer transition-all shadow-sm group" :class="clashPool.activeGroupName === g.name ? 'border-sky-400 shadow-md' : 'border-slate-100'">
                                             <div class="font-black text-slate-800 text-sm md:text-base truncate group-hover:text-sky-600 transition-colors" :title="g.name">{{g.name}}</div>
                                             <div class="text-[11px] md:text-xs text-slate-500 mt-3 font-bold flex items-center gap-2">
                                                 <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-md shadow-sm">节点数: {{g.count}}</span>
                                                 <span class="text-slate-300">|</span>
                                                 <span class="truncate text-slate-400">{{g.type}}</span>
+                                            </div>
+                                            <div v-if="g.current" class="mt-3 text-[11px] text-emerald-700 font-bold truncate">当前: {{ g.current }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="activeClashGroup" class="mt-8 bg-slate-50/70 border border-slate-200 rounded-2xl p-5 md:p-6 shadow-inner">
+                                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                                        <div>
+                                            <div class="text-xs font-black uppercase tracking-wider text-slate-500">当前策略组</div>
+                                            <div class="text-xl font-black text-slate-800 mt-1">{{ activeClashGroup.name }}</div>
+                                            <div v-if="activeClashGroup.current" class="text-sm font-bold text-emerald-700 mt-2">当前节点：{{ activeClashGroup.current }}</div>
+                                        </div>
+                                        <div class="flex flex-wrap gap-3">
+                                            <button @click="testClashGroup(activeClashGroup.name)" :disabled="clashPool.delayLoading" class="px-4 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-black hover:bg-amber-700 active:scale-95 disabled:opacity-60 transition-all">延迟测试</button>
+                                            <button @click="switchClashGroupNode(activeClashGroup.name)" :disabled="!clashPool.nodeSelections[activeClashGroup.name]" class="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-black hover:bg-indigo-700 active:scale-95 disabled:opacity-60 transition-all">切换节点</button>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 mt-5">
+                                        <select v-model="clashPool.nodeSelections[activeClashGroup.name]" class="w-full bg-white border border-slate-200 text-slate-800 rounded-xl py-3 px-4 font-bold text-sm outline-none shadow-sm cursor-pointer">
+                                            <option value="" disabled>请选择目标节点</option>
+                                            <option v-for="node in (activeClashGroup.nodes || [])" :key="node" :value="node">{{ node }}</option>
+                                        </select>
+                                        <div class="text-xs text-slate-500 font-medium bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center">
+                                            目标实例：{{ clashPool.target === 'all' ? '当前主控制端' : ('clash_' + clashPool.target) }}
+                                        </div>
+                                    </div>
+                                    <div v-if="clashPool.delayResults[activeClashGroup.name]" class="mt-5">
+                                        <div class="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">测速结果</div>
+                                        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                            <div class="px-4 py-3 border-b border-slate-100 text-xs font-bold text-slate-500">
+                                                URL：{{ clashPool.delayResults[activeClashGroup.name].test_url }}
+                                            </div>
+                                            <div class="max-h-56 overflow-y-auto">
+                                                <div v-for="(result, nodeName) in clashPool.delayResults[activeClashGroup.name].results" :key="nodeName" class="px-4 py-3 border-b border-slate-50 flex items-center justify-between gap-4 text-sm">
+                                                    <span class="font-bold text-slate-700 truncate">{{ nodeName }}</span>
+                                                    <span v-if="result.status === 'ok'" class="font-black text-emerald-700">{{ result.delay }} ms</span>
+                                                    <span v-else class="font-bold text-rose-600">{{ result.message || 'error' }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

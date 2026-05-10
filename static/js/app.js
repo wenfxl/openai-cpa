@@ -469,7 +469,19 @@ createApp({
                 count: 5,
                 instances: [],
                 groups: [],
-                isDeploying: false
+                subscriptions: [],
+                mode: '',
+                message: '',
+                isDeploying: false,
+                runtimeActionLoading: false,
+                subscriptionActionLoading: false,
+                delayLoading: false,
+                activeGroupName: '',
+                nodeSelections: {},
+                delayResults: {},
+                newSubscriptionName: '',
+                newSubscriptionUrl: '',
+                makeSelectedSubscription: true
             },
             gmail_oauth_mode: {
                 master_email: '',
@@ -605,6 +617,10 @@ createApp({
         },
         cooldownMailDomainCount() {
             return this.mailDomainRuntimeStats.filter(item => item && !item.is_available).length;
+        },
+        activeClashGroup() {
+            if (!this.clashPool?.activeGroupName) return null;
+            return (this.clashPool.groups || []).find(group => group.name === this.clashPool.activeGroupName) || null;
         }
     },
     methods: {
@@ -3403,12 +3419,30 @@ createApp({
                 if (d.status === 'success') {
                     this.clashPool.instances = d.data.instances;
                     this.clashPool.groups = d.data.groups;
+                    this.clashPool.subscriptions = d.data.subscriptions?.items || [];
+                    this.clashPool.mode = d.data.mode || '';
+                    this.clashPool.message = d.data.message || '';
                     if (this.clashPool.instances.length > 0 && !this.clashPool.isDeploying) {
                         this.clashPool.count = this.clashPool.instances.length;
+                    }
+                    if (this.clashPool.subscriptions.length > 0 && !this.clashPool.subUrl) {
+                        const currentSub = this.clashPool.subscriptions.find(item => item.selected) || this.clashPool.subscriptions[0];
+                        this.clashPool.subUrl = currentSub?.url || this.clashPool.subUrl;
+                    }
+                    if (!this.clashPool.activeGroupName && this.clashPool.groups.length > 0) {
+                        this.setActiveClashGroup(this.clashPool.groups[0]);
                     }
                 }
             } catch (e) {}
             this.clashPool.loading = false;
+        },
+        setActiveClashGroup(group) {
+            if (!group || !group.name) return;
+            this.clashPool.activeGroupName = group.name;
+            this.fillProxyGroup(group.name);
+            if (!this.clashPool.nodeSelections[group.name]) {
+                this.clashPool.nodeSelections[group.name] = group.current || (Array.isArray(group.nodes) ? group.nodes[0] : '') || '';
+            }
         },
         async handleClashDeploy() {
             this.showToast('正在调整实例规模...', 'info');
@@ -3455,6 +3489,131 @@ createApp({
             if (this.config && this.config.clash_proxy_pool) {
                 this.config.clash_proxy_pool.group_name = name;
                 this.showToast(`已自动填入策略组：${name}`, 'success');
+            }
+        },
+        async handleClashRuntime(action) {
+            this.clashPool.runtimeActionLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/runtime', {
+                    method: 'POST',
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                this.showToast(data.message || 'Clash 运行控制已执行', data.status);
+                if (data.status === 'success') {
+                    setTimeout(() => this.fetchClashPool(), 1200);
+                }
+            } catch (e) {
+                this.showToast('Clash 运行控制请求失败', 'error');
+            } finally {
+                this.clashPool.runtimeActionLoading = false;
+            }
+        },
+        async addClashSubscription() {
+            if (!this.clashPool.newSubscriptionUrl) {
+                this.showToast('请输入订阅链接', 'warning');
+                return;
+            }
+            this.clashPool.subscriptionActionLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/add', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: this.clashPool.newSubscriptionName,
+                        url: this.clashPool.newSubscriptionUrl,
+                        make_selected: this.clashPool.makeSelectedSubscription
+                    })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '订阅已保存', data.status);
+                if (data.status === 'success') {
+                    this.clashPool.newSubscriptionName = '';
+                    this.clashPool.newSubscriptionUrl = '';
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('保存订阅失败', 'error');
+            } finally {
+                this.clashPool.subscriptionActionLoading = false;
+            }
+        },
+        async selectClashSubscription(subscriptionId) {
+            this.clashPool.subscriptionActionLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/select', {
+                    method: 'POST',
+                    body: JSON.stringify({ subscription_id: subscriptionId })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '订阅已切换', data.status);
+                if (data.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('切换订阅失败', 'error');
+            } finally {
+                this.clashPool.subscriptionActionLoading = false;
+            }
+        },
+        async deleteClashSubscription(subscription) {
+            const confirmed = await this.customConfirm(`确定删除订阅 [${subscription?.name || subscription?.id || '未命名'}] 吗？`);
+            if (!confirmed) return;
+            this.clashPool.subscriptionActionLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ subscription_id: subscription.id })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '订阅已删除', data.status);
+                if (data.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('删除订阅失败', 'error');
+            } finally {
+                this.clashPool.subscriptionActionLoading = false;
+            }
+        },
+        async testClashGroup(groupName) {
+            if (!groupName) return;
+            this.clashPool.delayLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/delay', {
+                    method: 'POST',
+                    body: JSON.stringify({ group_name: groupName, target: this.clashPool.target })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.clashPool.delayResults[groupName] = data.data;
+                    this.showToast(data.message || '延迟测试完成', 'success');
+                } else {
+                    this.showToast(data.message || '延迟测试失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('延迟测试请求失败', 'error');
+            } finally {
+                this.clashPool.delayLoading = false;
+            }
+        },
+        async switchClashGroupNode(groupName) {
+            const proxyName = this.clashPool.nodeSelections[groupName];
+            if (!groupName || !proxyName) {
+                this.showToast('请先选择策略组和目标节点', 'warning');
+                return;
+            }
+            try {
+                const res = await this.authFetch('/api/clash/switch', {
+                    method: 'POST',
+                    body: JSON.stringify({ group_name: groupName, proxy_name: proxyName, target: this.clashPool.target })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '节点已切换', data.status);
+                if (data.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('切换节点失败', 'error');
             }
         },
         syncClusterToPool() {
