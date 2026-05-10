@@ -11,6 +11,7 @@ from uuid import uuid4
 import docker
 import requests
 import yaml
+from curl_cffi import requests as cffi_requests
 
 import utils.config as cfg
 from utils.clash_group_utils import resolve_group_name
@@ -193,13 +194,13 @@ def select_subscription(subscription_id: str, target: str = "all", resolved_url:
             if not final_url:
                 return False, "订阅链接为空，无法切换。"
             item["url"] = final_url
-            clash_conf["sub_url"] = final_url
-            clash_conf["selected_subscription_id"] = item["id"]
-            clash_conf["sub_urls"] = subscriptions
-            config_data["clash_proxy_pool"] = clash_conf
-            cfg.reload_all_configs(new_config_dict=config_data)
             success, message = patch_and_update(final_url, target, item["id"])
             if success:
+                clash_conf["sub_url"] = final_url
+                clash_conf["selected_subscription_id"] = item["id"]
+                clash_conf["sub_urls"] = subscriptions
+                config_data["clash_proxy_pool"] = clash_conf
+                cfg.reload_all_configs(new_config_dict=config_data)
                 return True, f"已切换到订阅 [{item['name']}]，并同步刷新当前策略组。"
             return False, f"订阅已切换为 [{item['name']}]，但同步新策略组失败：{message}"
     return False, "未找到要选中的订阅。"
@@ -810,15 +811,16 @@ def patch_and_update(url, target, subscription_id: str = ""):
         if parsed.scheme not in {"http", "https"}:
             return False, "订阅链接不是完整的 http/https URL，无法在服务器端直接拉取。"
         headers = {
-            "User-Agent": "Clash-meta",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
-        request_kwargs = {"headers": headers, "timeout": 30}
+        request_kwargs = {"headers": headers, "timeout": 30, "impersonate": "chrome136"}
         proxies = _build_requests_proxies()
         if proxies:
             request_kwargs["proxies"] = proxies
-        r = requests.get(normalized_url, **request_kwargs)
-        r.raise_for_status()
+        r = cffi_requests.get(normalized_url, **request_kwargs)
+        if r.status_code >= 400:
+            return False, f"订阅拉取失败：HTTP {r.status_code}，目标站点拒绝了服务器请求。"
         raw_text = str(r.text or "")
         _persist_sub_url(normalized_url, subscription_id)
         os.makedirs(BASE_PATH, exist_ok=True)
