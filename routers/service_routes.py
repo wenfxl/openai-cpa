@@ -2,6 +2,9 @@ import os
 import asyncio
 import httpx
 import json
+import urllib.parse
+import ipaddress
+import socket
 from fastapi import APIRouter, Depends, BackgroundTasks
 from pydantic import BaseModel
 from cloudflare import Cloudflare
@@ -509,9 +512,12 @@ async def cloudflare_enable_email(req: CFZoneBaseReq, token: str = Depends(verif
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-
 @router.post("/api/cloudflare/deploy_worker")
 async def cloudflare_deploy_worker(req: CFDeployWorkerReq, token: str = Depends(verify_token)):
+    is_valid, err_msg = await validate_webhook_domain(req.webhook_url)
+    if not is_valid:
+        print(f"[{core_engine.ts()}] [CF Worker] ❌ URL校验失败: {err_msg}")
+        return {"status": "error", "message": err_msg}
     WORKER_RAW_URL = "https://raw.githubusercontent.com/wenfxl/openai-cpa-email/refs/heads/master/worker.js"
     try:
         proxy_url = getattr(core_engine.cfg, 'DEFAULT_PROXY', None)
@@ -647,3 +653,33 @@ async def cloudflare_setup_catch_all(req: CFSetupRoutingReq, token: str = Depend
     except Exception as e:
         print(f"[{core_engine.ts()}] [CF 路由] ❌ 发生异常: {str(e)}")
         return {"status": "error", "message": str(e)}
+async def validate_webhook_domain(url: str) -> tuple[bool, str]:
+    parsed = urllib.parse.urlparse(url)
+    hostname = parsed.hostname
+
+    if not hostname:
+        return False, "无效的 URL 格式，请包含 http:// 或 https://"
+    try:
+        ipaddress.ip_address(hostname)
+        return False, "面板访问地址必须是域名，且解析的IP为公网IPV4"
+    except ValueError:
+        pass
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(hostname, None, family=socket.AF_INET)
+    except socket.gaierror:
+        return False, f"域名 {hostname} 无法解析，请检查域名是否正确"
+
+    has_public_ipv4 = False
+    for info in infos:
+        ip_str = info[4][0]
+        ip_obj = ipaddress.IPv4Address(ip_str)
+
+        if not ip_obj.is_private and not ip_obj.is_loopback and not ip_obj.is_link_local:
+            has_public_ipv4 = True
+            break
+
+    if not has_public_ipv4:
+        return False, f"域名 {hostname} 没有解析到有效的公网 IPv4 地址"
+
+    return True, ""
