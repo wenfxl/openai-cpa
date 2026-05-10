@@ -3401,11 +3401,11 @@
                                                 <div class="min-w-0 flex-1">
                                                     <div class="flex items-center gap-2 min-w-0">
                                                         <div class="max-w-full px-3 py-1.5 rounded-full border text-sm font-black truncate transition-all" :class="sub.selected ? 'bg-gradient-to-r from-sky-600 to-cyan-500 text-white border-sky-500 shadow-lg shadow-sky-500/25' : 'bg-slate-50 text-slate-700 border-slate-200'">
-                                                            {{ sub.name || ('订阅 ' + sub.id) }}
+                                                            {{ formatClashSubscriptionLabel(sub) }}
                                                         </div>
                                                         <span v-if="sub.selected" class="px-2.5 py-1 rounded-full bg-sky-700 text-white border border-sky-500 text-[10px] font-black shrink-0 shadow-sm shadow-sky-500/20">当前订阅</span>
                                                     </div>
-                                                    <div class="text-[11px] mt-2 truncate font-mono leading-relaxed" :class="sub.selected ? 'text-sky-800 font-bold' : 'text-slate-500'" :title="sub.url">{{ sub.url }}</div>
+                                                    <div class="text-[11px] mt-2 truncate font-mono leading-relaxed" :class="sub.selected ? 'text-sky-700/80 font-bold' : 'text-slate-400'" :title="sub.url">{{ sub.url }}</div>
                                                 </div>
                                                 <div class="flex gap-2 shrink-0">
                                                     <button @click="selectClashSubscription(sub.id)" :disabled="clashPool.subscriptionActionLoading || sub.selected" class="h-9 px-4 rounded-full bg-sky-600 text-white text-xs font-black hover:bg-sky-700 active:scale-95 disabled:opacity-60 transition-all">切换</button>

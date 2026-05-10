@@ -746,6 +746,25 @@ createApp({
             if (text.startsWith('/')) return `${base}${text}`;
             return `${base}/${text.replace(/^\.?\//, '')}`;
         },
+        formatClashSubscriptionLabel(subscription) {
+            if (!subscription) return '未命名订阅';
+            const name = String(subscription.name || '').trim();
+            if (name && name !== '当前订阅') return name;
+            const source = String(subscription.url || subscription.raw_url || '').trim();
+            try {
+                const parsed = new URL(source);
+                const target = parsed.searchParams.get('url');
+                if (target) {
+                    const targetUrl = new URL(target);
+                    const lastSeg = targetUrl.pathname.split('/').filter(Boolean).pop();
+                    return `${targetUrl.hostname}${lastSeg ? ' / ' + lastSeg : ''}`;
+                }
+                const lastSeg = parsed.pathname.split('/').filter(Boolean).pop();
+                return `${parsed.hostname}${lastSeg ? ' / ' + lastSeg : ''}`;
+            } catch (_) {
+                return name || '未命名订阅';
+            }
+        },
         toggleLanguage() {
             const nextLanguage = this.currentLanguage === TRADITIONAL_LANGUAGE ? DEFAULT_LANGUAGE : TRADITIONAL_LANGUAGE;
             this.setLanguage(nextLanguage);
@@ -3927,7 +3946,13 @@ async exportSub2Api() {
                     })
                 });
                 const data = await res.json();
-                this.showToast(data.message || '订阅已切换', data.status);
+                const label = this.formatClashSubscriptionLabel(subscription);
+                this.showToast(
+                    data.status === 'success'
+                        ? `已切换订阅：${label}`
+                        : (data.message || `切换订阅失败：${label}`),
+                    data.status
+                );
                 if (data.status === 'success') {
                     await this.fetchClashPool();
                 }
