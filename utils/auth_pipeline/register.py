@@ -19,7 +19,13 @@ from .oauth import generate_oauth_url, submit_callback_url
 from .user_utils import _generate_password
 
 
-def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
+def run(
+    proxy: Optional[str],
+    run_ctx: dict = None,
+    assigned_domain: Optional[str] = None,
+    batch_id: Optional[int] = None,
+    worker_index: Optional[int] = None,
+) -> tuple:
     processed_mails: set = set()
     proxy = cfg.format_docker_url(proxy)
     if proxy and proxy.startswith("socks5://"):
@@ -57,7 +63,12 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
         del s_reg
         s_reg = None
 
-        email, email_jwt = get_email_and_token(proxies)
+        email, email_jwt = get_email_and_token(
+            proxies,
+            assigned_domain=assigned_domain,
+            batch_id=batch_id,
+            worker_index=worker_index,
+        )
         if not email:
             return None, None
 
@@ -483,6 +494,15 @@ def run(proxy: Optional[str], run_ctx: dict = None) -> tuple:
 
 
                 if mode_label == "常规模式":
+                    if getattr(cfg, "ENABLE_IMAGE2API_MODE", False):
+                        print(f"[{cfg.ts()}] [INFO] [IMAGE2API] （{mask_email(email)}）根据配置将同步至IMAGE2API平台。")
+                        if data:
+                            client = Image2APIClient()
+                            ok, msg = client.add_accounts([data])
+                            if ok:
+                                print(f"[{cfg.ts()}] [SUCCESS] [IMAGE2API] （{mask_email(email)}）同步成功")
+                            else:
+                                print(f"[{cfg.ts()}] [ERROR] [IMAGE2API] （{mask_email(email)}）同步失败: {msg}")
                     if getattr(cfg, "IMAGE2API_IMG_ONLY_MODE", False):
                         print(f"[{cfg.ts()}] [INFO] 当前为仅注册img模式")
                         res_payload = json.dumps({"email": email, "status": "image2api", "access_token": data})

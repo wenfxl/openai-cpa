@@ -32,3 +32,4 @@ register.py.bak
 .codex/
 AGENTS.md
 stop_openai_cpa.ps1
+code.py

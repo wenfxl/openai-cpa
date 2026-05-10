@@ -183,7 +183,7 @@ class LocalMicrosoftService:
             raise ValueError(f"[{cfg.ts()}] [ERROR] 缺失凭据，无法执行令牌交换")
 
         scope_graph = "https://graph.microsoft.com/.default offline_access"
-        scope_fallback = "offline_access"
+        scope_fallback = "openid offline_access"
 
         def _do_token_request(current_scope):
             payload = {
@@ -202,7 +202,8 @@ class LocalMicrosoftService:
 
         resp = _do_token_request(scope_graph)
         data = resp.json()
-        if resp.status_code != 200 and ("AADSTS70000" in str(data) or "invalid_scope" in str(data)):
+        err_str = str(data).lower()
+        if resp.status_code != 200 and any(err in err_str for err in ["aadsts70000", "aadsts90023", "invalid_scope"]):
             print(f"[{cfg.ts()}] [INFO] {mailbox['email']}] ⚠️ Graph 未授权，回退到基础/IMAP 兼容模式...")
             resp = _do_token_request(scope_fallback)
             data = resp.json()
