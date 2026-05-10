@@ -1548,7 +1548,7 @@ def _extract_otp_code(content: str) -> str:
         m = re.search(p, content)
         if m:
             return m.group(1)
-    fallback = re.search(r"(?<!\d)(\d{6})(?!\d)", content)
+    fallback = re.search(r"(?<![\d#])(\d{6})(?!\d)", content)
     return fallback.group(1) if fallback else ""
 
 
@@ -2258,8 +2258,25 @@ def get_oai_code(
                                                 content += part.get_payload(decode=True).decode("utf-8", "ignore")
                                             except Exception:
                                                 pass
+                                    if not content:
+                                        for part in msg.walk():
+                                            if part.get_content_type() == "text/html":
+                                                try:
+                                                    content += part.get_payload(decode=True).decode("utf-8", "ignore")
+                                                except Exception:
+                                                    pass
                                 else:
                                     content = msg.get_payload(decode=True).decode("utf-8", "ignore")
+                                if "<html" in content.lower() or "<div" in content.lower():
+                                    try:
+                                        from html.parser import HTMLParser as _HP
+                                        class _S(_HP):
+                                            def __init__(self): super().__init__(); self._t = []
+                                            def handle_data(self, d): self._t.append(d)
+                                            def get(self): return " ".join(self._t)
+                                        _p = _S(); _p.feed(content); content = _p.get()
+                                    except Exception:
+                                        pass
                                 to_h = str(msg.get("To", "")).lower()
                                 del_h = str(msg.get("Delivered-To", "")).lower()
                                 tgt = email.lower()
