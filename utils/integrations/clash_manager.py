@@ -90,9 +90,9 @@ def get_subscription_state() -> dict:
     subscriptions = _normalize_subscriptions(clash_conf.get("sub_urls", []), selected_url)
     selected_id = ""
     for item in subscriptions:
-        if item["url"] == selected_url:
+        item["selected"] = item["url"] == selected_url
+        if item["selected"]:
             selected_id = item["id"]
-            break
     return {
         "selected_id": selected_id,
         "selected_url": selected_url,
@@ -151,7 +151,7 @@ def delete_subscription(subscription_id: str) -> tuple[bool, str]:
     return True, "订阅已删除。"
 
 
-def select_subscription(subscription_id: str) -> tuple[bool, str]:
+def select_subscription(subscription_id: str, target: str = "all") -> tuple[bool, str]:
     sub_id = str(subscription_id or "").strip()
     if not sub_id:
         return False, "订阅标识不能为空。"
@@ -164,7 +164,10 @@ def select_subscription(subscription_id: str) -> tuple[bool, str]:
             clash_conf["sub_urls"] = subscriptions
             config_data["clash_proxy_pool"] = clash_conf
             cfg.reload_all_configs(new_config_dict=config_data)
-            return True, f"已选中订阅 [{item['name']}]"
+            success, message = patch_and_update(item["url"], target)
+            if success:
+                return True, f"已切换到订阅 [{item['name']}]，并同步刷新当前策略组。"
+            return False, f"订阅已切换为 [{item['name']}]，但同步新策略组失败：{message}"
     return False, "未找到要选中的订阅。"
 
 

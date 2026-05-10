@@ -3589,9 +3589,12 @@ createApp({
         async selectClashSubscription(subscriptionId) {
             this.clashPool.subscriptionActionLoading = true;
             try {
+                this.clashPool.activeGroupName = '';
+                this.clashPool.view = 'groups';
+                this.clashPool.delayResults = {};
                 const res = await this.authFetch('/api/clash/subscriptions/select', {
                     method: 'POST',
-                    body: JSON.stringify({ subscription_id: subscriptionId })
+                    body: JSON.stringify({ subscription_id: subscriptionId, target: this.clashPool.target })
                 });
                 const data = await res.json();
                 this.showToast(data.message || '订阅已切换', data.status);
