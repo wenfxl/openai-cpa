@@ -7,13 +7,326 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Wenfxl 注册管理系统</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=__VER__">
-    <script src="/static/js/tailwind.min.js?v=__VER__"></script>
-    <script src="/static/js/vue.global.js?v=__VER__"></script>
-    <script src="/static/js/jszip.min.js?v=__VER__"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260510-5">
+    <script src="/static/js/tailwind.min.js?v=20260510-5"></script>
+    <script src="/static/js/vue.global.js?v=20260510-5"></script>
+    <script src="/static/js/jszip.min.js?v=20260510-5"></script>
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .inventory-shell {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.03),
+                0 12px 24px rgba(15, 23, 42, 0.04);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+        }
+        .inventory-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 420px;
+            height: calc(100vh - 156px);
+        }
+        .inventory-toolbar {
+            background:
+                linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.72));
+            backdrop-filter: blur(8px);
+            flex-shrink: 0;
+        }
+        .inventory-stats {
+            flex-shrink: 0;
+        }
+        .inventory-scroll-region {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        .inventory-table-scroll {
+            height: 100%;
+            overflow: auto;
+        }
+        .inventory-table-wrap {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.88));
+        }
+        .inventory-table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(248, 250, 252, 0.92);
+            backdrop-filter: blur(8px);
+        }
+        .inventory-footer {
+            background:
+                linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.8));
+            flex-shrink: 0;
+        }
+        .cloud-toolbar-shell {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .cloud-toolbar-side {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .cloud-toolbar-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+        }
+        .cloud-filter-strip {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(226, 232, 240, 0.72), rgba(241, 245, 249, 0.96));
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.8),
+                0 1px 2px rgba(15, 23, 42, 0.03),
+                0 8px 20px rgba(15, 23, 42, 0.04);
+        }
+        .cloud-toolbar-side--right {
+            justify-content: flex-end;
+            flex: 1 1 auto;
+            flex-wrap: nowrap;
+        }
+        .cloud-search-wrap {
+            display: flex;
+            align-items: center;
+            width: clamp(120px, 14vw, 180px);
+            min-width: 120px;
+            max-width: 180px;
+            flex: 1 1 auto;
+        }
+        .cloud-progress-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 110px;
+            max-width: 140px;
+            padding: 0;
+            flex: 0 0 auto;
+        }
+        .cloud-nowrap-btn {
+            white-space: nowrap;
+        }
+        .cloud-progress-copy {
+            min-width: 74px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            justify-content: center;
+        }
+        .cloud-progress-line {
+            flex: 1 1 auto;
+            min-width: 56px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(226, 232, 240, 0.72);
+            overflow: hidden;
+        }
+        .cloud-stat-card {
+            min-height: 58px;
+            padding: 7px 10px;
+            border-radius: 12px;
+        }
+        .cloud-stat-card::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 42px;
+            height: 42px;
+            border-bottom-left-radius: 999px;
+            opacity: 0.44;
+            pointer-events: none;
+        }
+        .cloud-stat-card--emerald::after { background: linear-gradient(135deg, rgba(167, 243, 208, 0.8), rgba(255,255,255,0)); }
+        .cloud-stat-card--indigo::after { background: linear-gradient(135deg, rgba(199, 210, 254, 0.85), rgba(255,255,255,0)); }
+        .cloud-stat-card--purple::after { background: linear-gradient(135deg, rgba(233, 213, 255, 0.85), rgba(255,255,255,0)); }
+        .cloud-stat-card--pink::after { background: linear-gradient(135deg, rgba(251, 207, 232, 0.85), rgba(255,255,255,0)); }
+        .cloud-stat-card--blue::after { background: linear-gradient(135deg, rgba(191, 219, 254, 0.85), rgba(255,255,255,0)); }
+        .cloud-stat-badges {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .cloud-stat-badge {
+            font-size: 9px;
+            line-height: 1;
+            font-weight: 800;
+            padding: 3px 6px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .inventory-mini-card {
+            min-height: 68px;
+            padding: 10px 12px;
+            border-radius: 14px;
+        }
+        .inventory-mini-card::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 52px;
+            height: 52px;
+            border-bottom-left-radius: 999px;
+            opacity: 0.48;
+            pointer-events: none;
+        }
+        .inventory-mini-card--slate::after { background: linear-gradient(135deg, rgba(226, 232, 240, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--amber::after { background: linear-gradient(135deg, rgba(253, 230, 138, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--indigo::after { background: linear-gradient(135deg, rgba(199, 210, 254, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--cyan::after { background: linear-gradient(135deg, rgba(165, 243, 252, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--emerald::after { background: linear-gradient(135deg, rgba(167, 243, 208, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--rose::after { background: linear-gradient(135deg, rgba(254, 205, 211, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--pink::after { background: linear-gradient(135deg, rgba(251, 207, 232, 0.85), rgba(255,255,255,0)); }
+        .inventory-mini-card--violet::after { background: linear-gradient(135deg, rgba(221, 214, 254, 0.85), rgba(255,255,255,0)); }
+        .cloud-stat-badge--ok {
+            color: rgb(5 150 105);
+            background: rgb(236 253 245);
+            border-color: rgb(167 243 208);
+        }
+        .cloud-stat-badge--bad {
+            color: rgb(244 63 94);
+            background: rgb(255 241 242);
+            border-color: rgb(254 205 211);
+        }
+        .console-topbar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: clamp(8px, 0.8vw, 14px);
+            min-width: 0;
+        }
+        .console-topbar-primary {
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 0.8vw, 14px);
+            min-width: max-content;
+            flex: 0 0 auto;
+            padding-right: clamp(8px, 0.8vw, 14px);
+        }
+        .console-mode-chip {
+            padding: clamp(7px, 0.7vw, 10px) clamp(10px, 0.85vw, 14px);
+            border-radius: 14px;
+            font-size: clamp(11px, 0.75vw, 14px);
+            line-height: 1.1;
+            min-width: max-content;
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+        .console-progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: clamp(96px, 12vw, 180px);
+            max-width: clamp(120px, 16vw, 220px);
+            flex: 0 1 clamp(120px, 16vw, 220px);
+            white-space: nowrap;
+        }
+        .console-progress-bar {
+            width: 100%;
+            min-width: 0;
+            height: clamp(8px, 0.7vw, 10px);
+        }
+        .console-topbar-actions {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: clamp(6px, 0.55vw, 10px);
+            min-width: max-content;
+            margin-left: auto;
+            flex: 0 0 auto;
+        }
+        .console-mode-switch {
+            width: clamp(76px, 5.8vw, 94px);
+            flex: 0 0 auto;
+        }
+        .console-mode-switch-inner {
+            display: grid;
+            grid-template-columns: 1fr;
+            width: 100%;
+        }
+        .console-toolbar-btn,
+        .console-status-pill,
+        .console-run-btn {
+            white-space: nowrap;
+            min-width: 0;
+        }
+        .console-toolbar-btn {
+            padding: clamp(8px, 0.8vw, 10px) clamp(12px, 1vw, 18px);
+            border-radius: 14px;
+            font-size: clamp(11px, 0.75vw, 14px);
+        }
+        .console-status-pill {
+            padding: clamp(8px, 0.7vw, 10px) clamp(12px, 0.9vw, 16px);
+            border-radius: 999px;
+            font-size: clamp(11px, 0.75vw, 14px);
+        }
+        .console-run-btn {
+            padding: clamp(8px, 0.8vw, 11px) clamp(14px, 1.1vw, 24px);
+            border-radius: 14px;
+            font-size: clamp(11px, 0.8vw, 14px);
+        }
+        .console-meta-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            font-size: clamp(10px, 0.72vw, 12px);
+        }
+        @media (max-width: 1535px) {
+            .console-topbar-actions {
+                margin-left: 0;
+            }
+            .console-progress-wrap {
+                max-width: clamp(110px, 14vw, 180px);
+            }
+        }
+        @media (max-width: 1023px) {
+            .console-topbar-primary {
+                width: auto;
+                padding-right: clamp(8px, 0.8vw, 14px);
+            }
+            .console-topbar-actions {
+                width: 100%;
+                gap: 6px;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+                margin-left: 0;
+            }
+            .console-progress-wrap {
+                min-width: 96px;
+                max-width: 140px;
+            }
+        }
+        @media (min-width: 768px) {
+            .inventory-panel {
+                height: calc(100vh - 188px);
+            }
+        }
+        @media (max-width: 1279px) {
+            .cloud-progress-inline {
+                max-width: 150px;
+                min-width: 120px;
+            }
+            .cloud-search-wrap {
+                width: clamp(160px, 20vw, 250px);
+                min-width: 160px;
+                max-width: 260px;
+            }
+        }
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -154,24 +467,24 @@
 
             <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <header class="bg-white/70 backdrop-blur-2xl border-b border-slate-200/60 text-slate-800 p-3 md:p-4 shrink-0 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] z-30 relative">
-                    <div class="w-full xl:max-w-[85%] mx-auto flex flex-wrap 2xl:flex-nowrap items-center justify-between gap-4 md:gap-5">
-                        <div class="flex items-center justify-between md:justify-start gap-4 md:gap-6 w-full 2xl:w-auto flex-1 min-w-[280px]">
-                            <div class="bg-indigo-50/80 text-indigo-700 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-[11px] md:text-sm font-bold tracking-wide border border-indigo-100/80 truncate max-w-[60%] md:max-w-none shadow-sm flex items-center">
+                    <div class="w-full xl:max-w-[85%] mx-auto console-topbar">
+                        <div class="console-topbar-primary">
+                            <div class="console-mode-chip bg-indigo-50/80 text-indigo-700 font-bold tracking-wide border border-indigo-100/80 truncate shadow-sm flex items-center">
                                 模式: {{ t(stats.mode) }} <span class="hidden sm:inline opacity-30 mx-2">|</span> <span class="hidden sm:inline text-slate-500">成功</span> <span class="font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span> <span class="hidden lg:inline opacity-30 mx-2">|</span> <span class="hidden lg:inline text-slate-500">总 {{stats.total}}</span>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <div class="text-sky-500 font-black text-xs md:text-sm">{{stats.progress_pct}}</div>
-                                <div class="hidden md:block w-24 lg:w-48 xl:w-64 h-2 md:h-2.5 bg-slate-100 rounded-full overflow-hidden shrink-0 shadow-inner border border-slate-200/60">
+                            <div class="console-progress-wrap">
+                                <div class="text-sky-500 font-black text-xs md:text-sm whitespace-nowrap">{{stats.progress_pct}}</div>
+                                <div class="console-progress-bar bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/60">
                                     <div class="h-full bg-sky-400 progress-bar-inner shadow-[0_0_8px_rgba(56,189,248,0.6)] rounded-full transition-all duration-500" :style="{ width: stats.progress_pct }"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="w-full 2xl:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-start 2xl:justify-end gap-3 md:gap-5 shrink-0 mt-1 sm:mt-0">
-                            <div v-if="config" class="w-full sm:w-auto shrink-0">
+                        <div class="console-topbar-actions">
+                            <div v-if="config" class="console-mode-switch shrink-0">
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                                    <span class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-1 sm:hidden">运行模式切换</span>
-                                    <div class="bg-slate-100 p-1 rounded-xl flex w-full sm:w-56 shadow-inner border border-slate-200 shrink-0">
+                                    <span class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-1 sm:hidden">协议</span>
+                                    <div class="console-mode-switch-inner bg-slate-100 p-1 rounded-xl shadow-inner border border-slate-200 shrink-0">
                                         <button @click="changeRegMode('protocol')"
                                                 :class="['flex-1 py-1.5 md:py-2 px-2 md:px-3 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap',
                                                          config.reg_mode === 'protocol' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700']">
@@ -186,8 +499,8 @@
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between sm:justify-start gap-2 md:gap-4 w-full sm:w-auto shrink-0">
-                                <button @click="toggleTheme" class="px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-xs md:text-sm border transition-all active:scale-95 shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm flex items-center justify-center">
+                            <div class="console-topbar-actions">
+                                <button @click="toggleTheme" class="console-toolbar-btn font-bold border transition-all active:scale-95 shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm flex items-center justify-center">
                                     <span v-if="isDarkMode" class="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                                         <span class="hidden sm:inline">日间</span>
@@ -197,31 +510,30 @@
                                         <span class="hidden sm:inline">护眼</span>
                                     </span>
                                 </button>
-                                <button @click="toggleLanguage" class="px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl font-bold text-xs md:text-sm border transition-all active:scale-95 shrink-0 bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1.5">
+                                <button @click="toggleLanguage" class="console-toolbar-btn font-bold border transition-all active:scale-95 shrink-0 bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1.5">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
                                     <span class="hidden sm:inline">{{ targetLanguageLabel() }}</span><span class="sm:hidden">{{ currentLanguage === 'zh-TW' ? '简' : '繁' }}</span>
                                 </button>
-                                <span v-if="isRunning" class="flex items-center gap-1.5 md:gap-2 text-emerald-600 text-[11px] md:text-sm font-bold bg-white px-2.5 py-1.5 md:px-4 md:py-1.5 rounded-full border border-slate-200 shadow-sm shrink-0 whitespace-nowrap">
+                                <span v-if="isRunning" class="console-status-pill flex items-center gap-1.5 md:gap-2 text-emerald-600 font-bold bg-white border border-slate-200 shadow-sm shrink-0">
                                     <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span>
                                     <span class="hidden sm:inline">运行中</span><span class="sm:hidden">运行</span>
                                 </span>
-                                <span v-else class="flex items-center gap-1.5 md:gap-2 text-slate-500 text-[11px] md:text-sm font-bold bg-white px-2.5 py-1.5 md:px-4 md:py-1.5 rounded-full border border-slate-200 shadow-sm shrink-0 whitespace-nowrap">
+                                <span v-else class="console-status-pill flex items-center gap-1.5 md:gap-2 text-slate-500 font-bold bg-white border border-slate-200 shadow-sm shrink-0">
                                     <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-slate-400 rounded-full"></span>
                                     <span class="hidden sm:inline">已停止</span><span class="sm:hidden">停止</span>
                                 </span>
                                 <button @click="toggleSystem"
-                                        class="px-4 py-1.5 md:px-6 md:py-2.5 rounded-xl font-black text-xs md:text-sm text-white shadow-lg transition-all active:scale-95 shrink-0 whitespace-nowrap flex items-center gap-1"
+                                        class="console-run-btn font-black text-white shadow-lg transition-all active:scale-95 shrink-0 flex items-center gap-1"
                                         :class="isRunning ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'">
                                     <svg v-if="isRunning" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9h6v6H9V9z"></path></svg>
                                     <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                     <span>{{ t(isRunning ? '停止' : '启动') }}</span>
                                 </button>
                             </div>
-
                         </div>
                     </div>
 
-                    <div class="w-full xl:max-w-[85%] mx-auto mt-4 md:mt-5 text-[10px] md:text-[12px] font-mono tracking-wide flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <div class="w-full xl:max-w-[85%] mx-auto mt-4 md:mt-5 font-mono tracking-wide console-meta-strip">
                         <span class="text-slate-500 font-bold whitespace-nowrap">成功率 <span class="text-sky-500 font-black ml-0.5">{{stats.success_rate}}</span></span>
                         <span class="text-slate-300 hidden sm:inline">•</span>
                         <span class="text-slate-500 font-bold whitespace-nowrap">成功 <span class="text-emerald-500 font-black ml-0.5">{{stats.success}}/{{stats.target}}</span></span>
@@ -251,6 +563,20 @@
                                 class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-50 px-5 md:px-8 py-3 md:py-4 bg-indigo-600 text-white text-sm md:text-base font-black rounded-full shadow-2xl hover:bg-indigo-700 hover:shadow-indigo-500/40 active:scale-95 transition-all flex items-center gap-2.5 ring-4 ring-indigo-600/20 backdrop-blur-md border border-indigo-500">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> <span class="hidden sm:inline tracking-wide">保存并热重载配置</span><span class="sm:hidden tracking-wide">保存配置</span>
                             </button>
+
+                        <div v-if="isLoggedIn && !config" class="min-h-[55vh] flex items-center justify-center">
+                            <div class="w-full max-w-xl bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-sm p-8 text-center">
+                                <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-800">页面配置暂未加载完成</h3>
+                                <p class="mt-3 text-sm font-medium text-slate-500">{{ configLoadError || (isLoadingConfig ? '正在加载配置，请稍候...' : '配置仍未返回，请点击下方重试。') }}</p>
+                                <button @click="fetchConfig" class="mt-6 inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 text-white text-sm font-black rounded-2xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-500/25">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    重新加载配置
+                                </button>
+                            </div>
+                        </div>
 
                         <div v-show="currentTab === 'console'" class="h-full flex flex-col">
                             <div class="flex justify-between items-end mb-3 md:mb-4">
@@ -441,8 +767,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div v-show="currentTab === 'accounts'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div class="px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col gap-4 bg-slate-50/50">
+                        <div v-show="currentTab === 'accounts'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-md">
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col gap-4">
                                 <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full">
                                     <div class="flex items-center gap-3">
                                         <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">本地账号库</h2>
@@ -510,48 +836,68 @@
                                         <button @click="deleteSelectedAccounts" class="px-4 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition ml-auto"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 删除选中</button>
                                     </div>
                                 </div>
-                            <div class="p-5 md:px-8 bg-slate-50/50 border-b border-slate-100">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 w-full">
+                            <div class="inventory-toolbar inventory-stats p-5 md:px-8 border-b border-slate-100">
+                                <div class="grid grid-cols-2 xl:grid-cols-7 gap-2.5 w-full">
 
-                                    <div @click="filterLocalAccounts('all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-5 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-slate-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterLocalAccounts('all')" class="inventory-mini-card inventory-mini-card--slate cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'all' ? 'border-sky-300 ring-2 ring-sky-200 shadow-sky-100' : 'border-slate-200'">
                                         <div class="z-10">
-                                            <div class="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">账号总数</div>
-                                            <div class="text-3xl font-black text-slate-800">{{ inventoryStats?.local?.total || 0 }}</div>
+                                            <div class="text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">账号总数</div>
+                                            <div class="text-[1.05rem] font-black text-slate-800 leading-none">{{ inventoryStats?.local?.total || 0 }}</div>
                                         </div>
-                                        <div class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-xl shadow-inner border border-slate-100 z-10"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg></div>
+                                        <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shadow-inner border border-slate-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414A1 1 0 006.586 13H4"></path></svg></div>
                                     </div>
 
-                                    <div @click="filterLocalAccounts('unpushed')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-5 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-amber-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterLocalAccounts('unpushed')" class="inventory-mini-card inventory-mini-card--amber cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'unpushed' ? 'border-amber-300 ring-2 ring-amber-200 shadow-amber-100' : 'border-slate-200'">
                                         <div class="z-10">
-                                            <div class="text-xs font-black text-amber-500 mb-1 uppercase tracking-widest">未推送库存</div>
-                                            <div class="text-3xl font-black text-amber-600">{{ inventoryStats?.local?.unpushed || 0 }}</div>
+                                            <div class="text-[10px] font-black text-amber-500 mb-1 uppercase tracking-widest">未推送</div>
+                                            <div class="text-[1.05rem] font-black text-amber-600 leading-none">{{ inventoryStats?.local?.unpushed || 0 }}</div>
                                         </div>
-                                        <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-xl shadow-inner border border-amber-100 z-10"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>
+                                        <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shadow-inner border border-amber-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>
                                     </div>
 
-                                    <div @click="filterLocalAccounts('active')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-5 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-emerald-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterLocalAccounts('pushed')" class="inventory-mini-card inventory-mini-card--indigo cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'pushed' ? 'border-indigo-300 ring-2 ring-indigo-200 shadow-indigo-100' : 'border-slate-200'">
                                         <div class="z-10">
-                                            <div class="text-xs font-black text-emerald-500/80 mb-1 uppercase tracking-widest">活跃状态</div>
-                                            <div class="text-3xl font-black text-emerald-600">{{ inventoryStats?.local?.active || 0 }}</div>
+                                            <div class="text-[10px] font-black text-indigo-500 mb-1 uppercase tracking-widest">已推送</div>
+                                            <div class="text-[1.05rem] font-black text-indigo-600 leading-none">{{ inventoryStats?.local?.pushed || 0 }}</div>
                                         </div>
-                                        <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-xl shadow-inner border border-emerald-100 z-10"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                        <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shadow-inner border border-indigo-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m4-4H8"></path></svg></div>
                                     </div>
 
-                                    <div @click="filterLocalAccounts('disabled')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-5 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group">
-                                        <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-rose-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterLocalAccounts('credential')" class="inventory-mini-card inventory-mini-card--cyan cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'credential' ? 'border-cyan-300 ring-2 ring-cyan-200 shadow-cyan-100' : 'border-slate-200'">
                                         <div class="z-10">
-                                            <div class="text-xs font-black text-rose-400 mb-1 uppercase tracking-widest">已禁用</div>
-                                            <div class="text-3xl font-black text-rose-600">{{ inventoryStats?.local?.disabled || 0 }}</div>
+                                            <div class="text-[10px] font-black text-cyan-500 mb-1 uppercase tracking-widest">有凭证</div>
+                                            <div class="text-[1.05rem] font-black text-cyan-600 leading-none">{{ inventoryStats?.local?.credential || 0 }}</div>
                                         </div>
-                                        <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-xl shadow-inner border border-rose-100 z-10"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></div>
+                                        <div class="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center shadow-inner border border-cyan-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('image2api')" class="inventory-mini-card inventory-mini-card--pink cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'image2api' ? 'border-pink-300 ring-2 ring-pink-200 shadow-pink-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-pink-500 mb-1 uppercase tracking-widest">Img凭证</div>
+                                            <div class="text-[1.05rem] font-black text-pink-600 leading-none">{{ inventoryStats?.local?.image2api || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center shadow-inner border border-pink-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('active')" class="inventory-mini-card inventory-mini-card--emerald cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'active' ? 'border-emerald-300 ring-2 ring-emerald-200 shadow-emerald-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-emerald-500/80 mb-1 uppercase tracking-widest">活跃状态</div>
+                                            <div class="text-[1.05rem] font-black text-emerald-600 leading-none">{{ inventoryStats?.local?.active || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shadow-inner border border-emerald-100 z-10"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('disabled')" class="inventory-mini-card inventory-mini-card--rose cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'disabled' ? 'border-rose-300 ring-2 ring-rose-200 shadow-rose-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-rose-400 mb-1 uppercase tracking-widest">已禁用</div>
+                                            <div class="text-[1.05rem] font-black text-rose-600 leading-none">{{ inventoryStats?.local?.disabled || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center shadow-inner border border-rose-100 z-10"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto w-full hide-scrollbar">
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full hide-scrollbar">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
                                         <tr>
@@ -640,7 +986,7 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="px-5 md:px-8 py-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="inventory-footer px-5 md:px-8 py-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                                 <div class="text-sm text-slate-500 font-bold flex flex-wrap items-center gap-2">
                                     <span>共 <span class="text-indigo-600 text-base font-black">{{ totalAccounts }}</span> 个，</span>
                                     <span>第 <span class="text-slate-800">{{ currentPage }}</span>/{{ totalPages }} 页</span>
@@ -675,7 +1021,7 @@
                             </div>
                         </div>
 
-                        <div v-show="currentTab === 'mailboxes'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                        <div v-show="currentTab === 'mailboxes'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden relative transition-shadow duration-300 hover:shadow-md">
 
                             <div v-if="showImportMailboxModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
@@ -696,7 +1042,7 @@
                                 </div>
                             </div>
 
-                            <div class="px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-50/50 min-h-[80px]">
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 min-h-[80px]">
                                 <div class="flex items-center gap-3">
                                     <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">微软邮箱资源库</h2>
                                         <button @click="fetchMailboxes(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
@@ -712,8 +1058,8 @@
                                     <button @click="showImportMailboxModal = true" class="text-sm bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-100 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 导入数据
                                     </button>
-                                    <button @click="showMailboxesPlaintext = !showMailboxesPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold inline-flex items-center gap-1 whitespace-nowrap">
-                                        <span class="inline-flex items-center gap-1 whitespace-nowrap"><svg v-if="showMailboxesPlaintext" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><span>{{ showMailboxesPlaintext ? '脱敏' : '明文' }}</span></span>
+                                    <button @click="showPwd.showMailboxesPlaintext = !showPwd.showMailboxesPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold inline-flex items-center gap-1 whitespace-nowrap">
+                                        <span class="inline-flex items-center gap-1 whitespace-nowrap"><svg v-if="showPwd.showMailboxesPlaintext" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><span>{{ showPwd.showMailboxesPlaintext ? '脱敏' : '明文' }}</span></span>
                                     </button>
 
                                     <div v-if="selectedMailboxes.length > 0" class="flex flex-wrap items-center gap-2 bg-indigo-50 border border-indigo-100 p-1.5 rounded-xl shadow-sm transition-all duration-300">
@@ -730,7 +1076,7 @@
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto w-full min-h-[400px]">
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
                                         <tr>
@@ -752,7 +1098,7 @@
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap"><input type="checkbox" :value="mb.email" v-model="selectedMailboxes" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"></td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-400 font-mono font-medium">{{ index + 1 }}</td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
-                                                {{ showMailboxesPlaintext ? mb.email : maskEmail(mb.email) }}
+                                                {{ showPwd.showMailboxesPlaintext ? mb.email : maskEmail(mb.email) }}
                                             </td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap">
                                                 <span v-if="mb.refresh_token" class="px-2 py-1 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded border border-indigo-100">OAuth</span>
@@ -781,7 +1127,7 @@
                                 </table>
                             </div>
 
-                            <div class="px-5 md:px-8 py-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="inventory-footer px-5 md:px-8 py-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                                 <div class="text-sm text-slate-500 font-bold flex flex-wrap items-center gap-2">
                                     <span>共 <span class="text-sky-600 text-base font-black">{{ totalMailboxes }}</span> 个邮箱，</span>
                                     <span>第 <span class="text-slate-800">{{ mailboxPage }}</span>/{{ mailboxTotalPages }} 页</span>
@@ -840,11 +1186,9 @@
                                            class="w-full appearance-none bg-slate-50 border-2 border-slate-200 text-slate-400 font-mono rounded-xl py-3 px-4 pr-10 cursor-default">
                                     <input v-else type="text" v-model="config.mail_domains" autocomplete="off"
                                            class="w-full appearance-none bg-white border-2 border-slate-200 text-slate-700 font-mono rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors shadow-sm">
-                                    <button @click="showPwd.mail_domains = !showPwd.mail_domains" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500">
                                     <button @click="showPwd.mail_domains = !showPwd.mail_domains" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 focus:outline-none transition-transform hover:scale-110">
                                         <svg v-if="showPwd.mail_domains" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                         <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
-                                    </button>
                                     </button>
                                 </div>
 
@@ -1037,6 +1381,7 @@
                                                     <span v-else class="inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> 校验 NS 并激活邮件服务
                                                 </button>
                                             </div>
+
                                         </div>
 
                                         <div v-if="cfTools.results.length > 0" class="mt-4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
@@ -1639,11 +1984,9 @@
                                             <input v-else type="text" v-model="config.freemail.api_url" autocomplete="off"
                                                    class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors shadow-sm font-mono text-sm">
 
-                                            <button @click="showPwd.free_url = !showPwd.free_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500">
-                                                <button @click="showPwd.free_url = !showPwd.free_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 focus:outline-none transition-transform hover:scale-110">
-                                            <svg v-if="showPwd.free_url" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
-                                        </button>
+                                            <button @click="showPwd.free_url = !showPwd.free_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 focus:outline-none transition-transform hover:scale-110">
+                                                <svg v-if="showPwd.free_url" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
                                             </button>
                                         </div>
                                     </div>
@@ -1933,6 +2276,7 @@
                                         </div>
                                     </div>
                                 </div>
+
                                 <div v-if="config.email_api_mode === 'luckmail' && config.luckmail" class="space-y-6 animate-fade-in">
                                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-100 to-amber-50 p-4 rounded-2xl border border-amber-200 shadow-sm">
                                         <p class="text-sm text-amber-800 font-black flex items-center gap-2 tracking-wide">
@@ -2044,8 +2388,6 @@
                                     <div class="text-[11px] text-rose-800 mt-4 font-bold bg-rose-50 border border-rose-100 p-3 rounded-lg leading-relaxed shadow-sm text-center">
                                         <a href="https://mails.luckyous.com/" class="text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1.5 text-sm" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a15 15 0 010 18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a15 15 0 000 18"></path></svg> mails.luckyous.com</a>
                                     </div>
-                                </div>
-                            </div>
 
                             <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 overflow-hidden mb-4 flex flex-col">
                                 <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-200/60 flex justify-between items-center shrink-0">
@@ -2110,13 +2452,36 @@
                                         </div>
                                     </div>
                                 </div>
+
                                 <div v-else class="p-12 flex-1 flex flex-col items-center justify-center bg-slate-50/50">
                                     <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4 opacity-50 shadow-inner">
                                         <span><svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-400 grayscale" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="7" y="8" width="10" height="8" rx="2" ry="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8V6a3 3 0 016 0v2"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2"></path><circle cx="10" cy="12" r="1"></circle><circle cx="14" cy="12" r="1"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6"></path></svg></span>
                                     </div>
                                     <span class="text-slate-400 text-sm font-bold tracking-wide">AI 增强已关闭，将使用本地随机策略</span>
                                 </div>
+
+                                <div class="mt-6 p-5 md:p-6 bg-gradient-to-br from-rose-50/90 to-white rounded-2xl border border-rose-100 shadow-sm">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                        <div class="space-y-1">
+                                            <h4 class="text-sm md:text-base font-black text-rose-700 tracking-tight flex items-center gap-2">
+                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16"></path></svg></span>
+                                                批量删除 CF 托管域名
+                                            </h4>
+                                            <p class="text-xs md:text-sm text-slate-500 font-medium leading-relaxed">删除发信域名池中已托管到 CF 的域名及其 DNS / 邮件路由配置。</p>
+                                        </div>
+                                        <button @click="handleCFDeleteHosting" :disabled="cfTools.isDeletingHosting"
+                                                class="w-full sm:w-auto px-5 py-3 bg-rose-600 text-white text-sm font-black rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-md shadow-rose-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <span v-if="cfTools.isDeletingHosting" class="inline-flex items-center justify-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                            </span>
+                                            {{ cfTools.isDeletingHosting ? '删除中...' : '执行删除' }}
+                                        </button>
+                                    </div>
+                                </div>
+
                             </div>
+                        </div>
+                        </div>
                         </div>
 
                         <div v-show="currentTab === 'sms'" v-if="config" class="space-y-5 md:space-y-8">
@@ -2945,143 +3310,157 @@
                                     </div>
                                 </div>
                             </div>
+
                         </div>
 
-                        <div v-show="currentTab === 'cloud'" class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200 overflow-hidden">
-                            <div class="px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-50/50 min-h-[80px]">
-                                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                    <div class="flex items-center gap-3">
-                                        <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                                            <span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-sky-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h11a5 5 0 00-.1-9.995A5.002 5.002 0 1010.5 6H9.75a4 4 0 00-6.75 9z"></path></svg></span> 云端库存
-                                        </h2>
-                                        <button @click="fetchCloudAccounts" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                                        </button>
-                                    </div>
-                                    <div class="flex items-center gap-1.5 bg-slate-200/60 p-1.5 rounded-xl border border-slate-300/50 shadow-inner w-max">
-                                        <label :class="cloudFilters.includes('sub2api') ? 'bg-white shadow-sm border border-slate-200 text-purple-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'" class="flex items-center gap-2 px-3 py-1.5 cursor-pointer text-xs font-bold rounded-lg transition-all border border-transparent">
-                                            <input type="checkbox" v-model="cloudFilters" value="sub2api" @change="fetchCloudAccounts" class="sr-only">
-                                            <span class="w-2 h-2 rounded-full shadow-inner" :class="cloudFilters.includes('sub2api') ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'bg-slate-300 shadow-slate-400/50'"></span> Sub2API
-                                        </label>
-                                        <label :class="cloudFilters.includes('cpa') ? 'bg-white shadow-sm border border-slate-200 text-indigo-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'" class="flex items-center gap-2 px-3 py-1.5 cursor-pointer text-xs font-bold rounded-lg transition-all border border-transparent">
-                                            <input type="checkbox" v-model="cloudFilters" value="cpa" @change="fetchCloudAccounts" class="sr-only">
-                                            <span class="w-2 h-2 rounded-full shadow-inner" :class="cloudFilters.includes('cpa') ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300 shadow-slate-400/50'"></span> CPA
-                                        </label>
-                                        <label :class="cloudFilters.includes('image2api') ? 'bg-white shadow-sm border border-slate-200 text-pink-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'" class="flex items-center gap-2 px-3 py-1.5 cursor-pointer text-xs font-bold rounded-lg transition-all border border-transparent">
-                                            <input type="checkbox" v-model="cloudFilters" value="image2api" @change="fetchCloudAccounts" class="sr-only">
-                                            <span class="w-2 h-2 rounded-full shadow-inner" :class="cloudFilters.includes('image2api') ? 'bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.5)]' : 'bg-slate-300 shadow-slate-400/50'"></span> Image2API
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="flex flex-wrap gap-3 items-center w-full xl:w-auto">
-                                    <div class="relative flex items-center">
-                                        <span class="absolute left-3 text-slate-400 text-sm"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></span>
-                                        <input type="text" v-model="searchCloud" placeholder="搜索云端账号..." class="pl-8 pr-3 py-1.5 w-32 md:w-48 text-sm bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-sm font-medium">
-                                    </div>
-                                    <button @click="showCloudPlaintext = !showCloudPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
-                                        <span><svg v-if="showCloudPlaintext" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></span> {{ showCloudPlaintext ? '脱敏' : '明文' }}
-                                    </button>
-                                    <div class="relative">
-                                        <select v-model="cloudStatusFilter" @change="changeCloudPageSize()" class="appearance-none bg-white border border-slate-200 text-slate-600 rounded-lg py-1.5 pl-3 pr-8 focus:outline-none focus:ring-0 focus:border-indigo-500 text-sm font-bold shadow-sm transition-colors cursor-pointer hover:bg-slate-50">
-                                            <option value="all">全部状态</option>
-                                            <option value="active">存活</option>
-                                            <option value="dead">失效</option>
-                                            <option value="disabled">已禁用</option>
-                                        </select>
-                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <div v-show="currentTab === 'cloud'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-300">
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100">
+                                <div class="cloud-toolbar-shell">
+                                    <div class="cloud-toolbar-side">
+                                        <div class="cloud-toolbar-title">
+                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-white border border-sky-100 shadow-sm shrink-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h11a5 5 0 00-.1-9.995A5.002 5.002 0 1010.5 6H9.75a4 4 0 00-6.75 9z"></path></svg>
+                                            </span>
+                                            <h2 class="text-[1.8rem] leading-none font-black text-slate-800 tracking-tight whitespace-nowrap">云端库存</h2>
+                                            <button @click="fetchCloudAccounts" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm shrink-0" title="刷新列表">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            </button>
+                                        </div>
+                                        <div class="cloud-filter-strip">
+                                            <label :class="cloudFilters.includes('sub2api') ? 'bg-white shadow-sm border border-slate-200 text-purple-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'" class="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer text-[11px] font-bold rounded-xl transition-all border border-transparent bg-white/60">
+                                                <input type="checkbox" v-model="cloudFilters" value="sub2api" @change="fetchCloudAccounts" class="sr-only">
+                                                <span class="w-2 h-2 rounded-full shadow-inner" :class="cloudFilters.includes('sub2api') ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'bg-slate-300 shadow-slate-400/50'"></span> Sub2API
+                                            </label>
+                                            <label :class="cloudFilters.includes('cpa') ? 'bg-white shadow-sm border border-slate-200 text-indigo-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'" class="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer text-[11px] font-bold rounded-xl transition-all border border-transparent bg-white/60">
+                                                <input type="checkbox" v-model="cloudFilters" value="cpa" @change="fetchCloudAccounts" class="sr-only">
+                                                <span class="w-2 h-2 rounded-full shadow-inner" :class="cloudFilters.includes('cpa') ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300 shadow-slate-400/50'"></span> CPA
+                                            </label>
+                                            <label :class="cloudFilters.includes('image2api') ? 'bg-white shadow-sm border border-slate-200 text-pink-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-300/30'" class="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer text-[11px] font-bold rounded-xl transition-all border border-transparent bg-white/60">
+                                                <input type="checkbox" v-model="cloudFilters" value="image2api" @change="fetchCloudAccounts" class="sr-only">
+                                                <span class="w-2 h-2 rounded-full shadow-inner" :class="cloudFilters.includes('image2api') ? 'bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.5)]' : 'bg-slate-300 shadow-slate-400/50'"></span> Image2API
+                                            </label>
                                         </div>
                                     </div>
-                                    <div v-if="selectedCloud.length > 0" class="flex flex-wrap items-center gap-2 bg-indigo-50/80 border border-indigo-100 p-1.5 rounded-xl shadow-sm transition-all duration-300">
-                                        <span class="text-xs font-black text-indigo-700 px-2 border-r border-indigo-200">已选 {{ selectedCloud.length }}</span>
-
-                                        <button @click="bulkCloudAction('check')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-600 transition flex items-center gap-1 disabled:opacity-50">
-                                            <span v-if="isCloudActionLoading" class="animate-spin inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></span>
-                                            <span v-else class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> 批量测活
+                                    <div class="cloud-toolbar-side cloud-toolbar-side--right">
+                                        <div class="cloud-search-wrap relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></span>
+                                            <input type="text" v-model="searchCloud" @input="onCloudSearchInput" placeholder="搜索云端账号..." class="pl-8 pr-3 py-2 w-full text-sm bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-sm font-medium">
+                                        </div>
+                                        <button @click="showCloudPlaintext = !showCloudPlaintext" class="cloud-nowrap-btn text-sm bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1.5 justify-center">
+                                            <span><svg v-if="showCloudPlaintext" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></span> {{ showCloudPlaintext ? '脱敏' : '明文' }}
                                         </button>
-                                        <button @click="bulkCloudAction('enable')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-600 transition flex items-center gap-1 disabled:opacity-50">
-                                            <span class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21V11m0 0C9.5 11 7 9.5 7 6.5 7 5 8 3.5 9.5 3c.7 2.2 2.3 3.5 4.5 4 2.2-.5 3.8-1.8 4.5-4C20 3.5 21 5 21 6.5 21 9.5 18.5 11 16 11m-4 10c-2 0-3.5-.5-4.5-1.5"></path></svg></span> 批量启用
-                                        </button>
-                                        <button @click="bulkCloudAction('delete')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition flex items-center gap-1 disabled:opacity-50 ml-1">
-                                            <span class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></span> 删除选中
-                                        </button>
+                                        <div class="relative">
+                                            <select v-model="cloudStatusFilter" @change="changeCloudPageSize()" class="appearance-none bg-white border border-slate-200 text-slate-600 rounded-xl py-2 pl-3 pr-8 focus:outline-none focus:ring-0 focus:border-indigo-500 text-sm font-bold shadow-sm transition-colors cursor-pointer hover:bg-slate-50">
+                                                <option value="all">全部状态</option>
+                                                <option value="active">存活</option>
+                                                <option value="dead">失效</option>
+                                                <option value="disabled">已禁用</option>
+                                            </select>
+                                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                            </div>
+                                        </div>
+                                        <div v-if="cloudFetchState.loading || cloudFetchState.message" class="cloud-progress-inline h-[40px]">
+                                            <div class="cloud-progress-copy">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-[11px] font-black text-sky-700 whitespace-nowrap">云端分批获取</span>
+                                                    <span class="text-[11px] font-bold text-slate-400">{{ cloudFetchState.completed }}/{{ cloudFetchState.total || cloudFilters.length }}</span>
+                                                </div>
+                                                <div class="text-[11px] text-slate-500 font-medium whitespace-nowrap">
+                                                    {{ cloudFetchState.loading ? ('当前：' + activeCloudFilterLabel) : cloudFetchState.message }}
+                                                </div>
+                                            </div>
+                                            <div class="cloud-progress-line">
+                                                <div class="h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all duration-500" :style="{ width: ((cloudFetchState.total ? (cloudFetchState.completed / cloudFetchState.total) : 0) * 100) + '%' }"></div>
+                                            </div>
+                                        </div>
+                                        <div class="cloud-secondary-actions" v-if="selectedCloud.length > 0">
+                                            <div class="flex flex-wrap items-center gap-2 bg-indigo-50/80 border border-indigo-100 p-1.5 rounded-xl shadow-sm transition-all duration-300">
+                                                <span class="text-xs font-black text-indigo-700 px-2 border-r border-indigo-200">已选 {{ selectedCloud.length }}</span>
+                                                <button @click="bulkCloudAction('check')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-600 transition flex items-center gap-1 disabled:opacity-50">
+                                                    <span v-if="isCloudActionLoading" class="animate-spin inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></span>
+                                                    <span v-else class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> 批量测活
+                                                </button>
+                                                <button @click="bulkCloudAction('enable')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-600 transition flex items-center gap-1 disabled:opacity-50">
+                                                    <span class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21V11m0 0C9.5 11 7 9.5 7 6.5 7 5 8 3.5 9.5 3c.7 2.2 2.3 3.5 4.5 4 2.2-.5 3.8-1.8 4.5-4C20 3.5 21 5 21 6.5 21 9.5 18.5 11 16 11m-4 10c-2 0-3.5-.5-4.5-1.5"></path></svg></span> 批量启用
+                                                </button>
+                                                <button @click="bulkCloudAction('delete')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition flex items-center gap-1 disabled:opacity-50 ml-1">
+                                                    <span class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></span> 删除选中
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="p-5 md:px-8 bg-slate-50/50 border-b border-slate-100">
-                                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 w-full">
-                                    <div @click="filterByCard('all', 'active')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-emerald-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                            <div class="inventory-toolbar inventory-stats p-5 md:px-8 border-b border-slate-100">
+                                <div class="grid grid-cols-2 xl:grid-cols-5 gap-3 w-full">
+                                    <div @click="filterByCard('all', 'active')" class="cloud-stat-card cloud-stat-card--emerald cursor-pointer active:scale-95 bg-white shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
                                         <div class="text-[10px] font-black text-emerald-500/80 mb-1 uppercase tracking-widest z-10 relative">云端启用</div>
-                                        <div class="text-2xl font-black text-emerald-600 z-10 relative">{{ inventoryStats?.cloud?.enabled || 0 }}</div>
+                                        <div class="text-[1.05rem] font-black text-emerald-600 z-10 relative leading-none">{{ inventoryStats?.cloud?.enabled || 0 }}</div>
                                     </div>
 
-                                    <div @click="filterByCard('cpa', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-indigo-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterByCard('cpa', 'all')" class="cloud-stat-card cloud-stat-card--indigo cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
                                         <div>
                                             <div class="text-[10px] font-black text-indigo-400 mb-1 uppercase tracking-widest z-10 relative">CPA 平台</div>
-                                            <div class="text-2xl font-black text-indigo-600 z-10 relative">{{ inventoryStats?.cloud?.cpa || 0 }}</div>
+                                            <div class="text-[1.05rem] font-black text-indigo-600 z-10 relative leading-none">{{ inventoryStats?.cloud?.cpa || 0 }}</div>
                                         </div>
-                                        <div class="flex gap-2 mt-2.5 z-10 relative">
-                                            <span @click.stop="filterByCard('cpa', 'active')" class="cursor-pointer hover:bg-emerald-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
+                                        <div class="cloud-stat-badges z-10 relative">
+                                            <span @click.stop="filterByCard('cpa', 'active')" class="cloud-stat-badge cloud-stat-badge--ok cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.cpa_active || 0 }} 存活
                                             </span>
-                                            <span @click.stop="filterByCard('cpa', 'disabled')" class="cursor-pointer hover:bg-rose-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
+                                            <span @click.stop="filterByCard('cpa', 'disabled')" class="cloud-stat-badge cloud-stat-badge--bad cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.cpa_disabled || 0 }} 失效
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div @click="filterByCard('sub2api', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-purple-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterByCard('sub2api', 'all')" class="cloud-stat-card cloud-stat-card--purple cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
                                         <div>
                                             <div class="text-[10px] font-black text-purple-400 mb-1 uppercase tracking-widest z-10 relative">Sub2API</div>
-                                            <div class="text-2xl font-black text-purple-600 z-10 relative">{{ inventoryStats?.cloud?.sub2api || 0 }}</div>
+                                            <div class="text-[1.05rem] font-black text-purple-600 z-10 relative leading-none">{{ inventoryStats?.cloud?.sub2api || 0 }}</div>
                                         </div>
-                                        <div class="flex gap-2 mt-2.5 z-10 relative">
-                                            <span @click.stop="filterByCard('sub2api', 'active')" class="cursor-pointer hover:bg-emerald-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
+                                        <div class="cloud-stat-badges z-10 relative">
+                                            <span @click.stop="filterByCard('sub2api', 'active')" class="cloud-stat-badge cloud-stat-badge--ok cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.sub2api_active || 0 }} 存活
                                             </span>
-                                            <span @click.stop="filterByCard('sub2api', 'disabled')" class="cursor-pointer hover:bg-rose-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
+                                            <span @click.stop="filterByCard('sub2api', 'disabled')" class="cloud-stat-badge cloud-stat-badge--bad cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.sub2api_disabled || 0 }} 失效
                                             </span>
                                         </div>
                                     </div>
-                                    <div @click="filterByCard('image2api', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-pink-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterByCard('image2api', 'all')" class="cloud-stat-card cloud-stat-card--pink cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between group">
                                         <div>
                                             <div class="text-[10px] font-black text-pink-400 mb-1 uppercase tracking-widest z-10 relative">Image2API</div>
-                                            <div class="text-2xl font-black text-pink-600 z-10 relative">{{ inventoryStats?.cloud?.image2api || 0 }}</div>
+                                            <div class="text-[1.05rem] font-black text-pink-600 z-10 relative leading-none">{{ inventoryStats?.cloud?.image2api || 0 }}</div>
                                         </div>
-                                        <div class="flex gap-2 mt-2.5 z-10 relative">
-                                            <span @click.stop="filterByCard('image2api', 'active')" class="cursor-pointer hover:bg-emerald-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm flex items-center gap-1">
+                                        <div class="cloud-stat-badges z-10 relative">
+                                            <span @click.stop="filterByCard('image2api', 'active')" class="cloud-stat-badge cloud-stat-badge--ok cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-inner"></span>{{ inventoryStats?.cloud?.image2api_active || 0 }} 存活
                                             </span>
-                                            <span @click.stop="filterByCard('image2api', 'disabled')" class="cursor-pointer hover:bg-rose-100 transition-colors text-[10px] font-bold px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm flex items-center gap-1">
+                                            <span @click.stop="filterByCard('image2api', 'disabled')" class="cloud-stat-badge cloud-stat-badge--bad cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-inner"></span>{{ inventoryStats?.cloud?.image2api_disabled || 0 }} 失效
                                             </span>
                                         </div>
                                     </div>
-                                    <div @click="filterByCard('all', 'all')" class="cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
-                                        <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-bl from-blue-100 to-transparent opacity-50 pointer-events-none rounded-bl-full transition-transform group-hover:scale-110"></div>
+                                    <div @click="filterByCard('all', 'all')" class="cloud-stat-card cloud-stat-card--blue cursor-pointer active:scale-95 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
                                         <div class="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-widest z-10 relative">总计推送</div>
-                                        <div class="text-2xl font-black text-blue-600 z-10 relative">{{ inventoryStats?.cloud?.total || 0 }}</div>
+                                        <div class="text-[1.05rem] font-black text-blue-600 z-10 relative leading-none">{{ inventoryStats?.cloud?.total || 0 }}</div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="overflow-x-auto w-full">
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
                                         <tr>
                                             <th class="px-5 md:px-8 py-4 text-left w-12">
                                                 <input type="checkbox" @change="toggleAllCloud" :checked="selectedCloud.length === filteredCloud.length && filteredCloud.length > 0" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all">
                                             </th>
-                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-20">类型</th>
-                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">远端凭证 (账号)</th>
-                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-28">当前状态</th>
-                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[320px]">额度用量大盘</th>
-                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">最后检查</th>
-                                            <th class="px-5 md:px-8 py-4 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">操作</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap w-20">类型</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap min-w-[200px]">远端凭证 (账号)</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap min-w-[96px]">当前状态</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap min-w-[320px]">额度用量大盘</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap min-w-[150px]">最后检查</th>
+                                            <th class="px-5 md:px-8 py-4 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap min-w-[180px]">操作</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-slate-50">
@@ -3241,7 +3620,7 @@
                                 </table>
                             </div>
 
-                            <div class="px-5 md:px-8 py-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="inventory-footer px-5 md:px-8 py-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                                 <div class="text-sm text-slate-500 font-bold flex flex-wrap items-center gap-2">
                                     <span>共 <span class="text-indigo-600 text-base font-black">{{ cloudTotal }}</span> 个远端记录，</span>
                                     <span>第 <span class="text-slate-800">{{ cloudPage }}</span>/{{ cloudTotalPages }} 页</span>
@@ -3278,7 +3657,7 @@
                             </div>
                         </div>
 
-                        <div v-show="currentTab === 'team_accounts'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative animate-fade-in">
+                        <div v-show="currentTab === 'team_accounts'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden relative animate-fade-in transition-shadow duration-300 hover:shadow-md">
                             <div v-if="showImportTeamModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
                                     <h3 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></span> 批量导入 Team Token</h3>
@@ -3296,7 +3675,7 @@
                                 </div>
                             </div>
 
-                            <div class="px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-50/50">
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                                 <div class="flex items-center gap-3">
                                     <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
                                         <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-sky-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M16 19a3 3 0 013-3h1a2 2 0 012 2v1"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M2 19v-1a2 2 0 012-2h1a3 3 0 013 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 18a4 4 0 00-4 4h8a4 4 0 00-4-4z"></path><circle cx="12" cy="10" r="3.25" stroke-width="1.9"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M6 8.5a2.5 2.5 0 115 0"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M13 8.5a2.5 2.5 0 115 0"></path></svg> Team 团队账号库
@@ -3323,7 +3702,7 @@
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto w-full min-h-[400px]">
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
                                         <tr>
@@ -4412,7 +4791,9 @@
                     <button @click="submitAuthReset" class="px-5 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-md hover:bg-rose-600 transition-all active:scale-95">确认清除</button>
                 </div>
             </div>
-        </div>
+    </div>
+    </div>
+    </div>
     </div>
     <script>
         (function () {
@@ -4423,6 +4804,6 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/static/js/app.js?v=__VER__"></script>
+    <script src="/static/js/app.js?v=20260510-5"></script>
 </body>
 </html>

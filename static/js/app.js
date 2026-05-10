@@ -305,6 +305,8 @@ createApp({
             isDarkMode: localStorage.getItem('ui_theme_mode') === 'dark',
 			showAccountsPlaintext: false,
             isRunning: false,
+            isLoadingConfig: false,
+            configLoadError: '',
             tabs: [
                     { id: 'console', name: '运行主页', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>' },
                     { id: 'cluster', name: '集群总控', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>' },
@@ -357,6 +359,7 @@ createApp({
             blacklistStr: "",
             warpListStr: "",
             rawProxyListStr: "",
+            accountStatusFilter: 'all',
             accounts: [],
             selectedAccounts: [],
             hideRegisterOnlyAccounts: false,
@@ -382,7 +385,7 @@ createApp({
                 outputTail: []
             },
             inventoryStats: {
-                local: { total: 0, active: 0, disabled: 0 },
+                local: { total: 0, active: 0, disabled: 0, unpushed: 0, pushed: 0, credential: 0, image2api: 0 },
                 cloud: { total: 0, cpa: 0, sub2api: 0, enabled: 0 }
             },
             statsTimer: null,
@@ -432,12 +435,20 @@ createApp({
             },
             isLoadingSub2APIGroups: false,
             cloudAccounts: [],
+            rawCloudAccounts: [],
             selectedCloud: [],
             cloudFilters: ['sub2api', 'cpa', "image2api"],
             showCloudPlaintext: false,
             cloudPage: 1,
             cloudPageSize: 10,
             cloudTotal: 0,
+            cloudFetchState: {
+                loading: false,
+                currentType: '',
+                completed: 0,
+                total: 0,
+                message: ''
+            },
             localCheckTimes: {},
             localCloudDetails: {},
             isCloudActionLoading: false,
@@ -509,6 +520,7 @@ createApp({
             isLoadingFivesimPrices: false,
             isRestarting: false,
             isRefreshingAccounts: false,
+            isTestingTg: false,
             teamAccounts: [],
             showImportTeamModal: false,
             importTeamText: '',
@@ -529,7 +541,8 @@ createApp({
                 isHosting: false,
                 isEnablingEmail: false,
                 isDeploying: false,
-                isSettingCatchAll: false
+                isSettingCatchAll: false,
+                isDeletingHosting: false
             },
             isUpdatingSystem: false,
         };
@@ -593,12 +606,16 @@ createApp({
             return res;
         },
         filteredCloud() {
-            let res = this.cloudAccounts;
-            if (this.searchCloud) {
-                const term = this.searchCloud.toLowerCase();
-                res = res.filter(a => a.credential && a.credential.toLowerCase().includes(term));
-            }
-            return res;
+            return this.cloudAccounts;
+        },
+        activeCloudFilterLabel() {
+            if (!this.cloudFetchState.currentType) return '待命';
+            const labels = {
+                sub2api: 'Sub2API',
+                cpa: 'CPA',
+                image2api: 'Image2API'
+            };
+            return labels[this.cloudFetchState.currentType] || this.cloudFetchState.currentType;
         },
         filteredMailboxes() {
             let res = this.mailboxes;
@@ -1110,6 +1127,8 @@ createApp({
             }
         },
         async fetchConfig() {
+            this.isLoadingConfig = true;
+            this.configLoadError = '';
             try {
                 const res = await this.authFetch('/api/config');
                 this.config = await res.json();
@@ -1303,7 +1322,11 @@ createApp({
                 if (this.config.mail_domain_failure_types.length === 0) this.config.mail_domain_failure_types = ['discarded_email'];
                 if (this.config.mail_domain_fail_threshold === undefined) this.config.mail_domain_fail_threshold = 3;
                 if (this.config.mail_domain_fail_cooldown_sec === undefined) this.config.mail_domain_fail_cooldown_sec = 600;
-            } catch (e) {}
+            } catch (e) {
+                this.configLoadError = e?.message === 'Unauthorized' ? '登录已失效，请重新登录' : '配置加载失败，请稍后重试';
+            } finally {
+                this.isLoadingConfig = false;
+            }
         },
         async fetchMailDomainRuntimeStats(options = {}) {
             const { silent = false } = options;
@@ -1493,6 +1516,9 @@ createApp({
             const statusMap = {
                 'all': '全部',
                 'unpushed': '未推送',
+                'pushed': '已推送',
+                'credential': '有凭证',
+                'image2api': 'Img凭证',
                 'active': '活跃',
                 'disabled': '已禁用'
             };
@@ -2739,49 +2765,50 @@ createApp({
 
         async fetchCloudAccounts() {
             if (this.cloudFilters.length === 0) {
+                this.rawCloudAccounts = [];
                 this.cloudAccounts = [];
                 this.cloudTotal = 0;
                 this.inventoryStats.cloud = {
                     total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
                 };
+                this.cloudFetchState = { loading: false, currentType: '', completed: 0, total: 0, message: '未选择平台' };
                 return;
             }
-            const types = this.cloudFilters.join(',');
-            let url = `/api/cloud/accounts?types=${types}&status_filter=${this.cloudStatusFilter}&page=${this.cloudPage}&page_size=${this.cloudPageSize}`;
-
-            if (this.searchCloud) {
-                url += `&search=${encodeURIComponent(this.searchCloud)}`;
-            }
-
+            const typeQueue = [...this.cloudFilters];
+            this.cloudFetchState = {
+                loading: true,
+                currentType: typeQueue[0] || '',
+                completed: 0,
+                total: typeQueue.length,
+                message: '准备分批获取云端库存...'
+            };
             try {
-                const res = await this.authFetch(url);
-                const data = await res.json();
-
-                if(data.status === 'success') {
-                    this.cloudAccounts = (data.data || []).map(acc => ({
-                        ...acc,
-                        last_check: this.localCheckTimes[acc.id] || acc.last_check || '-',
-                        details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[acc.id] || acc.details || {}),
-                        _loading: null
-                    }));
-                    this.cloudTotal = data.total || 0;
-                    this.selectedCloud = [];
-
-                    if (data.cloud_stats) {
-                        this.inventoryStats.cloud = data.cloud_stats;
+                const combined = [];
+                for (let index = 0; index < typeQueue.length; index += 1) {
+                    const type = typeQueue[index];
+                    this.cloudFetchState.currentType = type;
+                    this.cloudFetchState.message = `正在获取 ${type.toUpperCase()} 数据...`;
+                    const url = `/api/cloud/accounts?types=${type}&status_filter=all&page=1&page_size=2000`;
+                    const res = await this.authFetch(url);
+                    const data = await res.json();
+                    if (data.status !== 'success') {
+                        throw new Error(data.message || `${type} 拉取失败`);
                     }
-
-                    if (typeof this.fetchInventoryStats === 'function') {
-                        this.fetchInventoryStats();
-                    }
-                } else {
-                    this.showToast(data.message, "error");
-                    this.inventoryStats.cloud = {
-                        total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
-                    };
-                    this.cloudAccounts = [];
-                    this.cloudTotal = 0;
+                    combined.push(...(data.data || []));
+                    this.cloudFetchState.completed = index + 1;
                 }
+                this.rawCloudAccounts = combined.map(acc => ({
+                    ...acc,
+                    last_check: this.localCheckTimes[acc.id] || acc.last_check || '-',
+                    details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[acc.id] || acc.details || {}),
+                    _loading: null
+                }));
+                this.inventoryStats.cloud = this.computeCloudStats(this.rawCloudAccounts);
+                this.applyCloudAccountView();
+                if (typeof this.fetchInventoryStats === 'function') {
+                    this.fetchInventoryStats();
+                }
+                this.cloudFetchState.message = `已完成 ${typeQueue.length} 个平台的分批获取`;
             } catch (e) {
                 console.error(e);
                 if (this.isLoggedIn && e.message !== "Unauthorized") {
@@ -2789,10 +2816,54 @@ createApp({
                     this.inventoryStats.cloud = {
                         total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
                     };
+                    this.rawCloudAccounts = [];
                     this.cloudAccounts = [];
                     this.cloudTotal = 0;
+                    this.cloudFetchState.message = '获取失败';
                 }
+            } finally {
+                this.cloudFetchState.loading = false;
             }
+        },
+        computeCloudStats(items) {
+            const rows = Array.isArray(items) ? items : [];
+            const isActive = (item) => item.status === 'active';
+            const isType = (item, type) => item.account_type === type;
+            return {
+                total: rows.length,
+                enabled: rows.filter(isActive).length,
+                cpa: rows.filter(item => isType(item, 'cpa')).length,
+                cpa_active: rows.filter(item => isType(item, 'cpa') && isActive(item)).length,
+                cpa_disabled: rows.filter(item => isType(item, 'cpa') && !isActive(item)).length,
+                sub2api: rows.filter(item => isType(item, 'sub2api')).length,
+                sub2api_active: rows.filter(item => isType(item, 'sub2api') && isActive(item)).length,
+                sub2api_disabled: rows.filter(item => isType(item, 'sub2api') && !isActive(item)).length,
+                image2api: rows.filter(item => isType(item, 'image2api')).length,
+                image2api_active: rows.filter(item => isType(item, 'image2api') && isActive(item)).length,
+                image2api_disabled: rows.filter(item => isType(item, 'image2api') && !isActive(item)).length
+            };
+        },
+        applyCloudAccountView() {
+            let rows = [...this.rawCloudAccounts];
+            if (this.cloudStatusFilter !== 'all') {
+                rows = rows.filter(item => item.status === this.cloudStatusFilter);
+            }
+            if (this.searchCloud) {
+                const term = this.searchCloud.toLowerCase();
+                rows = rows.filter(item => {
+                    const credential = String(item.credential || '').toLowerCase();
+                    const id = String(item.id || '').toLowerCase();
+                    return credential.includes(term) || id.includes(term);
+                });
+            }
+            this.cloudTotal = rows.length;
+            const totalPages = Math.max(1, Math.ceil(this.cloudTotal / this.cloudPageSize) || 1);
+            if (this.cloudPage > totalPages) {
+                this.cloudPage = totalPages;
+            }
+            const startIdx = (this.cloudPage - 1) * this.cloudPageSize;
+            this.cloudAccounts = rows.slice(startIdx, startIdx + this.cloudPageSize);
+            this.selectedCloud = [];
         },
 
         async singleCloudAction(acc, action) {
@@ -2843,7 +2914,7 @@ createApp({
         },
         filterByCard(platformType, status) {
             if (platformType === 'all') {
-                this.cloudFilters = ['sub2api', 'cpa'];
+                this.cloudFilters = ['sub2api', 'cpa', 'image2api'];
             } else if (platformType === 'cpa') {
                 this.cloudFilters = ['cpa'];
             } else if (platformType === 'sub2api') {
@@ -2920,12 +2991,16 @@ createApp({
                 return;
             }
             this.cloudPage = newPage;
-            this.fetchCloudAccounts();
+            this.applyCloudAccountView();
         },
         changeCloudPageSize() {
             this.cloudPage = 1;
             this.selectedCloud = [];
-            this.fetchCloudAccounts();
+            this.applyCloudAccountView();
+        },
+        onCloudSearchInput() {
+            this.cloudPage = 1;
+            this.applyCloudAccountView();
         },
         async remoteControlNode(nodeName, action) {
             try {
@@ -4275,6 +4350,35 @@ createApp({
                     this.currentTab = 'email';
                 } else this.showToast(data.message, 'error');
             } catch (e) { this.showToast('请求异常', 'error'); } finally { this.cfTools.isEnablingEmail = false; }
+        },
+        async handleCFDeleteHosting() {
+            if (!this.config.mail_domains) return this.showToast('发信域名池为空', 'warning');
+            if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 账号邮箱和 API Key！', 'warning');
+
+            const confirmed = await this.customConfirm(`⚠️ 危险操作：\n\n即将删除发信域名池中所有已托管到 CF 的域名及其 DNS / 邮件路由配置，确定继续吗？`);
+            if (!confirmed) return;
+
+            this.cfTools.isDeletingHosting = true;
+            this.showToast('正在批量删除 CF 托管域名...', 'info');
+            this.currentTab = 'console';
+            try {
+                const res = await this.authFetch('/api/cloudflare/delete_zones', {
+                    method: 'POST',
+                    body: JSON.stringify({ domains: this.config.mail_domains, api_email: this.config.cf_api_email, api_key: this.config.cf_api_key })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.cfTools.results = data.data || [];
+                    this.showToast('✅ 托管域名删除完成', 'success');
+                    this.currentTab = 'email';
+                } else {
+                    this.showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('请求异常', 'error');
+            } finally {
+                this.cfTools.isDeletingHosting = false;
+            }
         },
         async handleCFDeployWorker() {
             if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 凭据！', 'warning');
