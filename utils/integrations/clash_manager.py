@@ -5,6 +5,7 @@ import socket
 import subprocess
 import time
 import urllib.parse
+from typing import Optional, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from uuid import uuid4
 
@@ -240,7 +241,7 @@ def clear_tested_nodes(group_name: str) -> tuple[bool, str]:
         return False, str(e)
 
 
-def _build_requests_proxies() -> dict | None:
+def _build_requests_proxies() -> Optional[dict]:
     proxy_url = str(getattr(cfg, "DEFAULT_PROXY", "") or "").strip()
     if not proxy_url:
         return None
@@ -281,7 +282,7 @@ def _collect_groups_from_config(config_path: str) -> list[dict]:
     return groups
 
 
-def _read_pid() -> int | None:
+def _read_pid() -> Optional[int]:
     if not os.path.exists(SINGLE_CORE_PID_PATH):
         return None
     try:
@@ -290,7 +291,7 @@ def _read_pid() -> int | None:
         return None
 
 
-def _is_pid_running(pid: int | None) -> bool:
+def _is_pid_running(pid: Optional[int]) -> bool:
     if not pid:
         return False
     try:
@@ -352,7 +353,7 @@ def _get_local_controller() -> tuple[str, str]:
     return f"http://127.0.0.1:{api_port}", secret
 
 
-def _get_docker_controller(target: str) -> tuple[str | None, str]:
+def _get_docker_controller(target: str) -> Tuple[Optional[str], str]:
     client = get_client()
     if not client:
         return None, ""
@@ -374,7 +375,7 @@ def _get_docker_controller(target: str) -> tuple[str | None, str]:
     return f"http://127.0.0.1:{host_port}", secret
 
 
-def _get_controller_endpoint(target: str = "all") -> tuple[str | None, str]:
+def _get_controller_endpoint(target: str = "all") -> Tuple[Optional[str], str]:
     mode = _detect_runtime_mode(get_client())
     if mode == "docker_pool":
         return _get_docker_controller(target)
@@ -394,7 +395,7 @@ def _fetch_controller_proxies(target: str = "all") -> dict:
     return proxies
 
 
-def _resolve_runtime_group_name(group_name: str, target: str = "all") -> str | None:
+def _resolve_runtime_group_name(group_name: str, target: str = "all") -> Optional[str]:
     proxy_map = _fetch_controller_proxies(target)
     return resolve_group_name(proxy_map, group_name)
 
@@ -482,7 +483,7 @@ def switch_proxy_group(group_name: str, proxy_name: str, target: str = "all") ->
         return False, str(e)
 
 
-def test_group_latency(group_name: str, target: str = "all") -> tuple[bool, dict | str]:
+def test_group_latency(group_name: str, target: str = "all") -> Tuple[bool, Union[dict, str]]:
     if not group_name:
         return False, "策略组不能为空。"
     try:
