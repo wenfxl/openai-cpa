@@ -5,32 +5,24 @@ import time
 from typing import Any, Dict, Iterable, Union, Optional
 
 MB = 1024 * 1024
-
-
 def _to_int(value: Any, default: int = 0, minimum: int = 0) -> int:
     try:
         parsed = int(value)
     except (TypeError, ValueError):
         parsed = default
     return max(minimum, parsed)
-
-
 def _is_enabled(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _list_len(value: Any) -> int:
     if isinstance(value, (list, tuple, set)):
         return len(value)
     if isinstance(value, str):
         return len([item for item in value.splitlines() if item.strip()])
     return 0
-
-
 def _get_nested(config: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     cur: Any = config
     for key in keys:
@@ -38,12 +30,8 @@ def _get_nested(config: Dict[str, Any], *keys: str, default: Any = None) -> Any:
             return default
         cur = cur.get(key, default)
     return cur
-
-
 def _round_mb(value: float) -> float:
     return round(float(value), 2)
-
-
 def _proxy_pool_size(config: Dict[str, Any]) -> int:
     raw_proxy_pool = config.get("raw_proxy_pool") or {}
     raw_enabled = _is_enabled(raw_proxy_pool.get("enable"))
@@ -58,17 +46,12 @@ def _proxy_pool_size(config: Dict[str, Any]) -> int:
     if clash_enabled and pool_mode and warp_count:
         return warp_count
     return 1 if config.get("default_proxy") else 0
-
-
 def _mail_domain_count(config: Dict[str, Any]) -> int:
     domains = config.get("mail_domains")
     if isinstance(domains, str):
         return len([item for item in domains.split(",") if item.strip()])
     return _list_len(domains)
-
-
 def predict_memory_usage(config: Union[Dict[str, Any], None] = None) -> Dict[str, Any]:
-    """Estimate low/mid/high memory usage in MB from current configuration."""
     config = config or {}
     os_name = platform.system() or sys.platform
     is_windows = os_name.lower().startswith("windows")
@@ -87,7 +70,6 @@ def predict_memory_usage(config: Union[Dict[str, Any], None] = None) -> Dict[str
     cluster_enabled = bool(str(config.get("cluster_master_url", "") or "").strip())
     db_type = str(_get_nested(config, "database", "type", default=config.get("db_type", "sqlite")) or "sqlite").lower()
 
-    # Conservative estimates based on this FastAPI + threaded worker workload.
     python_runtime_mb = 35.0
     web_stack_mb = 18.0
     db_mb = 12.0 if db_type == "mysql" else 5.0
@@ -126,11 +108,7 @@ def predict_memory_usage(config: Union[Dict[str, Any], None] = None) -> Dict[str
     high = base_total + engine_thread_mb + high_reg_workers * (thread_stack_mb + worker_state_mb) + high_health_workers * health_worker_mb + proxy_pool_size * 0.05
 
     return {
-        "predicted_mb": {
-            "low": _round_mb(low),
-            "mid": _round_mb(mid),
-            "high": _round_mb(high),
-        },
+        "predicted_mb": {"low": _round_mb(low), "mid": _round_mb(mid), "high": _round_mb(high)},
         "breakdown": {
             **base_breakdown,
             "engine_thread_mb": _round_mb(engine_thread_mb),
@@ -152,10 +130,7 @@ def predict_memory_usage(config: Union[Dict[str, Any], None] = None) -> Dict[str
         },
         "model_note": "估算值用于容量预警；实际 RSS 仍会因操作系统、curl/HTTP 连接、第三方包缓存而波动。",
     }
-
-
 def get_actual_memory_usage() -> Dict[str, Any]:
-    """Return actual process memory via psutil when available."""
     try:
         import psutil  # type: ignore
     except Exception as exc:
@@ -183,8 +158,6 @@ def get_actual_memory_usage() -> Dict[str, Any]:
         "pid": process.pid,
         "timestamp": time.time(),
     }
-
-
 def estimate_safety_status(prediction: Dict[str, Any], actual: Dict[str, Any]) -> Dict[str, Any]:
     predicted = prediction.get("predicted_mb", {}) if isinstance(prediction, dict) else {}
     high = float(predicted.get("high") or 0)
@@ -222,8 +195,64 @@ def estimate_safety_status(prediction: Dict[str, Any], actual: Dict[str, Any]) -
         "message": message,
         "rss_vs_high_ratio": round(rss / high, 2) if high else None,
     }
+def _clamp_int(value: float, minimum: int = 1, maximum: Optional[int] = None) -> int:
+    try:
+        parsed = int(round(float(value)))
+    except (TypeError, ValueError):
+        parsed = minimum
+    if maximum is not None:
+        parsed = min(parsed, maximum)
+    return max(minimum, parsed)
+def _build_memory_recommendation(prediction: Dict[str, Any], actual: Dict[str, Any]) -> Dict[str, Any]:
+    config = prediction.get("config_snapshot", {}) if isinstance(prediction, dict) else {}
+    breakdown = prediction.get("breakdown", {}) if isinstance(prediction, dict) else {}
+    predicted = prediction.get("predicted_mb", {}) if isinstance(prediction, dict) else {}
+    safety = estimate_safety_status(prediction, actual)
 
+    reg_threads = _to_int(config.get("reg_threads"), 3, 1)
+    cpa_threads = _to_int(config.get("cpa_threads"), 10, 1)
+    sub2api_threads = _to_int(config.get("sub2api_threads"), 10, 1)
+    max_log_lines = _to_int(config.get("max_log_lines"), 500, 1)
+    enable_multi_thread = _is_enabled(config.get("enable_multi_thread_reg"))
+    worker_cost = float(breakdown.get("registration_worker_mb_each") or 0) + float(breakdown.get("health_worker_mb_each") or 0)
+    current_high = float(predicted.get("high") or 0)
+    system_total = float(actual.get("system_total_mb") or 0)
 
+    if safety.get("level") == "critical":
+        target_budget = min(current_high * 0.65, system_total * 0.45 if system_total else current_high * 0.65)
+    elif safety.get("level") in {"warning", "watch"}:
+        target_budget = min(current_high * 0.8, system_total * 0.6 if system_total else current_high * 0.8)
+    else:
+        target_budget = current_high
+
+    target_budget = max(float(breakdown.get("engine_thread_mb") or 0) + worker_cost, target_budget)
+    scale = 1.0 if not current_high else max(0.35, min(1.0, target_budget / current_high))
+    suggested_reg = _clamp_int(reg_threads * scale)
+    suggested_cpa = _clamp_int(cpa_threads * scale)
+    suggested_sub2 = _clamp_int(sub2api_threads * scale)
+    suggested_logs = _clamp_int(max_log_lines * max(scale, 0.5), 200)
+    suggested_config = {"enable_multi_thread_reg": enable_multi_thread and suggested_reg > 1, "reg_threads": suggested_reg, "cpa_threads": suggested_cpa, "sub2api_threads": suggested_sub2, "max_log_lines": suggested_logs}
+    action_items = [
+        f"注册并发建议调到 {suggested_reg}，CPA {suggested_cpa}，Sub2API {suggested_sub2}。",
+        f"控制台日志上限建议收敛到 {suggested_logs} 行，减少常驻缓存。",
+    ]
+    if safety.get("level") == "critical":
+        action_items.insert(0, "当前内存压力偏高，建议先套用建议值，再观察一轮实测 RSS。")
+    elif safety.get("level") in {"warning", "watch"}:
+        action_items.insert(0, "当前配置可用，但已经接近更稳妥的边界，适合提前收一点并发。")
+    else:
+        action_items.insert(0, "当前配置处于可接受区间，建议作为容量基线保留。")
+    return {
+        "level": safety.get("level"),
+        "label": {"critical": "建议立刻降载", "warning": "建议降载", "watch": "建议观察", "ok": "建议保持", "unknown": "建议观察"}.get(str(safety.get("level") or "unknown"), "建议观察"),
+        "summary": " ".join(action_items[:2]),
+        "action_items": action_items,
+        "suggested_config": suggested_config,
+        "target_budget_mb": _round_mb(target_budget),
+        "current_high_mb": _round_mb(current_high),
+        "estimated_savings_mb": _round_mb(max(0.0, current_high - target_budget)),
+        "fit_ratio": round(scale, 2),
+    }
 def build_memory_report(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     prediction = predict_memory_usage(config or {})
     actual = get_actual_memory_usage()
@@ -233,5 +262,6 @@ def build_memory_report(config: Optional[Dict[str, Any]] = None) -> Dict[str, An
         "prediction": prediction,
         "actual": actual,
         "safety": safety,
+        "recommendation": _build_memory_recommendation(prediction, actual),
         "timestamp": time.time(),
     }

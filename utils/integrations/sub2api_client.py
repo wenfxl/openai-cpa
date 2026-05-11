@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 from utils import config as cfg
@@ -116,6 +117,20 @@ class Sub2APIClient:
             "impersonate": "chrome110",
         }
 
+    def _build_network_error(self, exc: Exception) -> str:
+        msg = str(exc)
+        host = (urlparse(self.api_url).hostname or "").strip()
+        if "Could not resolve host" in msg and host:
+            return (
+                f"{msg} | 本机 DNS 无法解析 {host}，"
+                "请优先检查本机或路由器 DNS，或暂时切换到公共 DNS 后重试"
+            )
+        return msg
+
+    @staticmethod
+    def _is_dns_resolution_error(message: Any) -> bool:
+        return "Could not resolve host" in str(message or "")
+
     def _handle_response(
         self,
         response: cffi_requests.Response,
@@ -207,43 +222,114 @@ class Sub2APIClient:
             "page_size": page_size,
         }
         try:
-            response = cffi_requests.get(url, headers=self.headers, params=params, **self.request_kwargs)
+            request_kwargs = dict(self.request_kwargs)
+            # 全量库存接口体积较大，分页读取时放宽超时，降低本地网络抖动造成的误判。
+            request_kwargs["timeout"] = max(int(request_kwargs.get("timeout", 15)), 45)
+            response = cffi_requests.get(url, headers=self.headers, params=params, **request_kwargs)
             return self._handle_response(response)
         except Exception as exc:
             logger.error("Get Sub2API accounts failed: %s", exc)
-            return False, str(exc)
+            return False, self._build_network_error(exc)
 
     def get_all_accounts(self, page_size: int = 100) -> Tuple[bool, Any]:
         all_items: List[dict] = []
-        page = 1
+        strategies = []
+        for size in (page_size, 50, 25):
+            if size not in strategies and size > 0:
+                strategies.append(size)
 
-        while True:
-            ok, data = self.get_accounts(page=page, page_size=page_size)
-            if not ok:
-                if page == 1:
-                    return False, data
-                logger.warning(
-                    "Sub2API pagination failed on page %s; continue with %s fetched accounts",
-                    page,
+        last_error: Any = "unknown error"
+        for current_page_size in strategies:
+            all_items = []
+            page = 1
+            page_failed = False
+
+            while True:
+                ok = False
+                data: Any = None
+                attempt_error: Any = None
+
+                for attempt in range(1, 4):
+                    ok, data = self.get_accounts(page=page, page_size=current_page_size)
+                    if ok:
+                        break
+                    attempt_error = data
+                    logger.warning(
+                        "Sub2API page fetch failed (page=%s, page_size=%s, attempt=%s): %s",
+                        page,
+                        current_page_size,
+                        attempt,
+                        data,
+                    )
+                    time.sleep(min(attempt, 3))
+
+                if not ok:
+                    last_error = attempt_error
+                    if self._is_dns_resolution_error(attempt_error):
+                        logger.warning(
+                            "Sub2API full inventory aborted because DNS resolution failed on page %s",
+                            page,
+                        )
+                        return False, attempt_error
+                    if page == 1:
+                        page_failed = True
+                    else:
+                        logger.warning(
+                            "Sub2API pagination failed on page %s; continue with %s fetched accounts",
+                            page,
+                            len(all_items),
+                        )
+                    break
+
+                inner = data.get("data", {}) if isinstance(data, dict) else {}
+                items = inner.get("items", [])
+                if not items:
+                    break
+
+                all_items.extend(items)
+
+                total = inner.get("total", 0)
+                if len(all_items) >= total:
+                    logger.info(
+                        "Fetched %s Sub2API accounts across paginated results (page_size=%s)",
+                        len(all_items),
+                        current_page_size,
+                    )
+                    return True, all_items
+
+                page += 1
+
+            if not page_failed:
+                logger.info(
+                    "Fetched %s Sub2API accounts across paginated results (partial, page_size=%s)",
                     len(all_items),
+                    current_page_size,
                 )
-                break
+                return True, all_items
 
-            inner = data.get("data", {}) if isinstance(data, dict) else {}
+            next_sizes = [size for size in strategies if size < current_page_size]
+            if next_sizes:
+                logger.warning(
+                    "Retrying Sub2API full inventory with smaller page_size=%s after failure on first page",
+                    next_sizes[0],
+                )
+
+        return False, last_error
+
+    def get_total_count(self) -> Tuple[bool, Any]:
+        ok, data = self.get_accounts(page=1, page_size=1)
+        if not ok:
+            return False, data
+
+        inner = data.get("data", {}) if isinstance(data, dict) else {}
+        total = inner.get("total")
+        if total is None:
             items = inner.get("items", [])
-            if not items:
-                break
-
-            all_items.extend(items)
-
-            total = inner.get("total", 0)
-            if len(all_items) >= total:
-                break
-
-            page += 1
-
-        logger.info("Fetched %s Sub2API accounts across paginated results", len(all_items))
-        return True, all_items
+            total = len(items) if isinstance(items, list) else 0
+        try:
+            return True, int(total)
+        except (TypeError, ValueError):
+            return False, f"Sub2API total 字段异常: {total}"
 
     def get_account_usage(self, account_id: str) -> Tuple[bool, Any]:
         url = f"{self.api_url}/api/v1/admin/accounts/{account_id}/usage"

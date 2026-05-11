@@ -317,6 +317,8 @@ createApp({
             isDarkMode: localStorage.getItem('ui_theme_mode') === 'dark',
 			showAccountsPlaintext: false,
             isRunning: false,
+            isLoadingConfig: false,
+            configLoadError: '',
             tabs: [
                     { id: 'console', name: '运行主页', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>' },
                     { id: 'cluster', name: '集群总控', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>' },
@@ -372,6 +374,7 @@ createApp({
             blacklistStr: "",
             warpListStr: "",
             rawProxyListStr: "",
+            accountStatusFilter: 'all',
             accounts: [],
             selectedAccounts: [],
             hideRegisterOnlyAccounts: false,
@@ -389,8 +392,26 @@ createApp({
             memoryPrediction: null,
             isLoadingMemoryPrediction: false,
             memoryPredictionError: '',
+            cleanupMaintenance: {
+                loading: false,
+                actionLoading: false,
+                data: null,
+                error: '',
+                outputTail: []
+            },
             inventoryStats: {
-                local: { total: 0, active: 0, disabled: 0, unpushed: 0, with_token: 0, reg_only: 0, imgsub2api: 0 },
+                local: {
+                    total: 0,
+                    active: 0,
+                    disabled: 0,
+                    unpushed: 0,
+                    pushed: 0,
+                    credential: 0,
+                    image2api: 0,
+                    with_token: 0,
+                    reg_only: 0,
+                    imgsub2api: 0
+                },
                 cloud: { total: 0, cpa: 0, sub2api: 0, enabled: 0 }
             },
             statsTimer: null,
@@ -422,6 +443,15 @@ createApp({
             toastId: 0,
             confirmModal: { show: false, message: '', resolve: null },
             updateInfo: { hasUpdate: false, version: '', url: '', changelog: '' },
+            gitSync: {
+                loading: false,
+                actionLoading: false,
+                data: null,
+                error: '',
+                lastAction: '',
+                outputTail: [],
+                restartAfter: true
+            },
             sub2apiGroups: [],
             gmailOAuth: {
                 authUrl: '',
@@ -431,12 +461,20 @@ createApp({
             },
             isLoadingSub2APIGroups: false,
             cloudAccounts: [],
+            rawCloudAccounts: [],
             selectedCloud: [],
             cloudFilters: ['sub2api', 'cpa', "image2api"],
             showCloudPlaintext: false,
             cloudPage: 1,
             cloudPageSize: 10,
             cloudTotal: 0,
+            cloudFetchState: {
+                loading: false,
+                currentType: '',
+                completed: 0,
+                total: 0,
+                message: ''
+            },
             localCheckTimes: {},
             localCloudDetails: {},
             isCloudActionLoading: false,
@@ -469,7 +507,20 @@ createApp({
                 count: 5,
                 instances: [],
                 groups: [],
-                isDeploying: false
+                subscriptions: [],
+                mode: '',
+                message: '',
+                isDeploying: false,
+                runtimeActionLoading: false,
+                subscriptionActionLoading: false,
+                delayLoading: false,
+                activeGroupName: '',
+                view: 'groups',
+                nodeSelections: {},
+                delayResults: {},
+                newSubscriptionName: '',
+                newSubscriptionUrl: '',
+                makeSelectedSubscription: true
             },
             gmail_oauth_mode: {
                 master_email: '',
@@ -495,6 +546,7 @@ createApp({
             isLoadingFivesimPrices: false,
             isRestarting: false,
             isRefreshingAccounts: false,
+            isTestingTg: false,
             teamAccounts: [],
             showImportTeamModal: false,
             importTeamText: '',
@@ -511,11 +563,13 @@ createApp({
             },
             cfTools: {
                 workerName: 'openai-cpa',
+                deleteDomains: '',
                 results: [],
                 isHosting: false,
                 isEnablingEmail: false,
                 isDeploying: false,
-                isSettingCatchAll: false
+                isSettingCatchAll: false,
+                isDeletingHosting: false
             },
             isUpdatingSystem: false,
         };
@@ -579,12 +633,16 @@ createApp({
             return res;
         },
         filteredCloud() {
-            let res = this.cloudAccounts;
-            if (this.searchCloud) {
-                const term = this.searchCloud.toLowerCase();
-                res = res.filter(a => a.credential && a.credential.toLowerCase().includes(term));
-            }
-            return res;
+            return this.cloudAccounts;
+        },
+        activeCloudFilterLabel() {
+            if (!this.cloudFetchState.currentType) return '待命';
+            const labels = {
+                sub2api: 'Sub2API',
+                cpa: 'CPA',
+                image2api: 'Image2API'
+            };
+            return labels[this.cloudFetchState.currentType] || this.cloudFetchState.currentType;
         },
         filteredMailboxes() {
             let res = this.mailboxes;
@@ -605,6 +663,13 @@ createApp({
         },
         cooldownMailDomainCount() {
             return this.mailDomainRuntimeStats.filter(item => item && !item.is_available).length;
+        },
+        activeClashGroup() {
+            if (!this.clashPool?.activeGroupName) return null;
+            return (this.clashPool.groups || []).find(group => group.name === this.clashPool.activeGroupName) || null;
+        },
+        selectedClashSubscription() {
+            return (this.clashPool?.subscriptions || []).find(item => item.selected) || null;
         },
         normalizedMailDomains() {
             if (!this.config) return [];
@@ -671,6 +736,34 @@ createApp({
         },
         targetLanguageLabel() {
             return this.currentLanguage === TRADITIONAL_LANGUAGE ? '简体中文' : '繁體中文';
+        },
+        resolveClashSubscriptionUrl(rawUrl) {
+            const text = String(rawUrl || '').trim();
+            if (!text) return '';
+            if (/^https?:\/\//i.test(text)) return text;
+            if (text.startsWith('//')) return `${window.location.protocol}${text}`;
+            const base = window.location.origin.replace(/\/+$/, '');
+            if (text.startsWith('/')) return `${base}${text}`;
+            return `${base}/${text.replace(/^\.?\//, '')}`;
+        },
+        formatClashSubscriptionLabel(subscription) {
+            if (!subscription) return '未命名订阅';
+            const name = String(subscription.name || '').trim();
+            if (name && name !== '当前订阅') return name;
+            const source = String(subscription.url || subscription.raw_url || '').trim();
+            try {
+                const parsed = new URL(source);
+                const target = parsed.searchParams.get('url');
+                if (target) {
+                    const targetUrl = new URL(target);
+                    const lastSeg = targetUrl.pathname.split('/').filter(Boolean).pop();
+                    return `${targetUrl.hostname}${lastSeg ? ' / ' + lastSeg : ''}`;
+                }
+                const lastSeg = parsed.pathname.split('/').filter(Boolean).pop();
+                return `${parsed.hostname}${lastSeg ? ' / ' + lastSeg : ''}`;
+            } catch (_) {
+                return name || '未命名订阅';
+            }
         },
         toggleLanguage() {
             const nextLanguage = this.currentLanguage === TRADITIONAL_LANGUAGE ? DEFAULT_LANGUAGE : TRADITIONAL_LANGUAGE;
@@ -844,6 +937,24 @@ createApp({
             return classes[level] || classes.unknown;
         },
 
+        memoryRecommendationClass(level) {
+            const classes = {
+                ok: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                watch: 'bg-sky-50 text-sky-700 border-sky-200',
+                warning: 'bg-amber-50 text-amber-700 border-amber-200',
+                critical: 'bg-rose-50 text-rose-700 border-rose-200',
+                unknown: 'bg-slate-50 text-slate-600 border-slate-200'
+            };
+            return classes[level] || classes.unknown;
+        },
+
+        gitSyncStateClass(data) {
+            if (!data) return 'bg-slate-50 text-slate-600 border-slate-200';
+            if (!data.is_clean) return 'bg-amber-50 text-amber-700 border-amber-200';
+            if ((data.behind || 0) > 0) return 'bg-sky-50 text-sky-700 border-sky-200';
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        },
+
         async fetchMemoryPrediction() {
             if (!this.isLoggedIn) return;
             this.isLoadingMemoryPrediction = true;
@@ -860,6 +971,156 @@ createApp({
                 this.memoryPredictionError = '内存预测 API 请求失败';
             } finally {
                 this.isLoadingMemoryPrediction = false;
+            }
+        },
+
+        async applyMemoryRecommendation() {
+            const suggested = this.memoryPrediction?.recommendation?.suggested_config;
+            if (!suggested || !this.config) {
+                this.showToast('当前没有可套用的建议配置', 'warning');
+                return;
+            }
+
+            this.config.enable_multi_thread_reg = !!suggested.enable_multi_thread_reg;
+            this.config.reg_threads = suggested.reg_threads ?? this.config.reg_threads;
+            if (!this.config.cpa_mode || typeof this.config.cpa_mode !== 'object') {
+                this.config.cpa_mode = {};
+            }
+            if (!this.config.sub2api_mode || typeof this.config.sub2api_mode !== 'object') {
+                this.config.sub2api_mode = {};
+            }
+            this.config.cpa_mode.threads = suggested.cpa_threads ?? this.config.cpa_mode.threads;
+            this.config.sub2api_mode.threads = suggested.sub2api_threads ?? this.config.sub2api_mode.threads;
+            this.config.max_log_lines = suggested.max_log_lines ?? this.config.max_log_lines;
+
+            this.showToast('已回填建议值，正在保存配置...', 'info');
+            await this.saveConfig();
+        },
+
+        async applyMemoryRecommendationAndRestart() {
+            const suggested = this.memoryPrediction?.recommendation?.suggested_config;
+            if (!suggested || !this.config) {
+                this.showToast('当前没有可套用的建议配置', 'warning');
+                return;
+            }
+            const confirmed = await this.customConfirm('确定要套用建议配置并立即重启项目吗？\n这适合服务器已经明显吃紧、需要尽快释放压力的场景。');
+            if (!confirmed) return;
+            await this.applyMemoryRecommendation();
+            await this.restartSystem();
+        },
+
+        async fetchCleanupStatus(showToast = false) {
+            if (!this.isLoggedIn) return;
+            this.cleanupMaintenance.loading = true;
+            this.cleanupMaintenance.error = '';
+            try {
+                const res = await this.authFetch('/api/system/cleanup_status');
+                const payload = await res.json();
+                if (payload.status === 'success' || payload.status === 'warning') {
+                    this.cleanupMaintenance.data = payload.data || null;
+                    if (payload.status === 'warning') {
+                        this.cleanupMaintenance.error = payload.message || '';
+                    } else if (showToast) {
+                        this.showToast(payload.message || '清理状态已刷新', 'success');
+                    }
+                } else {
+                    this.cleanupMaintenance.error = payload.message || '清理状态获取失败';
+                }
+            } catch (e) {
+                this.cleanupMaintenance.error = '清理状态请求失败';
+            } finally {
+                this.cleanupMaintenance.loading = false;
+            }
+        },
+
+        async runCleanup(force = false) {
+            const confirmed = await this.customConfirm(force ? '确定要强制执行磁盘 / 日志清理吗？\n即使磁盘占用还没到阈值，也会立刻清理日志、缓存和临时文件。' : '确定要执行磁盘 / 日志清理吗？');
+            if (!confirmed) return;
+            this.cleanupMaintenance.actionLoading = true;
+            this.cleanupMaintenance.error = '';
+            try {
+                const res = await this.authFetch('/api/system/run_cleanup', {
+                    method: 'POST',
+                    body: JSON.stringify({ force })
+                });
+                const payload = await res.json();
+                this.cleanupMaintenance.outputTail = payload?.data?.output_tail || [];
+                this.cleanupMaintenance.data = payload?.data?.status || this.cleanupMaintenance.data;
+                if (payload.status === 'success') {
+                    this.showToast(payload.message || '清理完成', 'success');
+                } else {
+                    this.cleanupMaintenance.error = payload.message || '清理失败';
+                    this.showToast(this.cleanupMaintenance.error, 'error');
+                }
+            } catch (e) {
+                this.cleanupMaintenance.error = '清理请求失败';
+                this.showToast(this.cleanupMaintenance.error, 'error');
+            } finally {
+                this.cleanupMaintenance.actionLoading = false;
+                await this.fetchCleanupStatus(false);
+            }
+        },
+
+        async fetchGitSyncStatus(showToast = false) {
+            if (!this.isLoggedIn) return;
+            this.gitSync.loading = true;
+            this.gitSync.error = '';
+            try {
+                const res = await this.authFetch('/api/system/git_status');
+                const payload = await res.json();
+                if (payload.status === 'success' || payload.status === 'warning') {
+                    this.gitSync.data = payload.data || null;
+                    this.gitSync.outputTail = [];
+                    if (payload.status === 'warning') {
+                        this.gitSync.error = payload.message || 'Git 状态读取失败';
+                    } else if (showToast) {
+                        this.showToast(payload.message || 'Git 状态已刷新', 'success');
+                    }
+                } else {
+                    this.gitSync.error = payload.message || 'Git 状态读取失败';
+                }
+            } catch (e) {
+                this.gitSync.error = 'Git 状态请求失败';
+            } finally {
+                this.gitSync.loading = false;
+            }
+        },
+
+        async runGitSyncAction(action) {
+            const isReset = action === 'reset_hard';
+            const confirmText = isReset
+                ? `⚠️ 危险操作：\n\n确定要强制覆盖本地代码并同步到远端跟踪分支吗？\n这会直接丢弃当前未提交改动。${this.gitSync.restartAfter ? '\n同步完成后会自动重启项目。' : ''}`
+                : '确定要抓取远端最新 Git 状态吗？';
+            const confirmed = await this.customConfirm(confirmText);
+            if (!confirmed) return;
+
+            this.gitSync.actionLoading = true;
+            this.gitSync.lastAction = action;
+            try {
+                const res = await this.authFetch('/api/system/git_update', {
+                    method: 'POST',
+                    body: JSON.stringify({ action, restart_after: isReset ? !!this.gitSync.restartAfter : false })
+                });
+                const payload = await res.json();
+                this.gitSync.outputTail = payload?.data?.output_tail || [];
+                    if (payload.status === 'success') {
+                        this.gitSync.data = payload?.data?.after || this.gitSync.data;
+                        this.showToast(payload.message || 'Git 操作完成', 'success');
+                        if (payload?.data?.restart_scheduled) {
+                        this.showToast('项目正在重启，页面将在 6 秒后自动刷新...', 'info');
+                        setTimeout(() => window.location.reload(), 6000);
+                        }
+                    } else {
+                    this.gitSync.data = payload?.data?.after || this.gitSync.data;
+                    this.gitSync.error = payload.message || 'Git 操作失败';
+                    this.showToast(this.gitSync.error, payload.status === 'warning' ? 'warning' : 'error');
+                }
+            } catch (e) {
+                this.gitSync.error = 'Git 操作请求失败';
+                this.showToast(this.gitSync.error, 'error');
+            } finally {
+                this.gitSync.actionLoading = false;
+                await this.fetchGitSyncStatus(false);
             }
         },
 
@@ -918,6 +1179,8 @@ createApp({
             }
             if (this.currentTab === 'concurrency') {
                 this.fetchMemoryPrediction();
+                this.fetchGitSyncStatus(false);
+                this.fetchCleanupStatus(false);
             }
         },
         startStatsPolling() {
@@ -1000,6 +1263,8 @@ createApp({
             }
         },
         async fetchConfig() {
+            this.isLoadingConfig = true;
+            this.configLoadError = '';
             try {
                 const res = await this.authFetch('/api/config');
                 this.config = await res.json();
@@ -1220,7 +1485,11 @@ createApp({
                 if (this.config.mail_domain_failure_types.length === 0) this.config.mail_domain_failure_types = ['discarded_email'];
                 if (this.config.mail_domain_fail_threshold === undefined) this.config.mail_domain_fail_threshold = 3;
                 if (this.config.mail_domain_fail_cooldown_sec === undefined) this.config.mail_domain_fail_cooldown_sec = 600;
-            } catch (e) {}
+            } catch (e) {
+                this.configLoadError = e?.message === 'Unauthorized' ? '登录已失效，请重新登录' : '配置加载失败，请稍后重试';
+            } finally {
+                this.isLoadingConfig = false;
+            }
         },
         applyMailDomainModeExclusion(changedMode = '') {
             this.applyMailDomainModeConstraints(changedMode);
@@ -1534,6 +1803,9 @@ createApp({
             const statusMap = {
                 'all': '全部',
                 'unpushed': '未推送',
+                'pushed': '已推送',
+                'credential': '有凭证',
+                'image2api': 'Img凭证',
                 'active': '活跃',
                 'disabled': '已禁用',
                 'with_token': '完整凭证',
@@ -1622,6 +1894,8 @@ createApp({
             }
             if (tabId === 'concurrency') {
                 this.fetchMemoryPrediction();
+                this.fetchGitSyncStatus(false);
+                this.fetchCleanupStatus(false);
             }
             if (tabId === 'team_accounts') {
                 this.fetchTeamAccounts();
@@ -2755,49 +3029,50 @@ async exportSub2Api() {
 
         async fetchCloudAccounts() {
             if (this.cloudFilters.length === 0) {
+                this.rawCloudAccounts = [];
                 this.cloudAccounts = [];
                 this.cloudTotal = 0;
                 this.inventoryStats.cloud = {
                     total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
                 };
+                this.cloudFetchState = { loading: false, currentType: '', completed: 0, total: 0, message: '未选择平台' };
                 return;
             }
-            const types = this.cloudFilters.join(',');
-            let url = `/api/cloud/accounts?types=${types}&status_filter=${this.cloudStatusFilter}&page=${this.cloudPage}&page_size=${this.cloudPageSize}`;
-
-            if (this.searchCloud) {
-                url += `&search=${encodeURIComponent(this.searchCloud)}`;
-            }
-
+            const typeQueue = [...this.cloudFilters];
+            this.cloudFetchState = {
+                loading: true,
+                currentType: typeQueue[0] || '',
+                completed: 0,
+                total: typeQueue.length,
+                message: '准备分批获取云端库存...'
+            };
             try {
-                const res = await this.authFetch(url);
-                const data = await res.json();
-
-                if(data.status === 'success') {
-                    this.cloudAccounts = (data.data || []).map(acc => ({
-                        ...acc,
-                        last_check: this.localCheckTimes[acc.id] || acc.last_check || '-',
-                        details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[acc.id] || acc.details || {}),
-                        _loading: null
-                    }));
-                    this.cloudTotal = data.total || 0;
-                    this.selectedCloud = [];
-
-                    if (data.cloud_stats) {
-                        this.inventoryStats.cloud = data.cloud_stats;
+                const combined = [];
+                for (let index = 0; index < typeQueue.length; index += 1) {
+                    const type = typeQueue[index];
+                    this.cloudFetchState.currentType = type;
+                    this.cloudFetchState.message = `正在获取 ${type.toUpperCase()} 数据...`;
+                    const url = `/api/cloud/accounts?types=${type}&status_filter=all&page=1&page_size=2000`;
+                    const res = await this.authFetch(url);
+                    const data = await res.json();
+                    if (data.status !== 'success') {
+                        throw new Error(data.message || `${type} 拉取失败`);
                     }
-
-                    if (typeof this.fetchInventoryStats === 'function') {
-                        this.fetchInventoryStats();
-                    }
-                } else {
-                    this.showToast(data.message, "error");
-                    this.inventoryStats.cloud = {
-                        total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
-                    };
-                    this.cloudAccounts = [];
-                    this.cloudTotal = 0;
+                    combined.push(...(data.data || []));
+                    this.cloudFetchState.completed = index + 1;
                 }
+                this.rawCloudAccounts = combined.map(acc => ({
+                    ...acc,
+                    last_check: this.localCheckTimes[acc.id] || acc.last_check || '-',
+                    details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[acc.id] || acc.details || {}),
+                    _loading: null
+                }));
+                this.inventoryStats.cloud = this.computeCloudStats(this.rawCloudAccounts);
+                this.applyCloudAccountView();
+                if (typeof this.fetchInventoryStats === 'function') {
+                    this.fetchInventoryStats();
+                }
+                this.cloudFetchState.message = `已完成 ${typeQueue.length} 个平台的分批获取`;
             } catch (e) {
                 console.error(e);
                 if (this.isLoggedIn && e.message !== "Unauthorized") {
@@ -2805,10 +3080,54 @@ async exportSub2Api() {
                     this.inventoryStats.cloud = {
                         total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
                     };
+                    this.rawCloudAccounts = [];
                     this.cloudAccounts = [];
                     this.cloudTotal = 0;
+                    this.cloudFetchState.message = '获取失败';
                 }
+            } finally {
+                this.cloudFetchState.loading = false;
             }
+        },
+        computeCloudStats(items) {
+            const rows = Array.isArray(items) ? items : [];
+            const isActive = (item) => item.status === 'active';
+            const isType = (item, type) => item.account_type === type;
+            return {
+                total: rows.length,
+                enabled: rows.filter(isActive).length,
+                cpa: rows.filter(item => isType(item, 'cpa')).length,
+                cpa_active: rows.filter(item => isType(item, 'cpa') && isActive(item)).length,
+                cpa_disabled: rows.filter(item => isType(item, 'cpa') && !isActive(item)).length,
+                sub2api: rows.filter(item => isType(item, 'sub2api')).length,
+                sub2api_active: rows.filter(item => isType(item, 'sub2api') && isActive(item)).length,
+                sub2api_disabled: rows.filter(item => isType(item, 'sub2api') && !isActive(item)).length,
+                image2api: rows.filter(item => isType(item, 'image2api')).length,
+                image2api_active: rows.filter(item => isType(item, 'image2api') && isActive(item)).length,
+                image2api_disabled: rows.filter(item => isType(item, 'image2api') && !isActive(item)).length
+            };
+        },
+        applyCloudAccountView() {
+            let rows = [...this.rawCloudAccounts];
+            if (this.cloudStatusFilter !== 'all') {
+                rows = rows.filter(item => item.status === this.cloudStatusFilter);
+            }
+            if (this.searchCloud) {
+                const term = this.searchCloud.toLowerCase();
+                rows = rows.filter(item => {
+                    const credential = String(item.credential || '').toLowerCase();
+                    const id = String(item.id || '').toLowerCase();
+                    return credential.includes(term) || id.includes(term);
+                });
+            }
+            this.cloudTotal = rows.length;
+            const totalPages = Math.max(1, Math.ceil(this.cloudTotal / this.cloudPageSize) || 1);
+            if (this.cloudPage > totalPages) {
+                this.cloudPage = totalPages;
+            }
+            const startIdx = (this.cloudPage - 1) * this.cloudPageSize;
+            this.cloudAccounts = rows.slice(startIdx, startIdx + this.cloudPageSize);
+            this.selectedCloud = [];
         },
 
         async singleCloudAction(acc, action) {
@@ -2859,7 +3178,7 @@ async exportSub2Api() {
         },
         filterByCard(platformType, status) {
             if (platformType === 'all') {
-                this.cloudFilters = ['sub2api', 'cpa'];
+                this.cloudFilters = ['sub2api', 'cpa', 'image2api'];
             } else if (platformType === 'cpa') {
                 this.cloudFilters = ['cpa'];
             } else if (platformType === 'sub2api') {
@@ -2936,12 +3255,16 @@ async exportSub2Api() {
                 return;
             }
             this.cloudPage = newPage;
-            this.fetchCloudAccounts();
+            this.applyCloudAccountView();
         },
         changeCloudPageSize() {
             this.cloudPage = 1;
             this.selectedCloud = [];
-            this.fetchCloudAccounts();
+            this.applyCloudAccountView();
+        },
+        onCloudSearchInput() {
+            this.cloudPage = 1;
+            this.applyCloudAccountView();
         },
         async remoteControlNode(nodeName, action) {
             try {
@@ -3444,12 +3767,74 @@ async exportSub2Api() {
                 if (d.status === 'success') {
                     this.clashPool.instances = d.data.instances;
                     this.clashPool.groups = d.data.groups;
+                    this.clashPool.subscriptions = (d.data.subscriptions?.items || []).map((item) => ({
+                        ...item,
+                        raw_url: item.url,
+                        url: this.resolveClashSubscriptionUrl(item.url)
+                    }));
+                    this.clashPool.mode = d.data.mode || '';
+                    this.clashPool.message = d.data.message || '';
                     if (this.clashPool.instances.length > 0 && !this.clashPool.isDeploying) {
                         this.clashPool.count = this.clashPool.instances.length;
+                    }
+                    const currentSub = this.clashPool.subscriptions.find(item => item.selected) || this.clashPool.subscriptions[0] || null;
+                    this.clashPool.subUrl = currentSub?.url || '';
+                    const activeExists = this.clashPool.groups.some(group => group.name === this.clashPool.activeGroupName);
+                    if (this.clashPool.groups.length > 0) {
+                        if (!activeExists) {
+                            this.primeActiveClashGroup(this.clashPool.groups[0]);
+                        }
+                    } else {
+                        this.clashPool.activeGroupName = '';
+                    }
+                    if (!activeExists) {
+                        this.clashPool.view = 'groups';
+                        this.clashPool.delayResults = {};
                     }
                 }
             } catch (e) {}
             this.clashPool.loading = false;
+        },
+        primeActiveClashGroup(group) {
+            if (!group || !group.name) return;
+            this.clashPool.activeGroupName = group.name;
+            this.fillProxyGroup(group.name);
+            if (!this.clashPool.nodeSelections[group.name]) {
+                this.clashPool.nodeSelections[group.name] = group.current || (Array.isArray(group.nodes) ? group.nodes[0] : '') || '';
+            }
+        },
+        setActiveClashGroup(group) {
+            this.primeActiveClashGroup(group);
+            this.clashPool.view = 'nodes';
+        },
+        backToClashGroups() {
+            this.clashPool.view = 'groups';
+        },
+        getClashDelayRows(group) {
+            if (!group || !Array.isArray(group.nodes)) return [];
+            const resultMap = this.clashPool.delayResults[group.name]?.results || {};
+            const healthyNodes = Array.isArray(group.healthy_nodes) ? group.healthy_nodes.filter(Boolean) : [];
+            const sourceNodes = healthyNodes.length ? healthyNodes : group.nodes;
+            const rows = sourceNodes.map((nodeName) => ({
+                nodeName,
+                result: resultMap[nodeName] || null,
+                isCurrent: group.current === nodeName,
+                isSelected: this.clashPool.nodeSelections[group.name] === nodeName
+            }));
+            rows.sort((a, b) => {
+                const aOk = a.result?.status === 'ok';
+                const bOk = b.result?.status === 'ok';
+                if (aOk && bOk) return (a.result.delay || Number.MAX_SAFE_INTEGER) - (b.result.delay || Number.MAX_SAFE_INTEGER);
+                if (aOk) return -1;
+                if (bOk) return 1;
+                if (a.isCurrent) return -1;
+                if (b.isCurrent) return 1;
+                return a.nodeName.localeCompare(b.nodeName, 'zh-CN');
+            });
+            return rows;
+        },
+        getClashHealthyCount(group) {
+            return Array.isArray(group?.healthy_nodes) ? group.healthy_nodes.filter(Boolean).length : 0;
         },
         async handleClashDeploy() {
             this.showToast('正在调整实例规模...', 'info');
@@ -3496,6 +3881,175 @@ async exportSub2Api() {
             if (this.config && this.config.clash_proxy_pool) {
                 this.config.clash_proxy_pool.group_name = name;
                 this.showToast(`已自动填入策略组：${name}`, 'success');
+            }
+        },
+        async handleClashRuntime(action) {
+            this.clashPool.runtimeActionLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/runtime', {
+                    method: 'POST',
+                    body: JSON.stringify({ action })
+                });
+                const data = await res.json();
+                this.showToast(data.message || 'Clash 运行控制已执行', data.status);
+                if (data.status === 'success') {
+                    setTimeout(() => this.fetchClashPool(), 1200);
+                }
+            } catch (e) {
+                this.showToast('Clash 运行控制请求失败', 'error');
+            } finally {
+                this.clashPool.runtimeActionLoading = false;
+            }
+        },
+        async addClashSubscription() {
+            if (!this.clashPool.newSubscriptionUrl) {
+                this.showToast('请输入订阅链接', 'warning');
+                return;
+            }
+            this.clashPool.subscriptionActionLoading = true;
+            try {
+                const normalizedUrl = this.resolveClashSubscriptionUrl(this.clashPool.newSubscriptionUrl);
+                const res = await this.authFetch('/api/clash/subscriptions/add', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: this.clashPool.newSubscriptionName,
+                        url: normalizedUrl,
+                        make_selected: this.clashPool.makeSelectedSubscription
+                    })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '订阅已保存', data.status);
+                if (data.status === 'success') {
+                    this.clashPool.newSubscriptionName = '';
+                    this.clashPool.newSubscriptionUrl = '';
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('保存订阅失败', 'error');
+            } finally {
+                this.clashPool.subscriptionActionLoading = false;
+            }
+        },
+        async selectClashSubscription(subscriptionId) {
+            this.clashPool.subscriptionActionLoading = true;
+            try {
+                this.clashPool.activeGroupName = '';
+                this.clashPool.view = 'groups';
+                this.clashPool.delayResults = {};
+                const subscription = this.clashPool.subscriptions.find(item => item.id === subscriptionId);
+                const res = await this.authFetch('/api/clash/subscriptions/select', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        subscription_id: subscriptionId,
+                        target: this.clashPool.target,
+                        resolved_url: subscription?.url || ''
+                    })
+                });
+                const data = await res.json();
+                const label = this.formatClashSubscriptionLabel(subscription);
+                this.showToast(
+                    data.status === 'success'
+                        ? `已切换订阅：${label}`
+                        : (data.message || `切换订阅失败：${label}`),
+                    data.status
+                );
+                if (data.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('切换订阅失败', 'error');
+            } finally {
+                this.clashPool.subscriptionActionLoading = false;
+            }
+        },
+        async deleteClashSubscription(subscription) {
+            const confirmed = await this.customConfirm(`确定删除订阅 [${subscription?.name || subscription?.id || '未命名'}] 吗？`);
+            if (!confirmed) return;
+            this.clashPool.subscriptionActionLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/subscriptions/delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ subscription_id: subscription.id })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '订阅已删除', data.status);
+                if (data.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('删除订阅失败', 'error');
+            } finally {
+                this.clashPool.subscriptionActionLoading = false;
+            }
+        },
+        async testClashGroup(groupName) {
+            if (!groupName) return;
+            this.clashPool.delayLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/delay', {
+                    method: 'POST',
+                    body: JSON.stringify({ group_name: groupName, target: this.clashPool.target })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.clashPool.delayResults[groupName] = data.data;
+                    const group = this.clashPool.groups.find(item => item.name === groupName);
+                    if (group && Array.isArray(data.data?.healthy_nodes)) {
+                        group.healthy_nodes = data.data.healthy_nodes;
+                    }
+                    this.showToast(data.message || '延迟测试完成', 'success');
+                } else {
+                    this.showToast(data.message || '延迟测试失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('延迟测试请求失败', 'error');
+            } finally {
+                this.clashPool.delayLoading = false;
+            }
+        },
+        async clearClashHealthyNodes(groupName) {
+            if (!groupName) return;
+            const confirmed = await this.customConfirm(`确定清空策略组 [${groupName}] 的有效节点池吗？清空后会重新显示全部节点。`);
+            if (!confirmed) return;
+            this.clashPool.delayLoading = true;
+            try {
+                const res = await this.authFetch('/api/clash/tested_nodes/clear', {
+                    method: 'POST',
+                    body: JSON.stringify({ group_name: groupName })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '有效节点池已清空', data.status);
+                if (data.status === 'success') {
+                    const group = this.clashPool.groups.find(item => item.name === groupName);
+                    if (group) group.healthy_nodes = [];
+                    if (this.clashPool.delayResults[groupName]) {
+                        this.clashPool.delayResults[groupName].healthy_nodes = [];
+                    }
+                }
+            } catch (e) {
+                this.showToast('清空有效节点池失败', 'error');
+            } finally {
+                this.clashPool.delayLoading = false;
+            }
+        },
+        async switchClashGroupNode(groupName) {
+            const proxyName = this.clashPool.nodeSelections[groupName];
+            if (!groupName || !proxyName) {
+                this.showToast('请先选择策略组和目标节点', 'warning');
+                return;
+            }
+            try {
+                const res = await this.authFetch('/api/clash/switch', {
+                    method: 'POST',
+                    body: JSON.stringify({ group_name: groupName, proxy_name: proxyName, target: this.clashPool.target })
+                });
+                const data = await res.json();
+                this.showToast(data.message || '节点已切换', data.status);
+                if (data.status === 'success') {
+                    await this.fetchClashPool();
+                }
+            } catch (e) {
+                this.showToast('切换节点失败', 'error');
             }
         },
         syncClusterToPool() {
@@ -4076,6 +4630,36 @@ async exportSub2Api() {
                     this.currentTab = 'email';
                 } else this.showToast(data.message, 'error');
             } catch (e) { this.showToast('请求异常', 'error'); } finally { this.cfTools.isEnablingEmail = false; }
+        },
+        async handleCFDeleteHosting() {
+            const targetDomains = String(this.cfTools.deleteDomains || '').trim();
+            if (!targetDomains) return this.showToast('请先填写需要删除的 CF 托管域名！', 'warning');
+            if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 账号邮箱和 API Key！', 'warning');
+
+            const confirmed = await this.customConfirm(`⚠️ 危险操作：\n\n即将删除你在下方填写的 CF 托管域名及其 DNS / 邮件路由配置，确定继续吗？`);
+            if (!confirmed) return;
+
+            this.cfTools.isDeletingHosting = true;
+            this.showToast('正在批量删除 CF 托管域名...', 'info');
+            this.currentTab = 'console';
+            try {
+                const res = await this.authFetch('/api/cloudflare/delete_zones', {
+                    method: 'POST',
+                    body: JSON.stringify({ domains: targetDomains, api_email: this.config.cf_api_email, api_key: this.config.cf_api_key })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.cfTools.results = data.data || [];
+                    this.showToast('✅ 托管域名删除完成', 'success');
+                    this.currentTab = 'email';
+                } else {
+                    this.showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('请求异常', 'error');
+            } finally {
+                this.cfTools.isDeletingHosting = false;
+            }
         },
         async handleCFDeployWorker() {
             if (!this.config.cf_api_email || !this.config.cf_api_key) return this.showToast('请填写 CF 凭据！', 'warning');

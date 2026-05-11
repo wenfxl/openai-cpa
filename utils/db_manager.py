@@ -225,6 +225,12 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                 conditions.append("is_active = 0 AND push_platform IS NOT NULL AND push_platform != ''")
             elif status_filter == "unpushed":
                 conditions.append("(push_platform IS NULL OR push_platform = '')")
+            elif status_filter == "pushed":
+                conditions.append("(push_platform IS NOT NULL AND push_platform != '')")
+            elif status_filter == "credential":
+                conditions.append("token_data LIKE '%\"access_token\"%' AND token_data NOT LIKE '%\"image2api\"%'")
+            elif status_filter == "image2api":
+                conditions.append("token_data LIKE '%\"image2api\"%'")
             elif status_filter == "with_token":
                 conditions.append("(token_data LIKE ? AND token_data NOT LIKE ?)")
                 params.extend(['%"refresh_token"%', '%"image2api"%'])
@@ -587,6 +593,7 @@ def get_inventory_stats() -> dict:
                                 SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 1 THEN 1 ELSE 0 END) as active_count,
                                 SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 0 THEN 1 ELSE 0 END) as disabled_count,
                                 SUM(CASE WHEN push_platform IS NULL OR push_platform = '' THEN 1 ELSE 0 END) as unpushed_count,
+                                SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') THEN 1 ELSE 0 END) as pushed_count,
                                 SUM(CASE WHEN push_platform LIKE ? THEN 1 ELSE 0 END) as cpa_total,
                                 SUM(CASE WHEN push_platform LIKE ? AND is_active = 1 THEN 1 ELSE 0 END) as cpa_active,
                                 SUM(CASE WHEN push_platform LIKE ? AND is_active = 0 THEN 1 ELSE 0 END) as cpa_disabled,
@@ -596,21 +603,25 @@ def get_inventory_stats() -> dict:
                                 SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') THEN 1 ELSE 0 END) as cloud_total,
 
                                 SUM(CASE WHEN token_data LIKE ? AND token_data NOT LIKE ? THEN 1 ELSE 0 END) as with_token_count,
+                                SUM(CASE WHEN token_data LIKE ? AND token_data NOT LIKE ? THEN 1 ELSE 0 END) as credential_count,
                                 SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as reg_only_count,
-                                SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as imgsub2api_count
+                                SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as imgsub2api_count,
+                                SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as image2api_count
                             FROM accounts
                         """
             params = (
                 '%CPA%', '%CPA%', '%CPA%',
                 '%SUB2API%', '%SUB2API%', '%SUB2API%',
                 '%"refresh_token"%', '%"image2api"%',
+                '%"access_token"%', '%"image2api"%',
                 '%"仅注册成功"%',
+                '%"image2api"%',
                 '%"image2api"%'
             )
 
             execute_sql(c, sql, params)
             row = c.fetchone()
-            r = [x or 0 for x in row] if row else [0] * 14
+            r = [x or 0 for x in row] if row else [0] * 17
 
             return {
                 "local": {
@@ -618,26 +629,29 @@ def get_inventory_stats() -> dict:
                     "active": r[1],
                     "disabled": r[2],
                     "unpushed": r[3],
-                    "with_token": r[11],
-                    "reg_only": r[12],
-                    "imgsub2api": r[13]
+                    "pushed": r[4],
+                    "with_token": r[12],
+                    "credential": r[13],
+                    "reg_only": r[14],
+                    "imgsub2api": r[15],
+                    "image2api": r[16]
                 },
                 "cloud": {
-                    "total": r[10],
+                    "total": r[11],
                     "enabled": r[1],
-                    "cpa": r[4],
-                    "cpa_active": r[5],
-                    "cpa_disabled": r[6],
-                    "sub2api": r[7],
-                    "sub2api_active": r[8],
-                    "sub2api_disabled": r[9]
+                    "cpa": r[5],
+                    "cpa_active": r[6],
+                    "cpa_disabled": r[7],
+                    "sub2api": r[8],
+                    "sub2api_active": r[9],
+                    "sub2api_disabled": r[10]
                 }
             }
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 获取统计数据失败: {e}")
         return {
-            "local": {"total": 0, "active": 0, "disabled": 0, "unpushed": 0, "with_token": 0, "reg_only": 0,
-                      "imgsub2api": 0},
+            "local": {"total": 0, "active": 0, "disabled": 0, "unpushed": 0, "pushed": 0, "with_token": 0, "credential": 0, "reg_only": 0,
+                      "imgsub2api": 0, "image2api": 0},
             "cloud": {"total": 0, "enabled": 0, "cpa": 0, "cpa_active": 0, "cpa_disabled": 0, "sub2api": 0,
                       "sub2api_active": 0, "sub2api_disabled": 0}
         }

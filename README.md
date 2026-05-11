@@ -2,32 +2,48 @@
 [![Telegram Group](https://img.shields.io/badge/Telegram-Community_Chat-0088cc?style=for-the-badge&logo=telegram)](https://t.me/+srBiKuPvn4A3YmNl)
 [![License](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey?style=for-the-badge)](https://creativecommons.org/licenses/by-nc/4.0/legalcode)
 
-> ⚠️ **CRITICAL UPDATE (April 29, 2026) 20:29**
-> 
-> The official Telegram community has been fully migrated! The original group is no longer active.
-> 
-> **ATTENTION:** The authentication system of Wenfxl Codex Manager is strictly bound to our official group. All users MUST **join the new group immediately**. Failure to do so will result in an HTTP 403 error and automatic service suspension during the next silent authorization check.
-> 
-> 👉 **[Click Here to Join the NEW Official Group](https://t.me/+srBiKuPvn4A3YmNl)**
+## 项目简介
 
-An advanced Distributed Automation Platform for high-concurrency account registration and full-lifecycle inventory management. It serves as a centralized Web Orchestration Hub that seamlessly synchronizes distributed browser extension workers (Classic Mode), multi-backend mailbox engines, and enterprise-grade cloud warehouses (CPA/Sub2API) into a unified master-worker ecosystem.
+这是一个围绕高并发账号注册、验证码接收、代理切换、云端仓库联动和本地库存管理打造的 Web 控制台项目。它把邮箱后端、注册流程、Clash / Mihomo、CPA / Sub2API / Image2API、本地数据库和多机节点调度整合到同一个浏览器面板里，方便统一配置、统一监控和统一运维。
 
-It combines:
-- multi-backend mailbox OTP retrieval
-- registration task orchestration
-- proxy / Clash / Mihomo switching
-- CPA warehouse maintenance
-- Sub2API warehouse maintenance
-- AI-powered profile & subdomain generation (Codex)
-- local account inventory, export, deletion, and real-time log streaming
+它主要解决这些事情：
+- 多邮箱后端验证码收取
+- 注册任务调度与实时日志查看
+- Clash / Mihomo 代理切换、延迟测试、订阅管理
+- CPA / Sub2API / Image2API 等云端仓库对接
+- 本地账号库、云端库存、邮箱库、Team 库可视化管理
+- 多机部署、集群节点、浏览器插件节点协同控制
 
-It also supports **random multi-level subdomain generation**, designed to work together with customized mailbox backends such as:
-- <https://github.com/wenfxl/freemail>
-- <https://github.com/wenfxl/cloud-mail>
-- <https://github.com/wenfxl/cloudflare_temp_email_worker>
+## 上游项目
 
-> Use only in systems and environments you own or are explicitly authorized to test.
-> Make sure your use complies with applicable laws, platform rules, and service terms.
+本项目基于上游项目 **openai-cpa** 二次开发并持续维护。
+
+- 上游项目地址（中文说明）：
+  [https://github.com/wenfxl/openai-cpa](https://github.com/wenfxl/openai-cpa)
+
+同时也会配合这些邮箱相关项目一起使用：
+- [https://github.com/wenfxl/freemail](https://github.com/wenfxl/freemail)
+- [https://github.com/wenfxl/cloud-mail](https://github.com/wenfxl/cloud-mail)
+- [https://github.com/wenfxl/cloudflare_temp_email_worker](https://github.com/wenfxl/cloudflare_temp_email_worker)
+
+## 相比上游的二开内容
+
+这个仓库不是上游的简单镜像，而是在上游基础上做了更偏“控制台化、运维化、本地化”的增强，重点包括：
+- 更完整的 Web 控制台交互，而不是主要依赖配置文件操作
+- 本地账号库、云端库存、邮箱库、Team 库的可视化管理增强
+- Sub2API、Image2API、Clash 订阅管理、策略组切换、节点延迟测试等扩展能力
+- 面向本地、Linux、Docker、多机联动场景的运行时探测和兼容处理
+- 更贴近实际部署的 Server 1 / Server 2 运维、同步、排障流程
+- 跟随上游 release tag 同步版本，并保留本仓库自己的二开改动
+
+## 社区说明
+
+官方 Telegram 社区当前使用以下地址：
+
+- [https://t.me/+srBiKuPvn4A3YmNl](https://t.me/+srBiKuPvn4A3YmNl)
+
+> 仅限在你拥有、管理或获得明确授权的系统与环境中使用。  
+> 请确保你的使用行为符合当地法律、平台规则与服务条款。
 
 ## 🚀 Supported Environments
 * **Windows**: Native Support (**Python 3.12.6 or Python 3.12** recommended).
@@ -203,10 +219,25 @@ Start the Web Console service locally:
 python wfxl_openai_regst.py
 ```
 
+如果 `8000` 已被占用，有两种方式：
+
+```bash
+# 方式 1：明确指定启动端口
+set WEB_PORT=8001
+python wfxl_openai_regst.py
+```
+
+```bash
+# 方式 2：不指定，程序会从 8000 开始自动向后寻找空闲端口
+python wfxl_openai_regst.py
+```
+
 After startup, open the Web Console in your browser:
 
 ```text
 http://127.0.0.1:8000
+
+如果 `8000` 被占用，请以终端实际打印出来的控制台地址为准，例如 `http://127.0.0.1:8001`。
 ```
 
 Default Web Console password:
@@ -236,7 +267,7 @@ services:
     image: wenfxl/wenfxl-codex-manager:latest
     container_name: wenfxl_codex_manager
     ports:
-      - "8000:8000"
+      - "${WEB_PORT:-8000}:8000"
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -275,7 +306,7 @@ services:
     image: wenfxl/wenfxl-codex-manager:latest
     container_name: wenfxl_codex_manager
     ports:
-      - "8000:8000"
+      - "${WEB_PORT:-8000}:8000"
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -324,7 +355,7 @@ docker-compose pull wenfxl/wenfxl-codex-manager:latest
 config directly
 Notes:
 - `./data:/app/data` is used to persist runtime data, local database content, and exports.
-- The Docker Web Console is exposed on port `8000` by default.
+- The Docker Web Console is exposed on container port `8000` by default, while the host port can be changed through `WEB_PORT`.
 - Default Web Console password: `admin`
 - The current compose file uses image tag `wenfxl/wenfxl-codex-manager:latest`.
 

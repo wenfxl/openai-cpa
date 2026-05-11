@@ -1,0 +1,13 @@
+[Unit]
+Description=opaiRe disk cleanup when disk usage is high
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Environment=DISK_CLEANUP_THRESHOLD_PERCENT=80
+Environment=DISK_CLEANUP_TARGET_PATH=/
+Environment=OPAIRE_APP_DIR=/home/ubuntu/opaiRe
+ExecStart=/usr/local/bin/opaire-disk-cleanup.sh
+

@@ -8,6 +8,7 @@ import os
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from utils.clash_group_utils import resolve_group_name
 
 CLASH_API_URL = ""
 LOCAL_PROXY_URL = ""
@@ -17,6 +18,7 @@ FASTEST_MODE = False
 PROXY_GROUP_NAME = "节点选择"
 CLASH_SECRET = ""
 NODE_BLACKLIST = []
+TESTED_NODES_MAP = {}
 _IS_IN_DOCKER = os.path.exists('/.dockerenv')
 _global_switch_lock = threading.Lock()
 _last_switch_time = 0
@@ -36,7 +38,7 @@ def format_docker_url(url: str) -> str:
 
 def reload_proxy_config():
     global CLASH_API_URL, LOCAL_PROXY_URL, ENABLE_NODE_SWITCH, POOL_MODE, \
-           FASTEST_MODE, PROXY_GROUP_NAME, CLASH_SECRET, NODE_BLACKLIST
+           FASTEST_MODE, PROXY_GROUP_NAME, CLASH_SECRET, NODE_BLACKLIST, TESTED_NODES_MAP
     config_dir = os.path.join(BASE_DIR, "data")
     config_path = os.path.join(config_dir, "config.yaml")
     if not os.path.exists(config_path):
@@ -56,6 +58,7 @@ def reload_proxy_config():
     PROXY_GROUP_NAME = clash_conf.get("group_name", "节点选择")
     CLASH_SECRET = clash_conf.get("secret", "")
     NODE_BLACKLIST = clash_conf.get("blacklist", ["港", "HK", "台", "TW", "中国", "CN"])
+    TESTED_NODES_MAP = clash_conf.get("tested_nodes", {}) if isinstance(clash_conf.get("tested_nodes", {}), dict) else {}
    
     print(f"[{ts()}] [系统] 代理管理模块配置已同步更新。")
 
@@ -167,14 +170,17 @@ def _do_smart_switch(proxy_url=None):
             
         proxies_data = resp.json().get('proxies', {})
 
-        actual_group_name = None
-        for key in proxies_data.keys():
-            if PROXY_GROUP_NAME in key and isinstance(proxies_data[key], dict) and 'all' in proxies_data[key]:
-                actual_group_name = key
-                break
+        actual_group_name = resolve_group_name(proxies_data, PROXY_GROUP_NAME)
                 
         if not actual_group_name:
-            print(f"[{ts()}] [ERROR] {display_name} 找不到策略组关键词 '{PROXY_GROUP_NAME}'")
+            available_groups = [
+                key for key, value in proxies_data.items()
+                if isinstance(value, dict) and 'all' in value
+            ]
+            print(
+                f"[{ts()}] [ERROR] {display_name} 找不到策略组关键词 '{PROXY_GROUP_NAME}'。"
+                f" 当前可用策略组: {', '.join(clean_for_log(g) for g in available_groups[:8])}"
+            )
             return False
             
         safe_group_name = urllib.parse.quote(actual_group_name)
@@ -184,10 +190,29 @@ def _do_smart_switch(proxy_url=None):
             n for n in all_nodes 
             if not any(kw.upper() in n.upper() for kw in NODE_BLACKLIST)
         ]
+
+        tested_candidates = TESTED_NODES_MAP.get(actual_group_name, [])
+        if isinstance(tested_candidates, list):
+            tested_candidates = [n for n in tested_candidates if n in valid_nodes]
+            if tested_candidates:
+                valid_nodes = tested_candidates
+                print(f"[{ts()}] [代理池] {display_name} 已锁定到测速通过节点池，共 {len(valid_nodes)} 个。")
         
         if not valid_nodes:
             print(f"[{ts()}] [ERROR] {display_name} 过滤后无可用节点，请检查黑名单。")
             return False
+
+        nodes_with_delay = []
+        try:
+            for node_name in valid_nodes:
+                history = proxies_data.get(node_name, {}).get("history", [])
+                if not history:
+                    continue
+                delay = history[-1].get("delay", 0)
+                if isinstance(delay, (int, float)) and delay > 0:
+                    nodes_with_delay.append((node_name, float(delay)))
+        except Exception:
+            nodes_with_delay = []
 
         if FASTEST_MODE:
             print(f"\n[{ts()}] [代理池] {display_name} 开启优选模式，并发测速 {len(valid_nodes)} 个节点...")
@@ -243,9 +268,14 @@ def _do_smart_switch(proxy_url=None):
             except Exception as e:
                 print(f"[{ts()}] [代理池] {display_name} 优选模式异常: {e}，回退到随机抽卡模式...")
 
+        random_candidates = [name for name, _ in sorted(nodes_with_delay, key=lambda item: item[1])]
+        if not random_candidates:
+            random_candidates = list(valid_nodes)
+            print(f"[{ts()}] [代理池] {display_name} 未发现带有效延迟记录的节点，回退为全量候选抽卡。")
+
         max_retries = 10
         for i in range(1, max_retries + 1):
-            selected_node = random.choice(valid_nodes)
+            selected_node = random.choice(random_candidates)
             
             print(f"\n[{ts()}] [代理池] {display_name} 尝试切换节点: [{clean_for_log(selected_node)}] ({i}/{max_retries})")
             

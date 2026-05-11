@@ -4,6 +4,7 @@ import json
 import time
 import asyncio
 import threading
+import atexit
 import uvicorn
 import warnings
 import subprocess
@@ -24,6 +25,147 @@ from utils.memory_predictor import build_memory_report
 
 from global_state import engine, log_history, append_log
 from routers import api_routes
+
+
+def _get_env_int(name: str, default: int) -> int:
+    raw_value = str(os.getenv(name, "")).strip()
+    if not raw_value:
+        return default
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
+
+
+WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0").strip() or "0.0.0.0"
+WEB_PORT = _get_env_int("WEB_PORT", _get_env_int("PORT", 8000))
+WEB_PORT_SCAN_LIMIT = max(1, _get_env_int("WEB_PORT_SCAN_LIMIT", 20))
+PID_FILE = os.path.join("data", "web_console.pid")
+
+
+def _write_pid_file() -> None:
+    try:
+        os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
+        with open(PID_FILE, "w", encoding="utf-8") as handle:
+            handle.write(str(os.getpid()))
+    except Exception:
+        pass
+
+
+def _remove_pid_file() -> None:
+    try:
+        if os.path.exists(PID_FILE):
+            os.remove(PID_FILE)
+    except Exception:
+        pass
+
+
+def _get_listener_pid(host: str, port: int):
+    tester = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        tester.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        tester.bind((host, port))
+        return None
+    except OSError:
+        pass
+    finally:
+        try:
+            tester.close()
+        except Exception:
+            pass
+
+    if os.name != "nt":
+        return -1
+
+    try:
+        output = subprocess.check_output(
+            ["netstat", "-ano", "-p", "tcp"],
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+        target = f":{port}"
+        for raw_line in output.splitlines():
+            line = raw_line.strip()
+            if "LISTENING" not in line or target not in line:
+                continue
+            parts = line.split()
+            if len(parts) >= 5 and parts[1].endswith(target):
+                try:
+                    return int(parts[-1])
+                except ValueError:
+                    return -1
+    except Exception:
+        return -1
+    return -1
+
+
+def _conflict_hosts(host: str) -> list[str]:
+    normalized = (host or "").strip() or "0.0.0.0"
+    if normalized == "0.0.0.0":
+        return ["0.0.0.0", "127.0.0.1"]
+    return [normalized]
+
+
+def _get_process_command_line(pid_value: int) -> str:
+    if pid_value <= 0:
+        return ""
+    try:
+        return subprocess.check_output(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                f"(Get-CimInstance Win32_Process -Filter \"ProcessId = {pid_value}\").CommandLine",
+            ],
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _ensure_web_port_available(host: str, port: int) -> bool:
+    listener_pid = _get_listener_pid(host, port)
+    if listener_pid is None:
+        return True
+
+    cmdline = _get_process_command_line(listener_pid)
+    if "wfxl_openai_regst.py" in cmdline:
+        print(f"[{core_engine.ts()}] [系统] Web 控制台已经在运行中，无需重复启动。")
+        print(f"[{core_engine.ts()}] [系统] 现有实例 PID: {listener_pid}")
+        sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 控制台地址：http://127.0.0.1:{port} \n")
+        sys.__stdout__.flush()
+        return False
+
+    print(f"[{core_engine.ts()}] [ERROR] 端口 {port} 已被其他进程占用，无法启动控制台。")
+    if listener_pid > 0:
+        print(f"[{core_engine.ts()}] [ERROR] 占用 PID: {listener_pid}")
+    if cmdline:
+        print(f"[{core_engine.ts()}] [ERROR] 占用进程命令行: {cmdline}")
+    return False
+
+
+def _find_existing_console_port(host: str, start_port: int, max_ports: int = WEB_PORT_SCAN_LIMIT) -> int | None:
+    for current_port in range(start_port, start_port + max_ports):
+        checked_pids = set()
+        for current_host in _conflict_hosts(host):
+            listener_pid = _get_listener_pid(current_host, current_port)
+            if listener_pid is None or listener_pid <= 0 or listener_pid in checked_pids:
+                continue
+            checked_pids.add(listener_pid)
+            cmdline = _get_process_command_line(listener_pid)
+            if "wfxl_openai_regst.py" in cmdline:
+                return current_port
+    return None
+
+
+def _find_first_available_port(host: str, start_port: int, max_ports: int = WEB_PORT_SCAN_LIMIT) -> int | None:
+    for current_port in range(start_port, start_port + max_ports):
+        if all(_get_listener_pid(current_host, current_port) is None for current_host in _conflict_hosts(host)):
+            return current_port
+    return None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -208,6 +350,19 @@ threading.Thread(target=_worker_push_thread, daemon=True).start()
 if __name__ == "__main__":
     try: reload_all_configs()
     except: pass
+    atexit.register(_remove_pid_file)
+    existing_port = _find_existing_console_port(WEB_HOST, WEB_PORT)
+    if existing_port is not None:
+        print(f"[{core_engine.ts()}] [系统] Web 控制台已经在运行中，无需重复启动。")
+        sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 控制台地址：http://127.0.0.1:{existing_port} \n")
+        sys.__stdout__.flush()
+        raise SystemExit(0)
+
+    selected_port = _find_first_available_port(WEB_HOST, WEB_PORT)
+    if selected_port is None:
+        print(f"[{core_engine.ts()}] [ERROR] 在 {WEB_PORT}-{WEB_PORT + WEB_PORT_SCAN_LIMIT - 1} 端口区间内未找到可用端口。")
+        raise SystemExit(1)
+
     print("=" * 65)
     print(f"[{core_engine.ts()}] [系统] OpenAI 全链路自动化生产与多维资源中转调度平台")
     print(f"[{core_engine.ts()}] [系统] Author: (wenfxl)轩灵")
@@ -217,8 +372,11 @@ if __name__ == "__main__":
     print(f"[{core_engine.ts()}] [系统] 根据官网披露消息：在某些国家，您可以使用 WhatsApp 完成手机验证，而无需通过短信：阿拉伯联合酋长国、埃及、印度尼西亚、以色列、印度、马来西亚、尼日利亚、巴基斯坦、沙特阿拉伯、土耳其、乌克兰、越南，目前WhatsApp需要大家测试后在说。")
     print("-" * 65)
     print(f"[{core_engine.ts()}] [系统] Web 控制台已准备就绪，等待下发指令...")
-    sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 控制台地址：http://127.0.0.1:8000 \n")
+    if selected_port != WEB_PORT:
+        print(f"[{core_engine.ts()}] [系统] 默认端口 {WEB_PORT} 已被占用，已自动切换到端口 {selected_port}。")
+    _write_pid_file()
+    sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 控制台地址：http://127.0.0.1:{selected_port} \n")
     sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 控制台初始密码：admin \n")
     sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 结束请猛猛重复按CTRL+C \n")
     sys.__stdout__.flush()
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning", access_log=False, timeout_graceful_shutdown=1)
+    uvicorn.run(app, host=WEB_HOST, port=selected_port, log_level="warning", access_log=False, timeout_graceful_shutdown=1)
