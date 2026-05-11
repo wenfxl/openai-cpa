@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Wenfxl 注册管理系统</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260511-8">
-    <script src="/static/js/tailwind.min.js?v=20260511-8"></script>
-    <script src="/static/js/vue.global.js?v=20260511-8"></script>
-    <script src="/static/js/jszip.min.js?v=20260511-8"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260511-12">
+    <script src="/static/js/tailwind.min.js?v=20260511-12"></script>
+    <script src="/static/js/vue.global.js?v=20260511-12"></script>
+    <script src="/static/js/jszip.min.js?v=20260511-12"></script>
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -512,6 +512,15 @@
             .inventory-panel.mobile-table-priority .inventory-footer {
                 padding: 10px 12px;
             }
+            .inventory-panel.mobile-cloud-priority .inventory-scroll-region {
+                flex: 0 0 800px;
+                min-height: 800px;
+                height: 800px;
+            }
+            .inventory-panel.mobile-cloud-priority {
+                min-height: auto;
+                height: auto;
+            }
         }
         @media (min-width: 768px) {
             .inventory-panel {
@@ -541,6 +550,67 @@
         .mobile-nav-drawer.is-open {
             transform: translateX(0);
             box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+        }
+        body.theme-dark .inventory-shell {
+            background: linear-gradient(180deg, rgba(18, 24, 33, 0.98), rgba(12, 19, 30, 0.96));
+            border-color: #2b3648;
+            box-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.18),
+                0 14px 30px rgba(0, 0, 0, 0.22);
+        }
+        body.theme-dark .inventory-toolbar {
+            background: linear-gradient(180deg, rgba(18, 24, 33, 0.96), rgba(15, 23, 34, 0.86));
+            border-color: #2b3648 !important;
+        }
+        body.theme-dark .inventory-table-wrap {
+            background: linear-gradient(180deg, rgba(18, 24, 33, 0.98), rgba(13, 20, 31, 0.9));
+        }
+        body.theme-dark .inventory-table-scroll thead th {
+            background: rgba(15, 23, 34, 0.95);
+        }
+        body.theme-dark .inventory-footer {
+            background: linear-gradient(180deg, rgba(15, 23, 34, 0.92), rgba(12, 19, 30, 0.88));
+            border-color: #2b3648 !important;
+        }
+        body.theme-dark .cloud-filter-strip {
+            background: linear-gradient(180deg, rgba(20, 29, 43, 0.86), rgba(14, 21, 32, 0.96));
+            border-color: #2b3648;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                0 1px 2px rgba(0, 0, 0, 0.18),
+                0 10px 22px rgba(0, 0, 0, 0.16);
+        }
+        body.theme-dark .cloud-progress-line {
+            background: rgba(51, 65, 85, 0.7);
+        }
+        body.theme-dark .cloud-stat-card::after,
+        body.theme-dark .inventory-mini-card::after {
+            opacity: 0.18;
+        }
+        body.theme-dark .cloud-stat-card--emerald::after,
+        body.theme-dark .inventory-mini-card--emerald::after {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(255,255,255,0));
+        }
+        body.theme-dark .cloud-stat-card--indigo::after,
+        body.theme-dark .inventory-mini-card--indigo::after {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.34), rgba(255,255,255,0));
+        }
+        body.theme-dark .cloud-stat-card--purple::after,
+        body.theme-dark .inventory-mini-card--violet::after {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.32), rgba(255,255,255,0));
+        }
+        body.theme-dark .cloud-stat-card--pink::after,
+        body.theme-dark .inventory-mini-card--pink::after,
+        body.theme-dark .inventory-mini-card--rose::after {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.28), rgba(255,255,255,0));
+        }
+        body.theme-dark .cloud-stat-card--blue::after,
+        body.theme-dark .inventory-mini-card--cyan::after,
+        body.theme-dark .inventory-mini-card--slate::after {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.24), rgba(255,255,255,0));
+        }
+        body.theme-dark .inventory-mini-card--amber::after {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.24), rgba(255,255,255,0));
         }
         ::-webkit-scrollbar {
             width: 6px;
@@ -3732,7 +3802,7 @@
 
                         </div>
 
-                        <div v-show="currentTab === 'cloud'" class="inventory-shell inventory-panel mobile-table-priority rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        <div v-show="currentTab === 'cloud'" class="inventory-shell inventory-panel mobile-table-priority mobile-cloud-priority rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-300">
                             <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100">
                                 <div class="cloud-toolbar-shell">
                                     <div class="cloud-toolbar-side">
@@ -5113,6 +5183,6 @@
             } catch (e) {}
         })();
     </script>
-    <script src="/static/js/app.js?v=20260511-8"></script>
+    <script src="/static/js/app.js?v=20260511-12"></script>
 </body>
 </html>
