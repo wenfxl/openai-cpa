@@ -1,0 +1,29 @@
+[project]
+name = "openai-cpa"
+version = "0.1.0"
+description = "Wenfxl Codex Manager Web Console"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "PyYAML",
+    "pydantic",
+    "websockets",
+    "requests",
+    "httpx[socks]",
+    "curl_cffi",
+    "PySocks",
+    "cloudflare",
+    "google-api-python-client",
+    "google-auth-httplib2",
+    "google-auth-oauthlib",
+    "docker",
+    "pymysql",
+    "cryptography",
+    "cachetools",
+    "dnspython",
+]
+
+[tool.uv]
+package = false

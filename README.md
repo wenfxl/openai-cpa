@@ -43,7 +43,27 @@ It also supports **random multi-level subdomain generation**, designed to work t
 
 ## Environment Setup
 
-Install Python Dependencies Install the required base libraries using the requirements.txt file in the root directory:
+Install Python dependencies. `uv` is the recommended workflow for local development and runtime consistency.
+
+Recommended with `uv`:
+
+```bash
+uv sync
+```
+
+Start the project with `uv`:
+
+```bash
+uv run python wfxl_openai_regst.py
+```
+
+Stop the local project process on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\stop_openai_cpa.ps1
+```
+
+Compatibility fallback with `pip`:
 
 ```bash
 pip install -r requirements.txt
@@ -200,7 +220,13 @@ An overview of the core directories and files in this repository:
 Start the Web Console service locally:
 
 ```bash
-python wfxl_openai_regst.py
+uv run python wfxl_openai_regst.py
+```
+
+Stop the local service process on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\stop_openai_cpa.ps1
 ```
 
 After startup, open the Web Console in your browser:
