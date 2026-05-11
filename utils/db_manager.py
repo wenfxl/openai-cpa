@@ -11,13 +11,17 @@ from utils import config as cfg
 os.makedirs("data", exist_ok=True)
 DB_PATH = "data/data.db"
 _team_db_lock = threading.Lock()
-_sqlite_write_lock = threading.Lock()
+_sqlite_write_lock = threading.RLock()
+
 class get_db_conn:
     """抹平 SQLite 和 MySQL 连接差异"""
-    def __init__(self, as_dict=False):
+    def __init__(self, as_dict=False, is_write=False):
         self.as_dict = as_dict
+        self.is_write = is_write
 
     def __enter__(self):
+        if DB_TYPE != "mysql" and self.is_write:
+            _sqlite_write_lock.acquire()
         if DB_TYPE == "mysql":
             self.conn = pymysql.connect(
                 host=MYSQL_CFG.get('host', '127.0.0.1'),
@@ -39,6 +43,8 @@ class get_db_conn:
         else:
             self.conn.rollback()
         self.conn.close()
+        if DB_TYPE != "mysql" and self.is_write:
+            _sqlite_write_lock.release()
 
 
 def get_cursor(conn, as_dict=False):
@@ -59,7 +65,6 @@ def execute_sql(cursor, sql: str, params=()):
         sql = sql.replace('TEXT UNIQUE', 'VARCHAR(191) UNIQUE')
         sql = sql.replace('TEXT PRIMARY KEY', 'VARCHAR(191) PRIMARY KEY')
 
-        # 3. 抹平特殊的 PRAGMA
         if 'PRAGMA' in sql:
             return None
 
@@ -67,7 +72,7 @@ def execute_sql(cursor, sql: str, params=()):
 
 def init_db():
     """初始化数据库，自动适应双引擎建表"""
-    with get_db_conn() as conn:
+    with get_db_conn(is_write=True) as conn:
         c = get_cursor(conn)
         execute_sql(c, 'PRAGMA journal_mode=WAL;')
         execute_sql(c, 'PRAGMA synchronous=NORMAL;')
@@ -128,10 +133,7 @@ def init_db():
 
 def save_account_to_db(email: str, password: str, token_json_str: str) -> bool:
     try:
-        if DB_TYPE != "mysql":
-            _sqlite_write_lock.acquire()
-
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, '''
                 INSERT OR REPLACE INTO accounts (email, password, token_data)
@@ -141,9 +143,7 @@ def save_account_to_db(email: str, password: str, token_json_str: str) -> bool:
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 数据库保存失败: {e}")
         return False
-    finally:
-            if DB_TYPE != "mysql" and _sqlite_write_lock.locked():
-                _sqlite_write_lock.release()
+
 
 def get_all_accounts() -> list:
     try:
@@ -151,7 +151,6 @@ def get_all_accounts() -> list:
             c = get_cursor(conn)
             execute_sql(c, "SELECT email, password, created_at FROM accounts ORDER BY id DESC")
             rows = c.fetchall()
-            # MySQL 默认游标返回的也是元组，兼容原版切片逻辑
             return [{"email": r[0], "password": r[1], "created_at": r[2]} for r in rows]
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 获取账号列表失败: {e}")
@@ -196,7 +195,7 @@ def get_tokens_by_emails(emails: list) -> list:
 def delete_accounts_by_emails(emails: list) -> bool:
     if not emails: return True
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             placeholders = ','.join(['?'] * len(emails))
             execute_sql(c, f"DELETE FROM accounts WHERE email IN ({placeholders})", tuple(emails))
@@ -283,7 +282,7 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
 def set_sys_kv(key: str, value: Any):
     try:
         val_str = json.dumps(value, ensure_ascii=False)
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "INSERT OR REPLACE INTO system_kv (`key`, value) VALUES (?, ?)", (key, val_str))
     except Exception as e:
@@ -318,7 +317,7 @@ def get_all_accounts_with_token(limit: int = 10000) -> list:
 def import_local_mailboxes(mailboxes_data: list) -> int:
     count = 0
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             for mb in mailboxes_data:
                 try:
@@ -337,7 +336,6 @@ def import_local_mailboxes(mailboxes_data: list) -> int:
 
 def get_local_mailboxes_page(page: int = 1, page_size: int = 50, search: str = None) -> dict:
     try:
-        # as_dict=True 通知游标返回字典格式，适配原来的 sqlite3.Row
         with get_db_conn(as_dict=True) as conn:
             c = get_cursor(conn, as_dict=True)
             conditions = []
@@ -374,7 +372,7 @@ def get_local_mailboxes_page(page: int = 1, page_size: int = 50, search: str = N
 def delete_local_mailboxes(ids: list) -> bool:
     if not ids: return True
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             placeholders = ','.join(['?'] * len(ids))
             execute_sql(c, f"DELETE FROM local_mailboxes WHERE id IN ({placeholders})", tuple(ids))
@@ -382,10 +380,11 @@ def delete_local_mailboxes(ids: list) -> bool:
     except Exception as e:
         return False
 
+
 def get_and_lock_unused_local_mailbox() -> dict:
     """提取一个未使用的账号，并状态锁定为占用中"""
     try:
-        with get_db_conn(as_dict=True) as conn:
+        with get_db_conn(as_dict=True, is_write=True) as conn:
             c = get_cursor(conn, as_dict=True)
 
             filter_sql = """
@@ -401,7 +400,6 @@ def get_and_lock_unused_local_mailbox() -> dict:
                 execute_sql(c, "START TRANSACTION")
                 execute_sql(c, filter_sql + " FOR UPDATE")
             else:
-                # execute_sql(c, "BEGIN EXCLUSIVE")
                 execute_sql(c, filter_sql)
 
             row = c.fetchone()
@@ -417,13 +415,12 @@ def get_and_lock_unused_local_mailbox() -> dict:
 def get_mailbox_for_pool_fission() -> dict:
     """带重试优先级的并发取号"""
     try:
-        with get_db_conn(as_dict=True) as conn:
+        with get_db_conn(as_dict=True, is_write=True) as conn:
             c = get_cursor(conn, as_dict=True)
             if DB_TYPE == "mysql":
                 execute_sql(c, "START TRANSACTION")
                 execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts) LIMIT 1 FOR UPDATE")
             else:
-                execute_sql(c, "BEGIN EXCLUSIVE")
                 execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts) LIMIT 1")
 
             row = c.fetchone()
@@ -447,15 +444,16 @@ def get_mailbox_for_pool_fission() -> dict:
 
 def update_local_mailbox_status(email: str, status: int):
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "UPDATE local_mailboxes SET status = ? WHERE email = ?", (status, email))
     except Exception:
         pass
 
+
 def update_local_mailbox_refresh_token(email: str, new_rt: str):
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "UPDATE local_mailboxes SET refresh_token = ? WHERE email = ?", (new_rt, email))
     except Exception:
@@ -464,7 +462,7 @@ def update_local_mailbox_refresh_token(email: str, new_rt: str):
 
 def update_pool_fission_result(email: str, is_blocked: bool, is_raw: bool):
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             if not is_blocked:
                 execute_sql(c, "UPDATE local_mailboxes SET retry_master = 0 WHERE email = ?", (email,))
@@ -476,13 +474,15 @@ def update_pool_fission_result(email: str, is_blocked: bool, is_raw: bool):
     except Exception as e:
         print(f"[{cfg.ts()}] [DB_ERROR] 结果更新失败: {e}")
 
+
 def clear_retry_master_status(email: str):
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "UPDATE local_mailboxes SET retry_master = 0 WHERE email = ?", (email,))
     except Exception as e:
         print(f"[{cfg.ts()}] [DB_ERROR] 清除 {email} 的 retry_master 状态失败: {e}")
+
 
 def get_all_accounts_raw() -> list:
     """获取账号库所有原始数据"""
@@ -493,6 +493,7 @@ def get_all_accounts_raw() -> list:
             rows = c.fetchall()
             return [{"email": r[0], "password": r[1], "token_data": json.loads(r[2]) if r[2] else {}} for r in rows]
     except: return []
+
 
 def check_account_exists(email: str) -> bool:
     """检查指定邮箱是否已经在本地账号库中"""
@@ -506,14 +507,16 @@ def check_account_exists(email: str) -> bool:
         print(f"[{cfg.ts()}] [DB_ERROR] 查重失败: {e}")
         return False
 
+
 def clear_all_accounts() -> bool:
     """一键清空账号库"""
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "DELETE FROM accounts")
             return True
     except: return False
+
 
 def get_all_mailboxes_raw() -> list:
     """获取邮箱库所有原始数据"""
@@ -524,19 +527,21 @@ def get_all_mailboxes_raw() -> list:
             return [dict(r) for r in c.fetchall()]
     except: return []
 
+
 def clear_all_mailboxes() -> bool:
     """一键清空邮箱库"""
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "DELETE FROM local_mailboxes")
             return True
     except: return False
 
+
 def update_account_status(emails: list, is_active: int):
     if not emails: return
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             placeholders = ','.join(['?'] * len(emails))
             execute_sql(c, f"UPDATE accounts SET is_active = ? WHERE email IN ({placeholders})", tuple([is_active] + emails))
@@ -550,7 +555,7 @@ def update_account_push_info(emails: list, platform: str, mode: str = "overwrite
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         target_platform = platform.strip().upper()
 
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             for email in emails:
                 like_pattern = f"{str(email).strip()}%"
@@ -577,9 +582,9 @@ def update_account_push_info(emails: list, platform: str, mode: str = "overwrite
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 更新推送状态失败: {e}")
 
+
 def get_inventory_stats() -> dict:
     try:
-        p = "%%" if DB_TYPE == "mysql" else "%"
         with get_db_conn() as conn:
             c = get_cursor(conn)
             sql = """
@@ -651,20 +656,22 @@ def get_inventory_stats() -> dict:
                       "sub2api_active": 0, "sub2api_disabled": 0}
         }
 
+
 def update_account_status_by_truncated_name(truncated_name: str, is_active: int):
     if not truncated_name or truncated_name == "unknown": return
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "UPDATE accounts SET is_active = ? WHERE SUBSTR(email, 1, 64) = ?", (is_active, truncated_name))
     except Exception as e:
         print(f"[ERROR] 按截断名称更新活跃状态失败: {e}")
 
+
 def remove_account_push_platform(identifier: str, platform: str, exact_match: bool = True):
     if not identifier: return
     target_platform = platform.strip().upper()
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             if exact_match:
                 execute_sql(c, "SELECT email, push_platform FROM accounts WHERE email = ?", (identifier,))
@@ -686,6 +693,7 @@ def remove_account_push_platform(identifier: str, platform: str, exact_match: bo
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 剥离推送平台记录失败: {e}")
 
+
 def get_account_full_info(email: str) -> dict:
     try:
         with get_db_conn(as_dict=True) as conn:
@@ -701,9 +709,10 @@ def get_account_full_info(email: str) -> dict:
         print(f"[ERROR] 获取账号全量信息失败: {e}")
         return None
 
+
 def update_account_token_only(email: str, token_json_str: str) -> bool:
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "UPDATE accounts SET token_data = ? WHERE email = ?", (token_json_str, email))
             return True
@@ -711,10 +720,11 @@ def update_account_token_only(email: str, token_json_str: str) -> bool:
         print(f"[ERROR] 仅更新 Token 失败: {e}")
         return False
 
+
 def import_team_accounts(team_data_list: list) -> int:
     count = 0
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             for td in team_data_list:
                 try:
@@ -771,7 +781,7 @@ def get_team_accounts_page(page: int = 1, page_size: int = 50, search: str = Non
 def delete_team_accounts(ids: list) -> bool:
     if not ids: return True
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             placeholders = ','.join(['?'] * len(ids))
             execute_sql(c, f"DELETE FROM team_accounts WHERE id IN ({placeholders})", tuple(ids))
@@ -783,7 +793,7 @@ def delete_team_accounts(ids: list) -> bool:
 
 def clear_all_team_accounts() -> bool:
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             execute_sql(c, "DELETE FROM team_accounts")
             return True
@@ -808,6 +818,7 @@ def get_random_team_account() -> dict:
         print(f"[{cfg.ts()}] [ERROR] 随机提取 Team 账号失败: {e}")
         return None
 
+
 def get_all_team_accounts() -> list:
     try:
         with get_db_conn(as_dict=True) as conn:
@@ -819,10 +830,11 @@ def get_all_team_accounts() -> list:
         print(f"[{cfg.ts()}] [ERROR] 获取所有 Team 账号失败: {e}")
         return []
 
+
 def delete_sys_kvs(keys: list) -> bool:
     if not keys: return True
     try:
-        with get_db_conn() as conn:
+        with get_db_conn(is_write=True) as conn:
             c = get_cursor(conn)
             placeholders = ','.join(['?'] * len(keys))
             execute_sql(c, f"DELETE FROM system_kv WHERE `key` IN ({placeholders})", tuple(keys))

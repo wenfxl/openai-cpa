@@ -3,7 +3,7 @@ import time
 import urllib.parse
 import concurrent.futures
 from typing import List, Any, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, BackgroundTasks
 from pydantic import BaseModel
 from curl_cffi import requests as cffi_requests
 from global_state import verify_token
@@ -31,6 +31,7 @@ class ImportTeamReq(BaseModel): raw_text: str
 class DeleteTeamReq(BaseModel): ids: list[int]
 class ResetAuthReq(BaseModel):clear_license: bool = False; clear_hwid: bool = False; clear_lease: bool = False;
 class LicenseUploadReq(BaseModel):content: str
+_last_cloud_sync_time = 0
 
 def parse_cpa_usage_to_details(raw_usage: dict) -> dict:
     details = {"is_cpa": True}
@@ -131,8 +132,12 @@ async def export_selected_accounts(req: ExportReq, token: str = Depends(verify_t
 @router.post("/api/accounts/delete")
 async def delete_selected_accounts(req: DeleteReq, token: str = Depends(verify_token)):
     if not req.emails: return {"status": "error", "message": "未收到任何要删除的账号"}
-    return {"status": "success", "message": f"成功删除 {len(req.emails)} 个账号"} if db_manager.delete_accounts_by_emails(
-        req.emails) else {"status": "error", "message": "删除操作失败"}
+    chunk_size = 900
+    success = True
+    for i in range(0, len(req.emails), chunk_size):
+        if not db_manager.delete_accounts_by_emails(req.emails[i:i + chunk_size]):
+            success = False
+    return {"status": "success", "message": f"成功删除所选账号"} if success else {"status": "error", "message": "部分删除操作失败"}
 
 
 @router.post("/api/account/action")
@@ -269,8 +274,41 @@ async def clear_all_accounts_api(token: str = Depends(verify_token)):
     return {"status": "error", "message": "清空失败"}
 
 
+def _background_sync_cloud_data(combined_data):
+    global _last_cloud_sync_time
+    if time.time() - _last_cloud_sync_time < 30:
+        return
+    _last_cloud_sync_time = time.time()
+    try:
+        cpa_emails = [x["credential"] for x in combined_data if x["account_type"] == "cpa"]
+        sub_emails = [x["credential"] for x in combined_data if x["account_type"] == "sub2api"]
+        img2_emails = [x["credential"] for x in combined_data if x["account_type"] == "image2api"]
+
+        if cpa_emails:
+            db_manager.update_account_push_info(cpa_emails, "CPA", mode="sync")
+        if sub_emails:
+            db_manager.update_account_push_info(sub_emails, "SUB2API", mode="sync")
+        if img2_emails:
+            db_manager.update_account_push_info(img2_emails, "IMAGE2API", mode="sync")
+
+        active_emails = [x["credential"] for x in combined_data if x["status"] == "active"]
+        inactive_emails = [x["credential"] for x in combined_data if x["status"] in ["disabled", "dead"]]
+        def chunked_update(emails_list, status_code):
+            chunk_size = 900
+            for i in range(0, len(emails_list), chunk_size):
+                db_manager.update_account_status(emails_list[i:i + chunk_size], status_code)
+
+        if active_emails:
+            chunked_update(active_emails, 1)
+        if inactive_emails:
+            chunked_update(inactive_emails, 0)
+
+    except Exception as e:
+        print(f"[{cfg.ts()}] [系统] 后台同步云端数据至本地库异常: {e}")
+
+
 @router.get("/api/cloud/accounts")
-def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("all"), page: int = Query(1),
+def get_cloud_accounts(background_tasks: BackgroundTasks, types: str = "sub2api,cpa", status_filter: str = Query("all"), page: int = Query(1),
                        page_size: int = Query(50), search: Optional[str] = Query(None),
                        token: str = Depends(verify_token)):
     type_list = types.split(",")
@@ -356,26 +394,6 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
             print(f"[{cfg.ts()}] [IMAGE2API] 拉取 Image2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
 
     try:
-        cpa_emails = [x["credential"] for x in combined_data if x["account_type"] == "cpa"]
-        sub_emails = [x["credential"] for x in combined_data if x["account_type"] == "sub2api"]
-        img2_emails = [x["credential"] for x in combined_data if x["account_type"] == "image2api"]
-
-        if cpa_emails:
-            db_manager.update_account_push_info(cpa_emails, "CPA", mode="sync")
-        if sub_emails:
-            db_manager.update_account_push_info(sub_emails, "SUB2API", mode="sync")
-        if img2_emails:
-            db_manager.update_account_push_info(img2_emails, "IMAGE2API", mode="sync")
-
-
-        active_emails = [x["credential"] for x in combined_data if x["status"] == "active"]
-        inactive_emails = [x["credential"] for x in combined_data if x["status"] in ["disabled", "dead"]]
-
-        if active_emails:
-            db_manager.update_account_status(active_emails, 1)
-        if inactive_emails:
-            db_manager.update_account_status(inactive_emails, 0)
-
         cpa_list = [x for x in combined_data if x["account_type"] == "cpa"]
         sub2api_list = [x for x in combined_data if x["account_type"] == "sub2api"]
         image2api_list = [x for x in combined_data if x["account_type"] == "image2api"]
@@ -393,6 +411,8 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
             "image2api_active": sum(1 for x in image2api_list if x["status"] == "active"),
             "image2api_disabled": sum(1 for x in image2api_list if x["status"] != "active")
         }
+        if combined_data:
+            background_tasks.add_task(_background_sync_cloud_data, combined_data)
 
         if status_filter != "all":
             combined_data = [item for item in combined_data if item.get("status") == status_filter]
@@ -415,7 +435,7 @@ def get_cloud_accounts(types: str = "sub2api,cpa", status_filter: str = Query("a
             "cloud_stats": cloud_stats
         }
     except Exception as e:
-        return {"status": "error", "message": f"拉取云端库存数据失败，请检查网络或者URL和KEY是否填写正确"}
+        return {"status": "error", "message": f"拉取云端库存数据失败: {e}"}
 
 
 @router.post("/api/cloud/action")
@@ -601,7 +621,7 @@ async def exchange_outlook_oauth_code(req: OutlookExchangeReq, token: str = Depe
             import sqlite3
             from utils.db_manager import get_db_conn, get_cursor, execute_sql
             try:
-                with get_db_conn() as conn:
+                with get_db_conn(is_write=True) as conn:
                     c = get_cursor(conn)
                     execute_sql(c,
                                 "UPDATE local_mailboxes SET client_id = ?, refresh_token = ?, status = 0 WHERE email = ?",
