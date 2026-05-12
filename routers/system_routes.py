@@ -36,7 +36,13 @@ class DummyArgs:
 
 class LoginData(BaseModel): password: str
 class DomainRuntimeActionReq(BaseModel): domain: str
-class ClusterUploadAccountsReq(BaseModel): node_name: str; secret: str; accounts: list
+class ClusterUploadAccountsReq(BaseModel):
+    node_name: str
+    secret: str
+    accounts: list
+    batch_index: Optional[int] = None
+    total_batches: Optional[int] = None
+    total_uploaded: Optional[int] = None
 class ClusterReportReq(BaseModel): node_name: str; secret: str; stats: dict; logs: list
 class ClusterControlReq(BaseModel): node_name: str; action: str
 class GitSyncReq(BaseModel):
@@ -855,12 +861,19 @@ def cluster_upload_accounts(req: ClusterUploadAccountsReq):
             if db_manager.save_account_to_db(acc.get("email"), acc.get("password"),
                                              acc.get("token_data")): success_count += 1
 
-    msg = f"[{core_engine.ts()}] [系统] 📦 成功从子控 [{req.node_name}] 提取并完美入库 {success_count} 个账号！"
+    msg = f"[{core_engine.ts()}] [系统] 📦 第 {req.batch_index}/{req.total_batches} 批账号接收完成，来自子控 [{req.node_name}]，本批入库 {success_count} 个。" if req.batch_index and req.total_batches else f"[{core_engine.ts()}] [系统] 📦 成功从子控 [{req.node_name}] 提取并完美入库 {success_count} 个账号！"
     print(msg)
     try:
         append_log(msg)
     except:
         pass
+    if req.batch_index and req.total_batches and req.batch_index == req.total_batches:
+        done_msg = f"[{core_engine.ts()}] [系统] ✅ 账号批量接收完成，来自子控 [{req.node_name}]，共 {req.total_batches} 批，累计入库 {req.total_uploaded or success_count} 个。"
+        print(done_msg)
+        try:
+            append_log(done_msg)
+        except:
+            pass
     return {"status": "success", "message": f"成功接收 {success_count} 个账号"}
 
 #模式二注册

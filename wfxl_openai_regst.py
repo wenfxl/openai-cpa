@@ -325,19 +325,43 @@ def _worker_push_thread():
                                 def _upload_task():
                                     try:
                                         import urllib.request
-                                        local_accounts = db_manager.get_all_accounts_with_token(10000)
-                                        if not local_accounts:
-                                            print(f"[{core_engine.ts()}] [系统] ⚠️ 本地库存为空，无账号可提取。")
-                                            return
-                                        req_data = {"node_name": node_name, "secret": secret, "accounts": local_accounts}
-                                        req_body = json.dumps(req_data).encode('utf-8')
+                                        batch_size = 10000
+                                        offset = 0
+                                        batch_index = 1
+                                        total_uploaded = 0
+                                        total_count = db_manager.get_accounts_page(page=1, page_size=1, status_filter="all").get("total", 0)
+                                        total_batches = max(1, (total_count + batch_size - 1) // batch_size) if total_count else 0
                                         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-                                        upload_req = urllib.request.Request(
-                                            f"{master_url.rstrip('/')}/api/cluster/upload_accounts", data=req_body,
-                                            headers={'Content-Type': 'application/json'})
                                         upload_timeout = getattr(core_engine.cfg, 'CLUSTER_UPLOAD_TIMEOUT_SEC', 15)
-                                        with opener.open(upload_req, timeout=upload_timeout) as _:
-                                            print(f"[{core_engine.ts()}] [系统] 📤 已成功将 {len(local_accounts)} 个账号打包发往总控！")
+                                        while True:
+                                            local_accounts = db_manager.get_all_accounts_with_token(batch_size, offset)
+                                            if not local_accounts:
+                                                if total_uploaded == 0:
+                                                    print(f"[{core_engine.ts()}] [系统] ⚠️ 本地库存为空，无账号可提取。")
+                                                else:
+                                                    print(f"[{core_engine.ts()}] [系统] ✅ 账号批量上传完成，共 {total_batches} 批，合计 {total_uploaded} 个账号。")
+                                                return
+                                            print(f"[{core_engine.ts()}] [系统] 📦 开始上传第 {batch_index}/{total_batches} 批账号，本批 {len(local_accounts)} 个。")
+                                            req_data = {
+                                                "node_name": node_name,
+                                                "secret": secret,
+                                                "accounts": local_accounts,
+                                                "batch_index": batch_index,
+                                                "total_batches": total_batches,
+                                                "total_uploaded": total_uploaded + len(local_accounts),
+                                            }
+                                            req_body = json.dumps(req_data).encode('utf-8')
+                                            upload_req = urllib.request.Request(
+                                                f"{master_url.rstrip('/')}/api/cluster/upload_accounts", data=req_body,
+                                                headers={'Content-Type': 'application/json'})
+                                            with opener.open(upload_req, timeout=upload_timeout) as _:
+                                                total_uploaded += len(local_accounts)
+                                                print(f"[{core_engine.ts()}] [系统] 📤 第 {batch_index}/{total_batches} 批账号上传完成，本批 {len(local_accounts)} 个，累计 {total_uploaded} 个。")
+                                            if batch_index >= total_batches:
+                                                print(f"[{core_engine.ts()}] [系统] ✅ 账号批量上传完成，共 {total_batches} 批，合计 {total_uploaded} 个账号。")
+                                                return
+                                            offset += batch_size
+                                            batch_index += 1
                                     except Exception as e:
                                         print(f"[{core_engine.ts()}] [ERROR] ❌ 账号上传总控失败: {e}")
                                 threading.Thread(target=_upload_task, daemon=True).start()

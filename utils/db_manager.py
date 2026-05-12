@@ -302,11 +302,11 @@ def get_sys_kv(key: str, default=None):
     return default
 
 
-def get_all_accounts_with_token(limit: int = 10000) -> list:
+def get_all_accounts_with_token(limit: int = 10000, offset: int = 0) -> list:
     try:
         with get_db_conn() as conn:
             c = get_cursor(conn)
-            execute_sql(c, "SELECT email, password, token_data FROM accounts ORDER BY id DESC LIMIT ?", (limit,))
+            execute_sql(c, "SELECT email, password, token_data FROM accounts ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
             rows = c.fetchall()
             return [{"email": r[0], "password": r[1], "token_data": r[2]} for r in rows]
     except Exception as e:
