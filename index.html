@@ -4420,6 +4420,19 @@
                                         </p>
                                     </div>
 
+                                    <div class="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner">
+                                        <label class="block text-slate-600 text-xs font-black uppercase tracking-wider mb-3 flex items-center">
+                                            <span>集群账号上传超时（秒）</span>
+                                            <span class="text-[10px] text-slate-400 font-normal ml-2 bg-white px-2 py-0.5 rounded border border-slate-200">控制节点向总控上传账号时的等待时长</span>
+                                        </label>
+                                        <div>
+                                            <input type="number" v-model.number="config.cluster_upload_timeout_sec" min="15" max="3600" class="w-full appearance-none bg-white border-2 border-slate-200 text-slate-800 font-bold rounded-xl py-3.5 px-4 focus:outline-none focus:ring-0 focus:border-slate-400 transition-colors shadow-sm text-base">
+                                        </div>
+                                        <p class="text-[11px] text-sky-700/80 mt-3 font-medium bg-sky-50 px-3 py-1.5 rounded-lg border border-sky-100 shadow-sm inline-block">
+                                            默认 15 秒，最小 15 秒，最大 3600 秒；输入过小会自动回到 15，超过 1 小时会自动限制为 3600。
+                                        </p>
+                                    </div>
+
                                     <div class="bg-amber-50/50 p-5 md:p-6 rounded-2xl border border-amber-200/60 shadow-inner">
                                         <label class="relative inline-flex items-center cursor-pointer group w-full">
                                             <input type="checkbox" v-model="config.disable_forced_takeover" class="sr-only peer">

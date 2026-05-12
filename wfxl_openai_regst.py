@@ -335,7 +335,8 @@ def _worker_push_thread():
                                         upload_req = urllib.request.Request(
                                             f"{master_url.rstrip('/')}/api/cluster/upload_accounts", data=req_body,
                                             headers={'Content-Type': 'application/json'})
-                                        with opener.open(upload_req, timeout=15) as _:
+                                        upload_timeout = getattr(core_engine.cfg, 'CLUSTER_UPLOAD_TIMEOUT_SEC', 15)
+                                        with opener.open(upload_req, timeout=upload_timeout) as _:
                                             print(f"[{core_engine.ts()}] [系统] 📤 已成功将 {len(local_accounts)} 个账号打包发往总控！")
                                     except Exception as e:
                                         print(f"[{core_engine.ts()}] [ERROR] ❌ 账号上传总控失败: {e}")

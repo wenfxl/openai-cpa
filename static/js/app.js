@@ -1385,6 +1385,9 @@ createApp({
                 if (!this.config.max_log_lines) {
                     this.config.max_log_lines = 500;
                 }
+                let clusterUploadTimeout = parseInt(this.config.cluster_upload_timeout_sec, 10);
+                if (Number.isNaN(clusterUploadTimeout)) clusterUploadTimeout = 15;
+                this.config.cluster_upload_timeout_sec = Math.max(15, Math.min(3600, clusterUploadTimeout));
                 if (!this.config.temporam) {
                     this.config.temporam = { cookie: '' };
                 }
@@ -1795,6 +1798,9 @@ createApp({
                 )];
                 this.config.mail_domain_fail_threshold = Math.max(0, parseInt(this.config.mail_domain_fail_threshold, 10) || 0);
                 this.config.mail_domain_fail_cooldown_sec = Math.max(0, parseInt(this.config.mail_domain_fail_cooldown_sec, 10) || 0);
+                let clusterUploadTimeout = parseInt(this.config.cluster_upload_timeout_sec, 10);
+                if (Number.isNaN(clusterUploadTimeout)) clusterUploadTimeout = 15;
+                this.config.cluster_upload_timeout_sec = Math.max(15, Math.min(3600, clusterUploadTimeout));
                 this.config.warp_proxy_list = this.warpListStr.split('\n').map(s => s.trim()).filter(s => s);
                 if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
                     this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
