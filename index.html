@@ -12,7 +12,6 @@
     <script src="/static/js/tailwind.min.js?v=20260511-12"></script>
     <script src="/static/js/vue.global.js?v=20260511-12"></script>
     <script src="/static/js/jszip.min.js?v=20260511-12"></script>
-
 </head>
 <body class="overflow-hidden bg-slate-50">
     <div id="app" v-cloak class="h-screen flex flex-col">
@@ -258,7 +257,22 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                             </button>
                             <div class="console-mode-chip bg-indigo-50/80 text-indigo-700 font-bold tracking-wide border border-indigo-100/80 truncate shadow-sm flex items-center">
-                                模式: {{ t(stats.mode) }} <span class="hidden sm:inline opacity-30 mx-2">|</span> <span class="hidden sm:inline text-slate-500">成功</span> <span class="font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span> <span class="hidden lg:inline opacity-30 mx-2">|</span> <span class="hidden lg:inline text-slate-500">总 {{stats.total}}</span>
+                                <span class="console-mode-main">模式: {{ t(stats.mode) }}</span>
+                                <span class="hidden sm:inline opacity-30 mx-2">|</span>
+                                <span class="hidden sm:inline text-slate-500">成功</span>
+                                <span class="hidden sm:inline font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span>
+                                <span class="sm:hidden console-mode-mobile-success">
+                                    <span class="opacity-40 mx-1">|</span>
+                                    <span class="text-slate-500">成功</span>
+                                    <span class="font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span>
+                                </span>
+                                <span class="sm:hidden console-mode-mobile-total">
+                                    <span class="opacity-40 mx-1">|</span>
+                                    <span class="text-slate-500">总</span>
+                                    <span class="font-black ml-1 text-indigo-600">{{stats.total}}</span>
+                                </span>
+                                <span class="hidden lg:inline opacity-30 mx-2">|</span>
+                                <span class="hidden lg:inline text-slate-500">总 {{stats.total}}</span>
                             </div>
                             <div class="console-progress-wrap">
                                 <div class="text-sky-500 font-black text-xs md:text-sm whitespace-nowrap">{{stats.progress_pct}}</div>
@@ -270,7 +284,7 @@
 
                         <div class="console-topbar-actions">
                             <div v-if="config" class="console-mode-switch shrink-0">
-                                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                <div class="flex items-center w-full">
                                     <div class="console-mode-switch-inner bg-slate-100 p-1 rounded-xl shadow-inner border border-slate-200 shrink-0">
                                         <button @click="changeRegMode('protocol')"
                                                 :class="['flex-1 py-1.5 md:py-2 px-2 md:px-3 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap',
@@ -290,24 +304,24 @@
                                 <button @click="toggleTheme" class="console-toolbar-btn font-bold border transition-all active:scale-95 shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm flex items-center justify-center">
                                     <span v-if="isDarkMode" class="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                                        <span class="hidden sm:inline">日间</span>
+                                        <span>日间</span>
                                     </span>
                                     <span v-else class="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                                        <span class="hidden sm:inline">护眼</span>
+                                        <span>护眼</span>
                                     </span>
                                 </button>
                                 <button @click="toggleLanguage" class="console-toolbar-btn font-bold border transition-all active:scale-95 shrink-0 bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1.5">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
-                                    <span class="hidden sm:inline">{{ targetLanguageLabel() }}</span><span class="sm:hidden">{{ currentLanguage === 'zh-TW' ? '简' : '繁' }}</span>
+                                    <span>{{ targetLanguageLabel() }}</span>
                                 </button>
                                 <span v-if="isRunning" class="console-status-pill flex items-center gap-1.5 md:gap-2 text-emerald-600 font-bold bg-white border border-slate-200 shadow-sm shrink-0">
                                     <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span>
-                                    <span class="hidden sm:inline">运行中</span><span class="sm:hidden">运行</span>
+                                    <span>运行中</span>
                                 </span>
                                 <span v-else class="console-status-pill flex items-center gap-1.5 md:gap-2 text-slate-500 font-bold bg-white border border-slate-200 shadow-sm shrink-0">
                                     <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-slate-400 rounded-full"></span>
-                                    <span class="hidden sm:inline">已停止</span><span class="sm:hidden">停止</span>
+                                    <span>已停止</span>
                                 </span>
                                 <button @click="toggleSystem"
                                         class="console-run-btn font-black text-white shadow-lg transition-all active:scale-95 shrink-0 flex items-center gap-1"
@@ -1624,6 +1638,15 @@
                                             </button>
                                         </div>
                                     </div>
+
+                                    <label class="relative inline-flex mt-4 p-4 bg-white rounded-xl border border-slate-200 items-center cursor-pointer w-full hover:bg-slate-50 transition-colors shadow-sm group">
+                                        <input type="checkbox" v-model="config.openai_cpa.use_original_password_flow" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-indigo-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <div class="ml-4 flex-1">
+                                            <span class="font-black text-slate-800 text-sm block tracking-wide">走原密码注册通道</span>
+                                            <p class="mt-1 mb-0 text-[11px] text-slate-500 font-medium">开启后将尝试强制走设置密码流程，而非无密码(OTP)登录流</p>
+                                        </div>
+                                    </label>
 
                                     <div class="text-xs text-indigo-800 font-bold bg-indigo-50 border border-indigo-200 p-4 rounded-xl leading-relaxed shadow-sm mt-4">
                                         <p class="flex items-center gap-1.5 text-sm"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> 减少每日CF 10w触发限制问题，邮件内存储存60秒，阅后既焚，项目重启后会自动清空。</p>

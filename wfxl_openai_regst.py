@@ -332,6 +332,7 @@ def _worker_push_thread():
                                         total_count = db_manager.get_accounts_page(page=1, page_size=1, status_filter="all").get("total", 0)
                                         total_batches = max(1, (total_count + batch_size - 1) // batch_size) if total_count else 0
                                         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+<<<<<<< feature/cluster-upload-timeout
                                         upload_timeout = getattr(core_engine.cfg, 'CLUSTER_UPLOAD_TIMEOUT_SEC', 15)
                                         while True:
                                             local_accounts = db_manager.get_all_accounts_with_token(batch_size, offset)
@@ -362,6 +363,14 @@ def _worker_push_thread():
                                                 return
                                             offset += batch_size
                                             batch_index += 1
+=======
+                                        upload_req = urllib.request.Request(
+                                            f"{master_url.rstrip('/')}/api/cluster/upload_accounts", data=req_body,
+                                            headers={'Content-Type': 'application/json'})
+                                        upload_timeout = getattr(core_engine.cfg, 'CLUSTER_UPLOAD_TIMEOUT_SEC', 15)
+                                        with opener.open(upload_req, timeout=upload_timeout) as _:
+                                            print(f"[{core_engine.ts()}] [系统] 📤 已成功将 {len(local_accounts)} 个账号打包发往总控！")
+>>>>>>> main
                                     except Exception as e:
                                         print(f"[{core_engine.ts()}] [ERROR] ❌ 账号上传总控失败: {e}")
                                 threading.Thread(target=_upload_task, daemon=True).start()

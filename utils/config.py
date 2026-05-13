@@ -178,7 +178,7 @@ def init_config():
                 print(f"[{ts()}] [WARNING] 自动补全配置文件写入失败: {e}")
 
     return user_config
-APP_VERSION = "v14.4.1"
+APP_VERSION = "v14.4.3"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False
@@ -377,6 +377,8 @@ GMAIL_OAUTH_SUFFIX_LEN_MIN: int = 8
 GMAIL_OAUTH_SUFFIX_LEN_MAX: int = 8
 DISABLE_FORCED_TAKEOVER: bool = True
 OPENAI_CPA_WEBHOOK_SECRET = ""
+USE_ORIGINAL_PASSWORD_FLOW: bool = False
+
 TEAM_MODE_ENABLE: bool = False
 def reset_sub2api_proxy_rotation():
     global _sub2api_proxy_rotation_index
@@ -477,7 +479,7 @@ def reload_all_configs(new_config_dict=None):
     global SMSBOWER_REUSE_PHONE, SMSBOWER_REUSE_MAX
     global HERO_SMS_REUSE_PHONE, HERO_SMS_REUSE_MAX
     global FIVESIM_REUSE_PHONE, FIVESIM_REUSE_MAX
-    global OPENAI_CPA_WEBHOOK_SECRET
+    global OPENAI_CPA_WEBHOOK_SECRET, USE_ORIGINAL_PASSWORD_FLOW
     global TEAM_MODE_ENABLE
     base_yaml_config = init_config()
 
@@ -684,6 +686,7 @@ def reload_all_configs(new_config_dict=None):
 
     _ocpa = _c.get("openai_cpa", {})
     OPENAI_CPA_WEBHOOK_SECRET = str(_ocpa.get("webhook_secret", "")).strip()
+    USE_ORIGINAL_PASSWORD_FLOW = bool(_ocpa.get("use_original_password_flow", False))
 
     DEFAULT_PROXY = format_docker_url(_c.get("default_proxy", ""))
 

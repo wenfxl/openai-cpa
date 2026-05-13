@@ -1565,6 +1565,7 @@ def get_oai_code(
         processed_mail_ids: set = None,
         pattern: str = OTP_CODE_PATTERN,
         max_attempts: int = 20,
+        ignore_code=None,
 ) -> str:
     """轮询各邮箱服务商收取 OpenAI 验证码，返回 6 位字符串或空串。"""
     max_attempts = getattr(cfg, 'OTP_POLL_MAX_ATTEMPTS', 20)
@@ -2308,15 +2309,21 @@ def get_oai_code(
                 if getattr(cfg, 'OPENAI_CPA_WEBHOOK_SECRET', ""):
                     try:
                         from utils.auth_core import code_pool
+                        import time
                         target_email = email.lower().strip()
-                        if target_email in code_pool:
-                            raw_text = code_pool.get(target_email, "")
-                            code = _extract_otp_code(raw_text)
-                            if code:
-                                code_pool.pop(target_email, None)
-                                print(
-                                    f"[{cfg.ts()}] [SUCCESS] 项目专属邮箱 OPENAI-CPA ({mask_email(target_email)}) 提取成功: {code}")
-                                return code
+                        for attempt in range(max_attempts):
+                            if target_email in code_pool:
+                                raw_text = code_pool.get(target_email, "")
+                                current_code = _extract_otp_code(raw_text)
+                                if current_code and current_code != ignore_code:
+                                    code_pool.pop(target_email, None)
+                                    print(f"[{cfg.ts()}] [SUCCESS] 项目专属邮箱 OPENAI-CPA ({mask_email(target_email)}) 提取成功: {current_code}")
+                                    return current_code
+                                elif current_code == ignore_code:
+                                    pass
+                            time.sleep(2)
+                        print(f"[{cfg.ts()}] [ERROR] 超时未获取到不同于 {ignore_code} 的新验证码")
+                        return ""
                     except ImportError:
                         print(f"[{cfg.ts()}] [ERROR] 无法导入内存池！")
             elif mode == "freemail":
