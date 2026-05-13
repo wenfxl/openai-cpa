@@ -148,6 +148,8 @@ def _fivesim_reuse_clear():
 
 def _fivesim_request(method: str, endpoint: str, proxies: Any, params: dict = None, json_data: dict = None) -> tuple[
     bool, str, Any]:
+    if not getattr(cfg, "FIVESIM_USE_PROXY", False):
+        proxies = None
     key = _fivesim_api_key()
     if not key: return False, "NO_KEY", None
 
