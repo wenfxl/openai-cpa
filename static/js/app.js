@@ -1317,6 +1317,7 @@ createApp({
                         this.config.smsbower.reuse_phone = normalizeBooleanLike(this.config.smsbower.reuse_phone, true);
                         this.config.smsbower.verify_on_register = normalizeBooleanLike(this.config.smsbower.verify_on_register, false);
                         if(this.config.smsbower.reuse_max === undefined) this.config.smsbower.reuse_max = 2;
+                        if(this.config.smsbower.use_proxy === undefined) this.config.smsbower.use_proxy = false;
                     }
 
                     if (!this.config.fivesim) {
@@ -1327,11 +1328,13 @@ createApp({
                         };
                     } else {
                         if(this.config.fivesim.reuse_max === undefined) this.config.fivesim.reuse_max = 2;
+                        if(this.config.fivesim.use_proxy === undefined) this.config.fivesim.use_proxy = false;
                     }
 
                     if (this.config.hero_sms) {
                         this.config.hero_sms.enabled = normalizeBooleanLike(this.config.hero_sms.enabled, false);
                         if(this.config.hero_sms.reuse_max === undefined) this.config.hero_sms.reuse_max = 2;
+                        if(this.config.hero_sms.use_proxy === undefined) this.config.hero_sms.use_proxy = false;
                     }
                 }
 
