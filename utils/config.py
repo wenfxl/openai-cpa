@@ -322,6 +322,7 @@ SMSBOWER_MAX_TRIES = 3
 SMSBOWER_POLL_TIMEOUT_SEC = 180
 SMSBOWER_MIN_PRICE = 0.05
 SMSBOWER_OPERATOR = ""
+SMSBOWER_USE_PROXY = False
 
 # 5SIM
 FIVESIM_ENABLED = False
@@ -470,7 +471,7 @@ def reload_all_configs(new_config_dict=None):
     global GMAIL_OAUTH_SUFFIX_MODE, GMAIL_OAUTH_SUFFIX_LEN_MIN, GMAIL_OAUTH_SUFFIX_LEN_MAX
     global DISABLE_FORCED_TAKEOVER
     global SMSBOWER_ENABLED, SMSBOWER_API_KEY, SMSBOWER_BASE_URL, SMSBOWER_COUNTRY, SMSBOWER_SERVICE
-    global SMSBOWER_AUTO_PICK_COUNTRY, SMSBOWER_VERIFY_ON_REGISTER, SMSBOWER_REUSE_PHONE, SMSBOWER_OPERATOR
+    global SMSBOWER_AUTO_PICK_COUNTRY, SMSBOWER_VERIFY_ON_REGISTER, SMSBOWER_REUSE_PHONE, SMSBOWER_OPERATOR, SMSBOWER_USE_PROXY
     global SMSBOWER_MAX_PRICE, SMSBOWER_MIN_BALANCE, SMSBOWER_MAX_TRIES, SMSBOWER_POLL_TIMEOUT_SEC, SMSBOWER_MIN_PRICE
     global FIVESIM_ENABLED, FIVESIM_API_KEY, FIVESIM_SERVICE, FIVESIM_COUNTRY
     global FIVESIM_AUTO_PICK_COUNTRY, FIVESIM_VERIFY_ON_REGISTER, FIVESIM_REUSE_PHONE
@@ -817,6 +818,7 @@ def reload_all_configs(new_config_dict=None):
     HERO_SMS_AUTO_PICK_COUNTRY = _hero_sms_conf.get("auto_pick_country", False)
     HERO_SMS_REUSE_PHONE = _hero_sms_conf.get("reuse_phone", True)
     HERO_SMS_VERIFY_ON_REGISTER = _hero_sms_conf.get("verify_on_register", False)
+    HERO_SMS_USE_PROXY = safe_bool(_hero_sms_conf.get("use_proxy", False), default=False)
     HERO_SMS_REUSE_MAX = safe_int(_hero_sms_conf.get("reuse_max", 2), default=2)
 
     try:
@@ -855,6 +857,7 @@ def reload_all_configs(new_config_dict=None):
     SMSBOWER_MIN_PRICE = safe_float(_smsbower.get("min_price", 0.05), default=0.05)
     SMSBOWER_REUSE_MAX = safe_int(_smsbower.get("reuse_max", 2), default=2)
     SMSBOWER_OPERATOR = str(_smsbower.get("operator", ) or "").strip()
+    SMSBOWER_USE_PROXY = safe_bool(_smsbower.get("use_proxy", False), default=False)
 
     _fivesim = _c.get("fivesim", {})
     FIVESIM_ENABLED = safe_bool(_fivesim.get("enabled", False), default=False)
@@ -863,6 +866,7 @@ def reload_all_configs(new_config_dict=None):
     FIVESIM_COUNTRY = str(_fivesim.get("country") or "any").strip()
     FIVESIM_AUTO_PICK_COUNTRY = safe_bool(_fivesim.get("auto_pick_country", True), default=True)
     FIVESIM_VERIFY_ON_REGISTER = safe_bool(_fivesim.get("verify_on_register", False), default=False)
+    FIVESIM_USE_PROXY = safe_bool(_fivesim.get("use_proxy", False), default=False)
     FIVESIM_REUSE_PHONE = safe_bool(_fivesim.get("reuse_phone", True), default=True)
     FIVESIM_MAX_PRICE = safe_float(_fivesim.get("max_price", 50.0), default=50.0)
     FIVESIM_MIN_PRICE = safe_float(_fivesim.get("min_price", 0.0), default=0.0)
