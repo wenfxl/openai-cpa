@@ -2523,6 +2523,11 @@
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
                                             <span class="ml-4 text-sm font-black text-rose-900 tracking-wide">账号创建时接码 <span class="text-xs font-medium text-rose-600/80 block mt-0.5">(注: 仅创建拦截有效,非拿OAuth时)</span></span>
                                         </label>
+                                        <label class="relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.hero_sms.use_proxy" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 HeroSMS，不经过代理)</span></span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -2685,6 +2690,11 @@
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
                                             <span class="ml-4 text-sm font-black text-rose-900 tracking-wide">账号创建时接码 <span class="text-xs font-medium text-rose-600/80 block mt-0.5">(注: 仅创建拦截有效)</span></span>
                                         </label>
+                                        <label class="relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.smsbower.use_proxy" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 SmsBower，不经过代理)</span></span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -2844,6 +2854,11 @@
                                             <input type="checkbox" v-model="config.fivesim.verify_on_register" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
                                             <span class="ml-4 text-sm font-black text-rose-900 tracking-wide">账号创建时接码 <span class="text-xs font-medium text-rose-600/80 block mt-0.5">(注: 仅创建拦截有效)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.fivesim.use_proxy" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 5SIM，不经过代理)</span></span>
                                         </label>
                                     </div>
                                 </div>
