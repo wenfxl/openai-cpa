@@ -360,6 +360,15 @@ TG_BOT: dict = {"enable": False, "token": "", "chat_id": ""}
 CLUSTER_NODE_NAME: str = ""
 CLUSTER_MASTER_URL: str = ""
 CLUSTER_SECRET: str = "wenfxl666"
+CLUSTER_UPLOAD_TIMEOUT_SEC: int = 15
+CLUSTER_SYNC_SHARED_DIR: str = "data/cluster_sync"
+CLUSTER_SYNC_IMPORT_POLL_SEC: int = 2
+CLUSTER_SYNC_MAX_RETRIES: int = 3
+CLUSTER_SYNC_PROGRESS_FLUSH_EVERY: int = 100
+CLUSTER_SYNC_STALE_FILE_MAX_AGE_HOURS: int = 12
+CLUSTER_SYNC_MAX_FILE_SIZE_MB: int = 20
+CLUSTER_SYNC_MAX_RECORDS: int = 100000
+CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET: bool = True
 TEMPORAM_COOKIE: str = ""
 FVIA_TOKEN: str = ""
 TMAILOR_CURRENT_TOKEN: str = ""
@@ -458,6 +467,8 @@ def reload_all_configs(new_config_dict=None):
     global DUCKMAIL_FORWARD_MODE, DUCKMAIL_FORWARD_EMAIL
     global DUCK_USE_PROXY
     global CLUSTER_NODE_NAME, CLUSTER_MASTER_URL, CLUSTER_SECRET, CLUSTER_UPLOAD_TIMEOUT_SEC
+    global CLUSTER_SYNC_SHARED_DIR, CLUSTER_SYNC_IMPORT_POLL_SEC, CLUSTER_SYNC_MAX_RETRIES, CLUSTER_SYNC_PROGRESS_FLUSH_EVERY
+    global CLUSTER_SYNC_STALE_FILE_MAX_AGE_HOURS, CLUSTER_SYNC_MAX_FILE_SIZE_MB, CLUSTER_SYNC_MAX_RECORDS, CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET
     global REG_MODE
     global LOCAL_MS_ENABLE_FISSION, LOCAL_MS_MASTER_EMAIL, LOCAL_MS_PASSWORD, LOCAL_MS_CLIENT_ID, LOCAL_MS_REFRESH_TOKEN, LOCAL_MS_POOL_FISSION
     global LOCAL_MS_SUFFIX_MODE, LOCAL_MS_SUFFIX_LEN_MIN, LOCAL_MS_SUFFIX_LEN_MAX
@@ -904,6 +915,14 @@ def reload_all_configs(new_config_dict=None):
     CLUSTER_MASTER_URL = str(_c.get("cluster_master_url", "")).strip().rstrip("/")
     CLUSTER_SECRET = str(_c.get("cluster_secret", "wenfxl666")).strip()
     CLUSTER_UPLOAD_TIMEOUT_SEC = min(3600, safe_int(_c.get("cluster_upload_timeout_sec", 15), 15, minimum=15))
+    CLUSTER_SYNC_SHARED_DIR = str(_c.get("cluster_sync_shared_dir", "data/cluster_sync") or "data/cluster_sync").strip() or "data/cluster_sync"
+    CLUSTER_SYNC_IMPORT_POLL_SEC = safe_int(_c.get("cluster_sync_import_poll_sec", 2), 2, minimum=1)
+    CLUSTER_SYNC_MAX_RETRIES = safe_int(_c.get("cluster_sync_max_retries", 3), 3, minimum=0)
+    CLUSTER_SYNC_PROGRESS_FLUSH_EVERY = safe_int(_c.get("cluster_sync_progress_flush_every", 100), 100, minimum=1)
+    CLUSTER_SYNC_STALE_FILE_MAX_AGE_HOURS = safe_int(_c.get("cluster_sync_stale_file_max_age_hours", 12), 12, minimum=1)
+    CLUSTER_SYNC_MAX_FILE_SIZE_MB = safe_int(_c.get("cluster_sync_max_file_size_mb", 20), 20, minimum=1)
+    CLUSTER_SYNC_MAX_RECORDS = safe_int(_c.get("cluster_sync_max_records", 100000), 100000, minimum=1)
+    CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET = safe_bool(_c.get("cluster_sync_require_custom_secret", True), default=True)
 
     REG_MODE = str(_c.get("reg_mode", "protocol")).strip().lower()
 

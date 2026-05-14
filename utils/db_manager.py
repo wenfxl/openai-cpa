@@ -104,14 +104,31 @@ def init_db():
             )
         ''')
         execute_sql(c, '''
-                    CREATE TABLE IF NOT EXISTS team_accounts (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        email TEXT,
-                        access_token TEXT,
-                        status INTEGER DEFAULT 1,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            CREATE TABLE IF NOT EXISTS cluster_sync_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT UNIQUE,
+                node_name TEXT,
+                file_path TEXT,
+                file_size INTEGER DEFAULT 0,
+                total_count INTEGER DEFAULT 0,
+                file_sha256 TEXT DEFAULT '',
+                success_count INTEGER DEFAULT 0,
+                fail_count INTEGER DEFAULT 0,
+                status TEXT,
+                error_message TEXT,
+                retry_count INTEGER DEFAULT 0,
+                max_retries INTEGER DEFAULT 3,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                started_at TIMESTAMP DEFAULT NULL,
+                finished_at TIMESTAMP DEFAULT NULL,
+                last_heartbeat TIMESTAMP DEFAULT NULL
             )
         ''')
+        try:
+            execute_sql(c, 'ALTER TABLE cluster_sync_tasks ADD COLUMN file_sha256 TEXT DEFAULT \'\';')
+        except Exception:
+            pass
+
         try:
             execute_sql(c, 'ALTER TABLE local_mailboxes ADD COLUMN fission_count INTEGER DEFAULT 0;')
             execute_sql(c, 'ALTER TABLE local_mailboxes ADD COLUMN retry_master INTEGER DEFAULT 0;')
@@ -306,12 +323,226 @@ def get_all_accounts_with_token(limit: int = 10000, offset: int = 0) -> list:
     try:
         with get_db_conn() as conn:
             c = get_cursor(conn)
-            execute_sql(c, "SELECT email, password, token_data FROM accounts ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+            if limit and int(limit) > 0:
+                execute_sql(c, "SELECT email, password, token_data FROM accounts ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+            else:
+                execute_sql(c, "SELECT email, password, token_data FROM accounts ORDER BY id DESC")
             rows = c.fetchall()
             return [{"email": r[0], "password": r[1], "token_data": r[2]} for r in rows]
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 提取完整账号数据失败: {e}")
         return []
+
+
+def create_cluster_sync_task(task_id: str, node_name: str, file_path: str, file_size: int, total_count: int, max_retries: int, file_sha256: str = "") -> bool:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "SELECT 1 FROM cluster_sync_tasks WHERE task_id = ?", (task_id,))
+            if c.fetchone():
+                return False
+            execute_sql(c, '''
+                INSERT INTO cluster_sync_tasks (
+                    task_id, node_name, file_path, file_size, total_count, file_sha256,
+                    success_count, fail_count, status, error_message,
+                    retry_count, max_retries, created_at, started_at,
+                    finished_at, last_heartbeat
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 'pending', '', 0, ?, CURRENT_TIMESTAMP, NULL, NULL, NULL)
+            ''', (task_id, node_name, file_path, file_size, total_count, str(file_sha256 or '').strip(), max_retries))
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 创建同步任务失败: {e}")
+        return False
+
+
+def get_cluster_sync_task(task_id: str) -> dict | None:
+    try:
+        with get_db_conn(as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            execute_sql(c, "SELECT * FROM cluster_sync_tasks WHERE task_id = ?", (task_id,))
+            row = c.fetchone()
+            return dict(row) if row else None
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取同步任务失败: {e}")
+        return None
+
+
+def list_cluster_sync_tasks(limit: int = 20, node_name: str = "", status: str = "") -> list:
+    try:
+        with get_db_conn(as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            conditions = []
+            params = []
+            if node_name:
+                conditions.append("node_name = ?")
+                params.append(node_name)
+            if status:
+                conditions.append("status = ?")
+                params.append(status)
+            where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+            execute_sql(c, f"SELECT * FROM cluster_sync_tasks{where_clause} ORDER BY id DESC LIMIT ?", tuple(params + [limit]))
+            rows = c.fetchall()
+            return [dict(row) for row in rows]
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取同步任务列表失败: {e}")
+        return []
+
+
+def claim_next_cluster_sync_task() -> dict | None:
+    try:
+        with get_db_conn(is_write=True, as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            execute_sql(c, "SELECT task_id FROM cluster_sync_tasks WHERE status IN ('pending', 'retry_wait') ORDER BY id ASC LIMIT 1")
+            row = c.fetchone()
+            if not row:
+                return None
+            task_id = row['task_id'] if DB_TYPE == 'mysql' else row[0]
+            execute_sql(c, '''
+                UPDATE cluster_sync_tasks
+                SET status = 'running', started_at = CURRENT_TIMESTAMP, finished_at = NULL,
+                    error_message = '', success_count = 0, fail_count = 0,
+                    last_heartbeat = CURRENT_TIMESTAMP
+                WHERE task_id = ?
+            ''', (task_id,))
+        return get_cluster_sync_task(task_id)
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 抢占同步任务失败: {e}")
+        return None
+
+
+def update_cluster_sync_task_progress(task_id: str, success_count: int, fail_count: int) -> bool:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, '''
+                UPDATE cluster_sync_tasks
+                SET success_count = ?, fail_count = ?, last_heartbeat = CURRENT_TIMESTAMP
+                WHERE task_id = ?
+            ''', (success_count, fail_count, task_id))
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 更新同步任务进度失败: {e}")
+        return False
+
+
+def finalize_cluster_sync_task(task_id: str, status: str, success_count: int, fail_count: int, error_message: str = "") -> bool:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, '''
+                UPDATE cluster_sync_tasks
+                SET status = ?, success_count = ?, fail_count = ?, error_message = ?,
+                    finished_at = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP
+                WHERE task_id = ?
+            ''', (status, success_count, fail_count, error_message, task_id))
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 完成同步任务失败: {e}")
+        return False
+
+
+def mark_cluster_sync_task_for_retry(task_id: str, error_message: str = "") -> bool:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, '''
+                UPDATE cluster_sync_tasks
+                SET status = 'retry_wait', retry_count = retry_count + 1,
+                    error_message = ?, finished_at = NULL, last_heartbeat = CURRENT_TIMESTAMP
+                WHERE task_id = ?
+            ''', (error_message, task_id))
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 标记同步任务重试失败: {e}")
+        return False
+
+
+def retry_cluster_sync_task(task_id: str) -> bool:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, '''
+                UPDATE cluster_sync_tasks
+                SET status = 'pending', success_count = 0, fail_count = 0,
+                    error_message = '', started_at = NULL, finished_at = NULL,
+                    last_heartbeat = NULL
+                WHERE task_id = ? AND status IN ('failed', 'partial_success')
+            ''', (task_id,))
+            return c.rowcount > 0
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 重试同步任务失败: {e}")
+        return False
+
+
+def get_cluster_sync_task_status(task_id: str) -> str | None:
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "SELECT status FROM cluster_sync_tasks WHERE task_id = ?", (task_id,))
+            row = c.fetchone()
+            if row:
+                return row[0]
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取同步任务状态失败: {e}")
+    return None
+
+
+def cancel_cluster_sync_task(task_id: str) -> bool:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "SELECT status FROM cluster_sync_tasks WHERE task_id = ?", (task_id,))
+            row = c.fetchone()
+            if not row:
+                return False
+            status = row[0]
+            if status == 'pending':
+                execute_sql(c, '''
+                    UPDATE cluster_sync_tasks
+                    SET status = 'cancelled', finished_at = CURRENT_TIMESTAMP, last_heartbeat = CURRENT_TIMESTAMP,
+                        error_message = '用户取消任务'
+                    WHERE task_id = ?
+                ''', (task_id,))
+                return c.rowcount > 0
+            if status == 'running':
+                execute_sql(c, '''
+                    UPDATE cluster_sync_tasks
+                    SET status = 'cancel_requested', last_heartbeat = CURRENT_TIMESTAMP,
+                        error_message = '用户请求取消'
+                    WHERE task_id = ?
+                ''', (task_id,))
+                return c.rowcount > 0
+            return False
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 取消同步任务失败: {e}")
+        return False
+
+
+def clear_cluster_sync_terminal_tasks() -> int:
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, '''
+                DELETE FROM cluster_sync_tasks
+                WHERE status IN ('success', 'partial_success', 'failed', 'cancelled')
+            ''')
+            return max(0, int(c.rowcount or 0))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 清理终态同步任务失败: {e}")
+        return 0
+
+
+def get_cluster_sync_retry_state(task_id: str) -> tuple[int, int]:
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "SELECT retry_count, max_retries FROM cluster_sync_tasks WHERE task_id = ?", (task_id,))
+            row = c.fetchone()
+            if row:
+                return int(row[0] or 0), int(row[1] or 0)
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取同步任务重试状态失败: {e}")
+    return 0, 0
 
 
 def import_local_mailboxes(mailboxes_data: list) -> int:

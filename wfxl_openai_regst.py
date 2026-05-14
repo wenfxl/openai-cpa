@@ -5,6 +5,8 @@ import time
 import asyncio
 import threading
 import atexit
+import secrets
+import hashlib
 import uvicorn
 import warnings
 import subprocess
@@ -36,6 +38,19 @@ def _get_env_int(name: str, default: int) -> int:
         return int(raw_value)
     except ValueError:
         return default
+
+
+def _is_default_cluster_secret(secret: str) -> bool:
+    return str(secret or "").strip() in {"", "wenfxl666"}
+
+
+def _calculate_file_sha256(file_path: str) -> str:
+    digest = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            if chunk:
+                digest.update(chunk)
+    return digest.hexdigest()
 
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0").strip() or "0.0.0.0"
@@ -127,13 +142,21 @@ def _get_process_command_line(pid_value: int) -> str:
         return ""
 
 
+def _is_same_console_instance(cmdline: str) -> bool:
+    if not cmdline or "wfxl_openai_regst.py" not in cmdline:
+        return False
+    normalized = cmdline.replace("\\", "/").lower()
+    current_script = os.path.abspath(__file__).replace("\\", "/").lower()
+    return current_script in normalized
+
+
 def _ensure_web_port_available(host: str, port: int) -> bool:
     listener_pid = _get_listener_pid(host, port)
     if listener_pid is None:
         return True
 
     cmdline = _get_process_command_line(listener_pid)
-    if "wfxl_openai_regst.py" in cmdline:
+    if _is_same_console_instance(cmdline):
         print(f"[{core_engine.ts()}] [系统] Web 控制台已经在运行中，无需重复启动。")
         print(f"[{core_engine.ts()}] [系统] 现有实例 PID: {listener_pid}")
         sys.__stdout__.write(f"[{core_engine.ts()}] [系统] 控制台地址：http://127.0.0.1:{port} \n")
@@ -157,7 +180,7 @@ def _find_existing_console_port(host: str, start_port: int, max_ports: int = WEB
                 continue
             checked_pids.add(listener_pid)
             cmdline = _get_process_command_line(listener_pid)
-            if "wfxl_openai_regst.py" in cmdline:
+            if _is_same_console_instance(cmdline):
                 return current_port
     return None
 
@@ -248,6 +271,13 @@ def _worker_push_thread():
                 await asyncio.sleep(0.5)
                 continue
 
+            if getattr(core_engine.cfg, 'CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET', True) and _is_default_cluster_secret(secret):
+                if last_role != "secret_invalid":
+                    print(f"[{core_engine.ts()}] [集群] ❌ 当前 cluster_secret 仍为默认值，请先修改集群秘钥后再连接主控。")
+                    last_role = "secret_invalid"
+                await asyncio.sleep(3)
+                continue
+
             if master_url.startswith("http"):
                 import urllib.parse
                 ws_url = master_url.replace("http://", "ws://").replace("https://", "wss://")
@@ -323,47 +353,71 @@ def _worker_push_thread():
                             elif cmd == "export_accounts":
                                 print(f"[{core_engine.ts()}] [系统] 收到总控提取指令，准备发货！")
                                 def _upload_task():
+                                    file_path = ""
                                     try:
                                         import urllib.request
-                                        batch_size = 10000
-                                        offset = 0
-                                        batch_index = 1
-                                        total_uploaded = 0
-                                        total_count = db_manager.get_accounts_page(page=1, page_size=1, status_filter="all").get("total", 0)
-                                        total_batches = max(1, (total_count + batch_size - 1) // batch_size) if total_count else 0
+                                        import urllib.parse
+                                        shared_dir = str(getattr(core_engine.cfg, 'CLUSTER_SYNC_SHARED_DIR', 'data/cluster_sync') or 'data/cluster_sync').strip()
+                                        shared_root = shared_dir if os.path.isabs(shared_dir) else os.path.join(BASE_DIR, shared_dir)
+                                        node_dir = os.path.join(shared_root, node_name)
+                                        os.makedirs(node_dir, exist_ok=True)
+                                        secret_value = str(secret or "").strip()
+                                        if getattr(core_engine.cfg, 'CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET', True) and _is_default_cluster_secret(secret_value):
+                                            raise RuntimeError("请先配置自定义 cluster_secret 后再发起同步")
+                                        local_accounts = db_manager.get_all_accounts_with_token(0, 0)
+                                        if not local_accounts:
+                                            print(f"[{core_engine.ts()}] [系统] ⚠️ 本地库存为空，无账号可提取。")
+                                            return
+                                        max_records = max(1, int(getattr(core_engine.cfg, 'CLUSTER_SYNC_MAX_RECORDS', 100000) or 100000))
+                                        if len(local_accounts) > max_records:
+                                            raise RuntimeError(f"同步记录数量超限，当前 {len(local_accounts)}，上限 {max_records}")
+                                        task_id = f"{node_name}-{int(time.time())}-{secrets.token_hex(4)}"
+                                        file_path = os.path.join(node_dir, f"{task_id}.jsonl")
+                                        with open(file_path, 'w', encoding='utf-8') as handle:
+                                            for acc in local_accounts:
+                                                handle.write(json.dumps({
+                                                    'email': acc.get('email'),
+                                                    'password': acc.get('password'),
+                                                    'token_data': acc.get('token_data'),
+                                                }, ensure_ascii=False) + "\n")
+                                        file_size = os.path.getsize(file_path)
+                                        max_file_size = max(1, int(getattr(core_engine.cfg, 'CLUSTER_SYNC_MAX_FILE_SIZE_MB', 20) or 20)) * 1024 * 1024
+                                        if file_size > max_file_size:
+                                            raise RuntimeError(f"同步文件大小超限，当前 {file_size} 字节，上限 {max_file_size} 字节")
+                                        file_sha256 = _calculate_file_sha256(file_path)
+                                        print(f"[{core_engine.ts()}] [系统] 📦 账号文件已导出: {file_path}，共 {len(local_accounts)} 个账号。")
+                                        req_data = {
+                                            'node_name': node_name,
+                                            'secret': secret_value,
+                                            'task_id': task_id,
+                                            'file_path': file_path,
+                                            'file_size': file_size,
+                                            'total_count': len(local_accounts),
+                                            'file_sha256': file_sha256,
+                                        }
+                                        req_body = json.dumps(req_data).encode('utf-8')
                                         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
                                         upload_timeout = getattr(core_engine.cfg, 'CLUSTER_UPLOAD_TIMEOUT_SEC', 15)
-                                        while True:
-                                            local_accounts = db_manager.get_all_accounts_with_token(batch_size, offset)
-                                            if not local_accounts:
-                                                if total_uploaded == 0:
-                                                    print(f"[{core_engine.ts()}] [系统] ⚠️ 本地库存为空，无账号可提取。")
-                                                else:
-                                                    print(f"[{core_engine.ts()}] [系统] ✅ 账号批量上传完成，共 {total_batches} 批，合计 {total_uploaded} 个账号。")
-                                                return
-                                            print(f"[{core_engine.ts()}] [系统] 📦 开始上传第 {batch_index}/{total_batches} 批账号，本批 {len(local_accounts)} 个。")
-                                            req_data = {
-                                                "node_name": node_name,
-                                                "secret": secret,
-                                                "accounts": local_accounts,
-                                                "batch_index": batch_index,
-                                                "total_batches": total_batches,
-                                                "total_uploaded": total_uploaded + len(local_accounts),
-                                            }
-                                            req_body = json.dumps(req_data).encode('utf-8')
-                                            upload_req = urllib.request.Request(
-                                                f"{master_url.rstrip('/')}/api/cluster/upload_accounts", data=req_body,
-                                                headers={'Content-Type': 'application/json'})
-                                            with opener.open(upload_req, timeout=upload_timeout) as _:
-                                                total_uploaded += len(local_accounts)
-                                                print(f"[{core_engine.ts()}] [系统] 📤 第 {batch_index}/{total_batches} 批账号上传完成，本批 {len(local_accounts)} 个，累计 {total_uploaded} 个。")
-                                            if batch_index >= total_batches:
-                                                print(f"[{core_engine.ts()}] [系统] ✅ 账号批量上传完成，共 {total_batches} 批，合计 {total_uploaded} 个账号。")
-                                                return
-                                            offset += batch_size
-                                            batch_index += 1
+                                        upload_req = urllib.request.Request(
+                                            f"{master_url.rstrip('/')}/api/cluster/sync_tasks", data=req_body,
+                                            headers={'Content-Type': 'application/json'})
+                                        with opener.open(upload_req, timeout=upload_timeout) as resp:
+                                            resp_body = resp.read().decode('utf-8', errors='replace').strip()
+                                        try:
+                                            resp_json = json.loads(resp_body) if resp_body else {}
+                                        except Exception:
+                                            raise RuntimeError(f"主控返回了非 JSON 响应: {resp_body[:200]}")
+                                        if resp_json.get('status') != 'success':
+                                            raise RuntimeError(resp_json.get('message') or '主控未确认同步任务')
+                                        print(f"[{core_engine.ts()}] [系统] 📤 同步任务 {task_id} 已提交主控，等待异步导入。")
                                     except Exception as e:
-                                        print(f"[{core_engine.ts()}] [ERROR] ❌ 账号上传总控失败: {e}")
+                                        if file_path:
+                                            try:
+                                                if os.path.exists(file_path):
+                                                    os.remove(file_path)
+                                            except Exception:
+                                                pass
+                                        print(f"[{core_engine.ts()}] [ERROR] ❌ 账号同步任务提交失败: {e}")
                                 threading.Thread(target=_upload_task, daemon=True).start()
 
                             await asyncio.sleep(push_interval if is_running else 3.0)
