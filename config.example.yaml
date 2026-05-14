@@ -51,6 +51,7 @@ admin_auth: ""
 # [项目专属内存池邮箱配置]
 openai_cpa:
   webhook_secret: "wenfxl_secret_key"
+  use_original_password_flow: false
 
 # [模式 "imap" 专属配置] (CF Catch-all 转发接收端)
 imap:
