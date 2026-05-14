@@ -15,6 +15,7 @@ import yaml
 from curl_cffi import requests as cffi_requests
 
 import utils.config as cfg
+from utils.config import format_docker_url
 from utils.clash_group_utils import resolve_group_name
 BASE_PATH = os.path.join(os.getcwd(), "data", "mihomo-pool")
 os.makedirs(BASE_PATH, exist_ok=True)
@@ -372,7 +373,7 @@ def _get_docker_controller(target: str) -> Tuple[Optional[str], str]:
     host_port = port_bind[0].get("HostPort")
     if not host_port:
         return None, secret
-    return f"http://127.0.0.1:{host_port}", secret
+    return format_docker_url(f"http://127.0.0.1:{host_port}"), secret
 
 
 def _get_controller_endpoint(target: str = "all") -> Tuple[Optional[str], str]:
