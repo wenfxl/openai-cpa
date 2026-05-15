@@ -319,6 +319,7 @@ hero_sms:
   max_tries: 3
   poll_timeout_sec: 120
   reuse_max: 2
+  use_proxy: false
 
 smsbower:
   enabled: false
@@ -335,6 +336,7 @@ smsbower:
   poll_timeout_sec: 120
   reuse_max: 2
   operator: ""
+  use_proxy: false
 
 fivesim:
   enabled: false
@@ -351,6 +353,7 @@ fivesim:
   poll_timeout_sec: 180
   reuse_max: 2
   operator: ""
+  use_proxy: false
 
 # 常规量产模式专属配置
 normal_mode:

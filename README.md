@@ -1,4 +1,4 @@
-﻿﻿# Wenfxl Codex Manager Web Console
+﻿# Wenfxl Codex Manager Web Console
 [![Telegram Group](https://img.shields.io/badge/Telegram-Community_Chat-0088cc?style=for-the-badge&logo=telegram)](https://t.me/+srBiKuPvn4A3YmNl)
 [![License](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey?style=for-the-badge)](https://creativecommons.org/licenses/by-nc/4.0/legalcode)
 
@@ -52,8 +52,9 @@ pip install -r requirements.txt
 ## ☕ Buy me a coffee
 
 If you find this tool helpful or if it has saved you time, consider buying me a coffee! Your support is a great motivation for continuous maintenance and updates.
-- ⚡ **Afdian:** [https://ifdian.net/a/wenfxl](https://ifdian.net/a/wenfxl)
-- 🪙 **USDT (TRX/Tron/TRC20):** `TLMNmyfUajfGSBhUfJ1orqxpvv7BWFnDqN`
+- **Afdian:** [https://ifdian.net/a/wenfxl](https://ifdian.net/a/wenfxl)
+- **USDT (TRX/Tron/TRC20):** `TLMNmyfUajfGSBhUfJ1orqxpvv7BWFnDqN`
+- **USDT (BSC/BNB Smart Chain/BEP20):** `0x2da26c472097f269217390e44ff00c7d087699a6`
 
 ## Web Console Preview
 

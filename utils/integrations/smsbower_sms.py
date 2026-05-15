@@ -261,6 +261,8 @@ def _smsbower_country_score(country_id: int, *, cost: float, count: int, preferr
 def _smsbower_request(action: str, *, proxies: Any, params: Optional[Dict[str, Any]] = None, timeout: int = 25) -> \
 tuple[bool, str, Any]:
     key = _smsbower_api_key()
+    if not getattr(cfg, "SMSBOWER_USE_PROXY", False):
+        proxies = None
     if not key: return False, "NO_KEY", None
     query: Dict[str, Any] = {"action": str(action or "").strip(), "api_key": key}
     if params:

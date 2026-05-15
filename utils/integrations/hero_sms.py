@@ -610,6 +610,8 @@ def _hero_sms_request(
         params: Optional[Dict[str, Any]] = None,
         timeout: int = 25,
 ) -> tuple[bool, str, Any]:
+    if not getattr(cfg, "HERO_SMS_USE_PROXY", False):
+        proxies = None
     key = _hero_sms_api_key()
     if not key:
         return False, "NO_KEY", None

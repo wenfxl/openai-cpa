@@ -345,6 +345,7 @@ def run(
                             print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）OTP 初始发送请求异常: {e}")
 
                         code = ""
+                        code_resp = None
                         for resend_attempt in range(max(1, cfg.MAX_OTP_RETRIES)):
                             if getattr(cfg, 'GLOBAL_STOP', False): return None, None
                             if resend_attempt > 0:
@@ -381,36 +382,40 @@ def run(
                             else:
                                 code = get_oai_code(email, jwt=email_jwt, proxies=proxies,
                                                 processed_mail_ids=processed_mails)
-                            if code:
+
+                            if not code:
+                                print(f"[{cfg.ts()}] [WARNING] {mask_email(email)} 本轮未拉取到验证码，准备重发...")
+                                continue
+
+                            sentinel_otp = generate_payload(did=did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
+                                                            impersonate="chrome110", ctx=reg_ctx)
+                            val_headers = _oai_headers(did, {
+                                "Referer": "https://auth.openai.com/email-verification",
+                                "content-type": "application/json",
+                            })
+                            if sentinel_otp:
+                                val_headers["openai-sentinel-token"] = sentinel_otp
+
+                            code_resp = _post_with_retry(
+                                s_reg,
+                                "https://auth.openai.com/api/accounts/email-otp/validate",
+                                headers=val_headers,
+                                json_body={"code": code}, proxies=proxies,
+                            )
+
+                            if code_resp.status_code != 200:
+                                print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）验证码校验未通过: {code_resp.status_code}，准备重新请求...")
+                                code = ""
+                                continue
+                            elif code_resp.status_code == 200:
                                 break
 
-                        if not code:
-                            print(f"[{cfg.ts()}] [ERROR] 重试次数上限，丢弃当前 {mask_email(email)} 邮箱。")
+                        if not code or code_resp is None or code_resp.status_code != 200:
+                            print(f"[{cfg.ts()}] [ERROR] 重试次数达上限，或验证码最终校验未通过，丢弃当前 {mask_email(email)} 邮箱。")
                             if run_ctx is not None:
                                 run_ctx['discarded_email_failure'] = True
                                 run_ctx['mail_domain_failure_reason'] = 'discarded_email'
                             return None, None
-
-                        sentinel_otp = generate_payload(did=did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
-                                                        impersonate="chrome110", ctx=reg_ctx)
-                        val_headers = _oai_headers(did, {
-                            "Referer": "https://auth.openai.com/email-verification",
-                            "content-type": "application/json",
-                        })
-                        if sentinel_otp:
-                            val_headers["openai-sentinel-token"] = sentinel_otp
-
-                        code_resp = _post_with_retry(
-                            s_reg,
-                            "https://auth.openai.com/api/accounts/email-otp/validate",
-                            headers=val_headers,
-                            json_body={"code": code}, proxies=proxies,
-                        )
-
-                        if code_resp.status_code != 200:
-                            print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）验证码校验未通过: {code_resp.status_code}")
-                            return None, None
-
                         code_account_json = code_resp.json()
                         code_account_url = code_account_json.get("continue_url", "")
 

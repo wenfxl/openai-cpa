@@ -2309,7 +2309,6 @@ def get_oai_code(
                 if getattr(cfg, 'OPENAI_CPA_WEBHOOK_SECRET', ""):
                     try:
                         from utils.auth_core import code_pool
-                        import time
                         target_email = email.lower().strip()
                         for attempt in range(max_attempts):
                             if target_email in code_pool:
