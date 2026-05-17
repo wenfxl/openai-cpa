@@ -385,6 +385,7 @@ database:
 
 team_mode:
   enable: false
+  overspeed: false
 
 # WEB端密码
 web_password: admin

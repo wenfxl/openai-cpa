@@ -3673,8 +3673,21 @@
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
                                     <h3 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></span> 批量导入 Team Token</h3>
                                     <p class="text-xs text-slate-500 mb-3 font-bold bg-slate-50 p-2 rounded border border-slate-100">
-                                        支持格式 (每行一个完整的 JWT Token): <br>
-                                        <code class="text-sky-600">eyJhbGciOiJSUzI1...</code>
+                                        <span class="block mb-2 text-slate-800 font-black">支持以下两种导入格式 (每行一个)：</span>
+
+                                        <span class="block text-emerald-600 mb-1">▶ 格式一：access_token</span>
+                                        <code class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 block mb-3 break-all">eyJhbGciOiJSUzI1NiIs...</code>
+
+                                        <span class="block text-sky-600 mb-1">▶ 格式二：access_token + Cookie (开启超速妙，用 ---- 分隔)</span>
+                                        <code class="text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 block mb-3 break-all">access_token----Cookie...</code>
+                                        <span class="text-rose-600 font-black flex items-center gap-1 mt-2 border-t border-slate-200/60 pt-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            超速妙必读：获取完整 Cookie 教程-超速模式最大允许4线程，正常账号不要开启该选项，无法邀请人的号才开启超速妙
+                                        </span>
+                                        <span class="block mt-1">1. 请前往 <a href="https://admin.openai.com/" target="_blank" class="text-blue-600 hover:text-blue-700 hover:underline font-bold transition-colors">https://admin.openai.com/</a> 完成登录。</span>
+                                        <span class="block mt-1">2. 按 <kbd class="bg-slate-200 px-1 rounded shadow-sm">F12</kbd> 打开开发者工具，切换到 <b>Network (网络)</b> 面板。</span>
+                                        <span class="block mt-1">3. 刷新页面，找到 <code>overview/tokens</code> 的接口请求。</span>
+                                        <span class="block mt-1">4. 在 <b>Request Headers (请求标头)</b> 中找到 <b>Cookie</b> 字段，复制后面那一长串完整内容。</span>
                                     </p>
                                     <textarea v-model="importTeamText" class="w-full h-64 appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-xs leading-relaxed placeholder:text-slate-300 mb-4" placeholder="在此粘贴 access_token 数据..."></textarea>
                                     <div class="flex justify-end gap-3">
@@ -3700,7 +3713,11 @@
                                         <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner group-hover:shadow-md"></div>
                                         <span class="ml-2 text-xs font-black text-emerald-700 tracking-wide">启用团队配合注册</span>
                                     </label>
-
+                                    <label v-if="config && config.team_mode" class="relative inline-flex bg-white px-3 py-1.5 rounded-xl cursor-pointer hover:bg-rose-50 transition-colors shadow-sm border border-rose-200 items-center group mr-2">
+                                        <input type="checkbox" :checked="config.team_mode.overspeed" @change="handleOverspeedToggle" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner group-hover:shadow-md"></div>
+                                        <span class="ml-2 text-xs font-black text-rose-700 tracking-wide">超速妙</span>
+                                    </label>
                                     <button @click="showImportTeamModal = true" class="text-sm bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-100 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 导入数据
                                     </button>
@@ -3719,7 +3736,7 @@
                                         <tr>
                                             <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-16">#</th>
                                             <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">解析邮箱</th>
-                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Access Token</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Access Token & Cookies</th>
                                             <th class="px-5 md:px-8 py-4 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">操作</th>
                                         </tr>
                                     </thead>
@@ -3732,8 +3749,9 @@
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
                                                 {{ showTeamsPlaintext ? team.email : maskEmail(team.email) }}
                                             </td>
-                                            <td class="px-5 md:px-8 py-4 text-xs font-mono text-slate-500 truncate max-w-[200px]" :title="team.access_token">
-                                                {{ showTeamsPlaintext ? team.access_token : 'eyJhbGciOi...' }}
+                                            <td class="px-5 md:px-8 py-4 text-xs font-mono text-slate-500 max-w-[240px]">
+                                                <div class="truncate font-bold text-slate-600" :title="team.access_token">{{ showTeamsPlaintext ? team.access_token : 'eyJhbGciOi...' }}</div>
+                                                <div v-if="team.cookies" class="truncate text-[10px] text-slate-400 mt-1" :title="team.cookies">Cookie: {{ showTeamsPlaintext ? team.cookies : '******' }}</div>
                                             </td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-center">
                                                 <button @click="deleteSingleTeam(team.id)" class="inline-flex items-center px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-sm active:scale-95 gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16"></path></svg> 删除</button>

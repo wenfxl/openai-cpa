@@ -574,7 +574,7 @@ def run(
                     if getattr(cfg, 'TEAM_MODE_ENABLE', False):
                         print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）即将进入团队静默流程")
                         time.sleep(random.uniform(0.1, 0.5))
-                        is_alloc, sys_handle_a, sys_handle_b = sys_node_allocate(s_reg, did, data, proxies)
+                        is_alloc, sys_handle_a, sys_handle_b, sys_handle_c = sys_node_allocate(s_reg, did, data, proxies)
                 time.sleep(wait_time)
 
                 workspace_hint_url = ""
@@ -656,7 +656,7 @@ def run(
                         if getattr(cfg, 'TEAM_MODE_ENABLE', False):
                             try:
                                 time.sleep(random.uniform(0.1, 0.5))
-                                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, proxies)
+                                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
                             except:
                                 pass
                         return token_resp, password
@@ -931,7 +931,7 @@ def run(
                             if getattr(cfg, 'TEAM_MODE_ENABLE', False):
                                 try:
                                     time.sleep(random.uniform(0.1, 0.5))
-                                    sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, proxies)
+                                    sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
                                 except:
                                     pass
                             return token_resp, password
@@ -970,7 +970,7 @@ def run(
                                 if getattr(cfg, 'TEAM_MODE_ENABLE', False):
                                     try:
                                         time.sleep(random.uniform(0.1, 0.5))
-                                        sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, proxies)
+                                        sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
                                     except:
                                         pass
                                 continue
@@ -1020,7 +1020,7 @@ def run(
                     if getattr(cfg, 'TEAM_MODE_ENABLE', False):
                         try:
                             time.sleep(random.uniform(0.1, 0.5))
-                            sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, proxies)
+                            sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
                         except:
                             pass
                     if run_ctx is not None: run_ctx['phone_verify'] = True
@@ -1050,7 +1050,7 @@ def run(
         if getattr(cfg, 'TEAM_MODE_ENABLE', False):
             try:
                 time.sleep(random.uniform(0.1, 0.5))
-                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, proxies)
+                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
             except Exception:
                 pass
         if s_reg is not None:

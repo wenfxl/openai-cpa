@@ -309,7 +309,7 @@ def _cleanup_stale_cluster_sync_files() -> None:
         print(f"[{core_engine.ts()}] [WARNING] 扫描超时同步文件失败: {e}")
 
 
-def _verify_cluster_sync_file(file_path: str, expected_size: int = 0, expected_sha256: str = "", expected_total_count: int = 0) -> tuple[bool, str, Path | None]:
+def _verify_cluster_sync_file(file_path: str, expected_size: int = 0, expected_sha256: str = "", expected_total_count: int = 0) -> tuple[bool, str, Optional[Path]]:
     if not _is_cluster_sync_path_allowed(file_path):
         return False, "同步文件路径不在共享目录内", None
     try:
@@ -367,7 +367,7 @@ def _is_cluster_sync_path_allowed(file_path: str) -> bool:
         return False
 
 
-def _serialize_cluster_sync_task(task: dict | None) -> dict | None:
+def _serialize_cluster_sync_task(task: Optional[dict]) -> Optional[dict]:
     if not task:
         return None
     success_count = int(task.get("success_count") or 0)

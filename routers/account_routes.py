@@ -816,11 +816,15 @@ async def import_team_accounts(req: ImportTeamReq, token: str = Depends(verify_t
     for line in lines:
         acc_token = line.strip()
         if not acc_token or len(acc_token) < 50: continue
+        parts = line.split("----")
+        acc_token = parts[0].strip()
+        cookies = parts[1].strip() if len(parts) > 1 else ""
         jwt_data = email_jwt(acc_token)
         real_email = jwt_data.get("email", "") if isinstance(jwt_data, dict) else ""
         parsed_teams.append({
             "email": real_email if real_email else "未知邮箱(解析失败)",
             "access_token": acc_token,
+            "cookies": cookies,
             "status": 1
         })
     if not parsed_teams: return {"status": "error", "message": "未能识别出有效 Token"}

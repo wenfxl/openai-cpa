@@ -1387,7 +1387,11 @@ createApp({
                     }
                 }
                 if (!this.config.team_mode) {
-                    this.config.team_mode = { enable: false };
+                    this.config.team_mode = { enable: false, overspeed: false };
+                } else {
+                    if (this.config.team_mode.overspeed === undefined) {
+                        this.config.team_mode.overspeed = false;
+                    }
                 }
                 if (!this.config.fvia) {
                     this.config.fvia = { token: '' };
@@ -4607,6 +4611,24 @@ async exportSub2Api() {
             } catch (e) {
                 this.showToast('清空异常', 'error');
             }
+        },
+        async handleOverspeedToggle(event) {
+            const isTurningOn = event.target.checked;
+            if (isTurningOn) {
+                const hasCookie = this.teamAccounts && this.teamAccounts.some(team => team.cookies && team.cookies.trim() !== '');
+
+                if (!hasCookie) {
+                    this.showToast('⛔ 开启失败：当前账号库中未检测到完整的 Cookie 数据！', 'error');
+                    this.showToast('请先按 access_token----cookies 格式导入数据。', 'warning');
+                    event.target.checked = false;
+                    this.config.team_mode.overspeed = false;
+                    return;
+                }
+            }
+            this.config.team_mode.overspeed = isTurningOn;
+            await this.saveConfig();
+            this.showToast(`🏎️ 超速妙模式已${isTurningOn ? '开启' : '关闭'}`, 'success');
+            this.showToast(`超速妙模式最大4线程，线程请不要设置过高，正常账号请不要开启该功能`, 'success');
         },
         async uploadLicenseFile() {
             const fileInput = document.getElementById('licenseFileInput');
