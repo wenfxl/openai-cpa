@@ -242,11 +242,11 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
             if status_filter == "active":
                 conditions.append("is_active = 1 AND push_platform IS NOT NULL AND push_platform != ''")
             elif status_filter == "disabled":
-                conditions.append("is_active = 0 AND push_platform IS NOT NULL AND push_platform != ''")
+                conditions.append("is_active = 0")
             elif status_filter == "unpushed":
-                conditions.append("(push_platform IS NULL OR push_platform = '')")
+                conditions.append("(push_platform IS NULL OR push_platform = '') AND is_active = 1")
             elif status_filter == "pushed":
-                conditions.append("(push_platform IS NOT NULL AND push_platform != '')")
+                conditions.append("(push_platform IS NOT NULL AND push_platform != '') AND is_active = 1")
             elif status_filter == "credential":
                 conditions.append("token_data LIKE '%\"access_token\"%' AND token_data NOT LIKE '%\"image2api\"%'")
             elif status_filter == "image2api":
@@ -841,9 +841,9 @@ def get_inventory_stats() -> dict:
                             SELECT 
                                 COUNT(1) as total,
                                 SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 1 THEN 1 ELSE 0 END) as active_count,
-                                SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 0 THEN 1 ELSE 0 END) as disabled_count,
-                                SUM(CASE WHEN push_platform IS NULL OR push_platform = '' THEN 1 ELSE 0 END) as unpushed_count,
-                                SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') THEN 1 ELSE 0 END) as pushed_count,
+                                SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as disabled_count,
+                                SUM(CASE WHEN (push_platform IS NULL OR push_platform = '') AND is_active = 1 THEN 1 ELSE 0 END) as unpushed_count,
+                                SUM(CASE WHEN (push_platform IS NOT NULL AND push_platform != '') AND is_active = 1 THEN 1 ELSE 0 END) as pushed_count,
                                 SUM(CASE WHEN push_platform LIKE ? THEN 1 ELSE 0 END) as cpa_total,
                                 SUM(CASE WHEN push_platform LIKE ? AND is_active = 1 THEN 1 ELSE 0 END) as cpa_active,
                                 SUM(CASE WHEN push_platform LIKE ? AND is_active = 0 THEN 1 ELSE 0 END) as cpa_disabled,

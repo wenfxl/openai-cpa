@@ -445,7 +445,7 @@ def process_account_worker(i: int, total: int, item: dict, args: Any) -> bool:
                 print(f"[{ts()}] [INFO] 测活: {mask_email(name)} 额度尚未恢复（{reason}），继续保持禁用状态。")
                 return False
             print(f"[{ts()}] [INFO] 测活: {mask_email(name)} 额度已恢复且有效，准备启用...")
-            ok = set_cpa_auth_file_status(cfg.CPA_API_URL, cfg.CPA_API_TOKEN, name, disabled=False)
+            ok = set_cpa_auth_file_status(cfg.CPA_API_URL, cfg.CPA_API_TOKEN, email, disabled=False)
             print(
                 f"[{ts()}] [{'SUCCESS' if ok else 'ERROR'}] 凭证 {mask_email(name)} "
                 f"{'已成功启用！' if ok else '启用失败。'}"
@@ -469,7 +469,7 @@ def process_account_worker(i: int, total: int, item: dict, args: Any) -> bool:
                 params={"name": name},
             )
             try:
-                db_manager.remove_account_push_platform(name, "CPA", exact_match=True)
+                db_manager.remove_account_push_platform(email, "CPA", exact_match=True)
                 print(f"[{ts()}] [系统] 已同步清除 {mask_email(name)} 本地的 CPA 平台推送状态")
             except Exception:
                 pass
@@ -558,6 +558,7 @@ def process_account_worker(i: int, total: int, item: dict, args: Any) -> bool:
 
 def _handle_dead_account(name: str, is_disabled: bool) -> None:
     """统一处理彻底死亡账号（删除或禁用）。"""
+    clean_email = name.replace(".json", "").strip()
     if cfg.REMOVE_DEAD_ACCOUNTS:
         print(f"[{ts()}] [WARNING] 凭证 {mask_email(name)} 彻底死亡，执行物理剔除...")
         requests.delete(
@@ -566,7 +567,7 @@ def _handle_dead_account(name: str, is_disabled: bool) -> None:
             params={"name": name},
         )
         try:
-            db_manager.remove_account_push_platform(name, "CPA", exact_match=True)
+            db_manager.remove_account_push_platform(clean_email, "CPA", exact_match=True)
             print(f"[{ts()}] [系统] 已同步清除 {mask_email(name)} 本地的 CPA 平台推送状态")
         except Exception:
             pass

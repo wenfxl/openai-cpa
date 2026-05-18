@@ -841,20 +841,21 @@
                                                         <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093v1.5M12 18h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span> 未知
                                                     </span>
 
-                                                    <div v-if="!acc.push_platform" class="px-2 py-1 text-[10px] font-bold text-slate-400 bg-slate-100/50 rounded border border-slate-200 flex items-center gap-1">
-                                                        <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> 未推送
-                                                    </div>
-                                                    <template v-else>
-                                                        <div v-if="acc.is_active === 1" class="px-2 py-1 text-[10px] font-black text-emerald-600 bg-emerald-50 rounded border border-emerald-200 shadow-sm flex items-center gap-1">
-                                                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_#10b981] animate-pulse"></span> 活跃中
-                                                        </div>
-                                                        <div v-else-if="acc.is_active === 0" class="px-2 py-1 text-[10px] font-black text-rose-600 bg-rose-50 rounded border border-rose-200 shadow-sm flex items-center gap-1">
-                                                            <span class="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_5px_#f43f5e]"></span> 已禁用
-                                                        </div>
-                                                        <div v-else class="px-2 py-1 text-[10px] font-bold text-slate-400 bg-slate-50 rounded border border-slate-200 shadow-sm flex items-center gap-1">
-                                                            <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> 待检查
-                                                        </div>
-                                                    </template>
+                                                    <div v-if="acc.is_active === 0" class="px-2 py-1 text-[10px] font-black text-rose-600 bg-rose-50 rounded border border-rose-200 shadow-sm flex items-center gap-1">
+    <span class="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_5px_#f43f5e]"></span> 已禁用
+</div>
+
+<template v-else>
+    <div v-if="!acc.push_platform" class="px-2 py-1 text-[10px] font-bold text-slate-400 bg-slate-100/50 rounded border border-slate-200 flex items-center gap-1">
+        <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> 未推送
+    </div>
+    <div v-else-if="acc.is_active === 1" class="px-2 py-1 text-[10px] font-black text-emerald-600 bg-emerald-50 rounded border border-emerald-200 shadow-sm flex items-center gap-1">
+        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_#10b981] animate-pulse"></span> 活跃中
+    </div>
+    <div v-else class="px-2 py-1 text-[10px] font-bold text-slate-400 bg-slate-50 rounded border border-slate-200 shadow-sm flex items-center gap-1">
+        <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> 待检查
+    </div>
+</template>
                                                 </div>
                                             </td>
 
