@@ -111,7 +111,7 @@ def init_db():
                 file_path TEXT,
                 file_size INTEGER DEFAULT 0,
                 total_count INTEGER DEFAULT 0,
-                file_sha256 TEXT DEFAULT '',
+                file_sha256 VARCHAR(255) DEFAULT '',
                 success_count INTEGER DEFAULT 0,
                 fail_count INTEGER DEFAULT 0,
                 status TEXT,
@@ -125,7 +125,7 @@ def init_db():
             )
         ''')
         try:
-            execute_sql(c, 'ALTER TABLE cluster_sync_tasks ADD COLUMN file_sha256 TEXT DEFAULT \'\';')
+            execute_sql(c, 'ALTER TABLE cluster_sync_tasks ADD COLUMN file_sha256 VARCHAR(255) DEFAULT \'\';')
         except Exception:
             pass
         try:
