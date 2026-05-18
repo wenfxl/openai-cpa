@@ -1279,7 +1279,11 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
 
     while not async_stop_event.is_set() and not cfg.POOL_EXHAUSTED:
         try:
-            if cfg.CPA_AUTO_CHECK:
+            if cfg.MIN_ACCOUNTS_THRESHOLD <= 0:
+                total_files = 0
+                valid_count = 0
+                print(f"\n[{ts()}] [INFO] CPA 库存报警阈值为 0，跳过云端库存获取，直接按单次补发量执行补货。")
+            elif cfg.CPA_AUTO_CHECK:
                 valid_count, total_files = await perform_cpa_check(args, async_stop_event, loop, executor=executor)
             else:
                 print(f"\n[{ts()}] [INFO] 自动测活已关闭，直接读取云端列表进行补发判断...")
@@ -1299,12 +1303,16 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                 valid_count = total_files
                 print(f"[{ts()}] [INFO] 当前云端总数: {total_files} (未开启自动巡检，默认全部视为有效)")
 
-            if valid_count < cfg.MIN_ACCOUNTS_THRESHOLD:
+
+            if cfg.MIN_ACCOUNTS_THRESHOLD <= 0 or valid_count < cfg.MIN_ACCOUNTS_THRESHOLD:
                 need_to_reg          = cfg.BATCH_REG_COUNT
                 global run_stats
                 run_stats["target"] += need_to_reg
                 success_in_this_cycle = 0
-                print(f"[{ts()}] [INFO] 库存不足 ({valid_count} < {cfg.MIN_ACCOUNTS_THRESHOLD})，启动补货...")
+                if cfg.MIN_ACCOUNTS_THRESHOLD <= 0:
+                    print(f"[{ts()}] [INFO] 已禁用库存判断，直接启动补货 {need_to_reg} 个...")
+                else:
+                    print(f"[{ts()}] [INFO] 库存不足 ({valid_count} < {cfg.MIN_ACCOUNTS_THRESHOLD})，启动补货...")
                 await asyncio.sleep(1)
 
                 def _cpa_worker(worker_index=0, assigned_domain=None, batch_id=None):
@@ -1471,7 +1479,11 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
     while not async_stop_event.is_set() and not cfg.POOL_EXHAUSTED:
 
         try:
-            if cfg.SUB2API_AUTO_CHECK:
+            if cfg.SUB2API_MIN_THRESHOLD <= 0:
+                total_files = 0
+                valid_count = 0
+                print(f"\n[{ts()}] [INFO] Sub2API 库存报警阈值为 0，跳过云端库存获取，直接按单次补发量执行补货。")
+            elif cfg.SUB2API_AUTO_CHECK:
                 print(f"\n[{ts()}] [INFO] 开始执行 Sub2API 仓库例行巡检与测活...")
                 success, account_list = client.get_all_accounts()
                 if not success:
@@ -1526,12 +1538,15 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                 valid_count = total_files
                 print(f"[{ts()}] [INFO] 当前云端总数: {total_files} (未开启自动巡检，默认全部视为有效)")
 
-            if valid_count < cfg.SUB2API_MIN_THRESHOLD:
+            if cfg.SUB2API_MIN_THRESHOLD <= 0 or valid_count < cfg.SUB2API_MIN_THRESHOLD:
                 need_to_reg          = cfg.SUB2API_BATCH_COUNT
                 global run_stats
                 run_stats["target"] += need_to_reg
                 success_in_this_cycle = 0
-                print(f"[{ts()}] [INFO] 库存不足 ({valid_count} < {cfg.SUB2API_MIN_THRESHOLD})，启动补货...")
+                if cfg.SUB2API_MIN_THRESHOLD <= 0:
+                    print(f"[{ts()}] [INFO] 已禁用库存判断，直接启动 Sub2API 补货 {need_to_reg} 个...")
+                else:
+                    print(f"[{ts()}] [INFO] 库存不足 ({valid_count} < {cfg.SUB2API_MIN_THRESHOLD})，启动补货...")
                 await asyncio.sleep(1)
 
                 def _sub2api_run_wrapper(p, skip_switch, assigned_domain=None, batch_id=None, worker_index=None):

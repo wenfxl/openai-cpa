@@ -3840,6 +3840,7 @@
                                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
                                             <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">库存报警阈值</label>
                                             <input type="number" v-model.number="config.cpa_mode.min_accounts_threshold" class="w-full appearance-none bg-slate-50 border-none text-slate-800 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            <p class="text-[11px] text-slate-400 mt-2 font-medium leading-relaxed">设为 0 时将跳过库存巡检，直接按单次补发量执行补货，不再获取云端全量账号数据。</p>
                                         </div>
                                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
                                             <label class="block text-[11px] text-emerald-600 font-black mb-2 uppercase tracking-wider">单次补发量</label>
@@ -3965,6 +3966,7 @@
                                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
                                             <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">库存报警阈值</label>
                                             <input type="number" v-model.number="config.sub2api_mode.min_accounts_threshold" class="w-full appearance-none bg-slate-50 border-none text-slate-800 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            <p class="text-[11px] text-slate-400 mt-2 font-medium leading-relaxed">设为 0 时将跳过库存巡检，直接按单次补发量执行补货，不再获取云端全量账号数据。</p>
                                         </div>
                                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
                                             <label class="block text-[11px] text-purple-600 font-black mb-2 uppercase tracking-wider">单次补发量</label>
