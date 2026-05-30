@@ -717,6 +717,10 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
                 success, up_msg = upload_to_cpa_integrated(token_data, cfg.CPA_API_URL, cfg.CPA_API_TOKEN)
                 if success:
                     print(f"[{ts()}] [SUCCESS] 补货凭证 {mask_email(account_email)} 云端上传成功！")
+                    try:
+                        db_manager.update_account_push_info([account_email], "CPA", mode="sync")
+                    except Exception:
+                        pass
                 else:
                     print(f"[{ts()}] [ERROR] 云端上传失败: {up_msg}")
 
@@ -1603,7 +1607,12 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         else:
                             if hasattr(client, "add_account"):
                                 ok, msg = client.add_account(token_dict)
-                                if ok: print(f"[{ts()}] [SUCCESS] Sub2API 补货入库成功")
+                                if ok:
+                                    print(f"[{ts()}] [SUCCESS] Sub2API 补货入库成功")
+                                    try:
+                                        db_manager.update_account_push_info([token_dict.get("email", "")], "SUB2API", mode="sync")
+                                    except Exception:
+                                        pass
                                 else: print(f"[{ts()}] [ERROR] Sub2API 补货入库失败: {msg}")
                     return status
 
@@ -1827,6 +1836,10 @@ def handle_oauth_upgrade_result(email: str, result: Any, run_ctx: dict = None) -
             success, up_msg = upload_to_cpa_integrated(token_data, cfg.CPA_API_URL, cfg.CPA_API_TOKEN)
             if success:
                 print(f"[{ts()}] [SUCCESS] [提权] 凭证 {mask_email(email)} 已同步至 CPA 云端！")
+                try:
+                    db_manager.update_account_push_info([email], "CPA", mode="sync")
+                except Exception:
+                    pass
             else:
                 print(f"[{ts()}] [ERROR] [提权] 云端上传失败: {up_msg}")
 
@@ -1840,6 +1853,10 @@ def handle_oauth_upgrade_result(email: str, result: Any, run_ctx: dict = None) -
                 ok, msg = client.add_account(token_data)
                 if ok:
                     print(f"[{ts()}] [SUCCESS] [提权] 凭证 {mask_email(email)} 已同步至 Sub2API")
+                    try:
+                        db_manager.update_account_push_info([email], "SUB2API", mode="sync")
+                    except Exception:
+                        pass
                 else:
                     print(f"[{ts()}] [ERROR] [提权] Sub2API 补货入库失败: {msg}")
 
