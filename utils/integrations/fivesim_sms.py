@@ -161,10 +161,10 @@ def _fivesim_request(method: str, endpoint: str, proxies: Any, params: dict = No
     try:
         if method.upper() == "GET":
             resp = requests.get(url, headers=headers, params=params, proxies=proxies, verify=_ssl_verify(), timeout=20,
-                                impersonate="chrome110")
+                                impersonate="chrome")
         else:
             resp = requests.post(url, headers=headers, json=json_data, proxies=proxies, verify=_ssl_verify(),
-                                 timeout=20, impersonate="chrome110")
+                                 timeout=20, impersonate="chrome")
     except Exception as e:
         return False, f"REQUEST_ERROR: {e}", None
 
@@ -309,10 +309,10 @@ def _fivesim_set_status(action: str, order_id: str, proxies: Any):
     if not order_id: return
     _fivesim_request("GET", f"user/{action}/{order_id}", proxies)
 
-def _fivesim_poll_code(order_id: str, proxies: Any, expected_sms_index: int = 0) -> str:
-    timeout_sec = _fivesim_poll_timeout()
+def _fivesim_poll_code(order_id: str, proxies: Any, expected_sms_index: int = 0, timeout_override: int = 0) -> str:
+    timeout_sec = timeout_override if timeout_override > 0 else _fivesim_poll_timeout()
     started = time.time()
-    _info(f"⏳ 正在等待 5SIM 验证码 (第 {expected_sms_index + 1} 条, 最大等待 {timeout_sec} 秒)...")
+    _info(f"⏳ 正在等待 5SIM 验证码 (第 {expected_sms_index + 1} 条, 本次最大等待 {timeout_sec} 秒)...")
     last_print = time.time()
 
     while time.time() - started < timeout_sec:
@@ -364,7 +364,7 @@ def try_verify_phone_via_fivesim(session: requests.Session, *, proxies: Any, hin
 
             send_sentinel = generate_payload(
                 did=device_id, flow="authorize_continue", proxy=proxy,
-                user_agent=user_agent, impersonate="chrome110", ctx=run_ctx
+                user_agent=user_agent, impersonate="chrome", ctx=run_ctx
             )
             if send_sentinel: hdrs["openai-sentinel-token"] = send_sentinel
 
@@ -380,7 +380,30 @@ def try_verify_phone_via_fivesim(session: requests.Session, *, proxies: Any, hin
                 return False, "", fail_reason
 
             _info(f"[{source}] ✅ OpenAI 接受了号码，开始轮询验证码...")
-            sms_code = _fivesim_poll_code(aid, proxies, expected_sms_index=current_use_index)
+            sms_code = _fivesim_poll_code(aid, proxies, expected_sms_index=current_use_index, timeout_override=50)
+            if not sms_code:
+                _warn(f"[{source}] ⚠ 未收到验证码，直接触发重发机制...")
+                _sleep_interruptible(1.0)
+
+                send_sentinel_2 = generate_payload(
+                    did=device_id, flow="authorize_continue", proxy=proxy,
+                    user_agent=user_agent, impersonate="chrome", ctx=run_ctx
+                )
+                if send_sentinel_2: hdrs["openai-sentinel-token"] = send_sentinel_2
+
+                _info(f"[{source}] (重发) 正在向 OpenAI 再次提交号码 {phone_number}...")
+                send_resp_2 = _post_with_retry(session, "https://auth.openai.com/api/accounts/add-phone/send",
+                                               headers=hdrs,
+                                               json_body={"phone_number": phone_number}, proxies=proxies)
+
+                if send_resp_2.status_code != 200:
+                    fail_reason = f"重发失败 HTTP {send_resp_2.status_code}"
+                    _warn(f"[{source}] ❌ 重发提交被 OpenAI 拦截: {fail_reason}")
+                    return False, "", fail_reason
+
+                _info(f"[{source}] ✅ 已重新请求发送，开始轮询验证码 (等待最大超时)...")
+                sms_code = _fivesim_poll_code(aid, proxies, expected_sms_index=current_use_index, timeout_override=0)
+
             if not sms_code:
                 return False, "", "接码超时"
 
@@ -389,7 +412,7 @@ def try_verify_phone_via_fivesim(session: requests.Session, *, proxies: Any, hin
 
             sentinel = generate_payload(
                 did=device_id, flow="authorize_continue", proxy=proxy,
-                user_agent=user_agent, impersonate="chrome110", ctx=run_ctx
+                user_agent=user_agent, impersonate="chrome", ctx=run_ctx
             )
             if sentinel: v_hdrs["openai-sentinel-token"] = sentinel
             v_resp = _post_with_retry(session, "https://auth.openai.com/api/accounts/phone-otp/validate",
