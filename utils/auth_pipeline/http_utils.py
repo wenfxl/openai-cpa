@@ -112,55 +112,27 @@ def _make_trace_headers() -> dict[str, str]:
 
 
 def _oai_headers(did: str, extra: dict = None, is_navigate: bool = False) -> dict:
-    user_agent = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/145.0.0.0 Safari/537.36"
-    )
-    sec_ch_ua = '"Google Chrome";v="145", "Not?A_Brand";v="8", "Chromium";v="145"'
-    sec_ch_ua_full = '"Chromium";v="145.0.0.0", "Not:A-Brand";v="99.0.0.0", "Google Chrome";v="145.0.0.0"'
+    h = {
+        "accept-language": "en-US,en;q=0.9",
+    }
+    if did:
+        h["oai-device-id"] = did
+    h.update(_make_trace_headers())
     if is_navigate:
-        h = {
+        h.update({
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "accept-language": "en-US,en;q=0.9",
-            "user-agent": user_agent,
-            "sec-ch-ua": sec_ch_ua,
-            "sec-ch-ua-arch": '"x86_64"',
-            "sec-ch-ua-bitness": '"64"',
-            "sec-ch-ua-full-version-list": sec_ch_ua_full,
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-model": '""',
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-ch-ua-platform-version": '"10.0.0"',
             "sec-fetch-dest": "document",
             "sec-fetch-mode": "navigate",
             "sec-fetch-site": "same-origin",
-            "sec-fetch-user": "?1",
             "upgrade-insecure-requests": "1",
-        }
+        })
     else:
-        h = {
+        h.update({
             "accept": "application/json",
-            "accept-language": "en-US,en;q=0.9",
-            "content-type": "application/json",
-            "priority": "u=1, i",
-            "user-agent": user_agent,
-            "sec-ch-ua": sec_ch_ua,
-            "sec-ch-ua-arch": '"x86_64"',
-            "sec-ch-ua-bitness": '"64"',
-            "sec-ch-ua-full-version-list": sec_ch_ua_full,
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-model": '""',
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-ch-ua-platform-version": '"10.0.0"',
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
-        }
-    if did:
-        h["oai-device-id"] = did
-
-    h.update(_make_trace_headers())
+        })
     if extra:
         h.update(extra)
     return h

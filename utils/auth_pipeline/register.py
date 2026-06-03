@@ -107,6 +107,7 @@ def run(
                     run_ctx['device_id'] = did
                     run_ctx['user_agent'] = current_ua
 
+                print(f"[{cfg.ts()}] [WARNING] {current_ua}")
                 if not did or not current_ua:
                     print(f"[{cfg.ts()}] [WARNING] 未获取到 oai-did，节点环境可能被关注。")
 
