@@ -981,20 +981,20 @@ def _try_verify_phone_via_hero_sms(
     last_reason = "HeroSMS 手机验证失败"
     lock_acquired = False
 
-    serial_on = True
-    wait_sec = 180
+    # serial_on = True
+    # wait_sec = 180
     verify_balance_start = -1.0
 
-    if serial_on:
-        _info("等待 HeroSMS 手机验证锁...")
-        started = time.time()
-        while True:
-            _raise_if_stopped()
-            if _HERO_SMS_VERIFY_LOCK.acquire(timeout=0.5):
-                lock_acquired = True
-                break
-            if time.time() - started >= wait_sec:
-                return False, "HeroSMS 手机验证排队超时"
+    # if serial_on:
+    #     _info("等待 HeroSMS 手机验证锁...")
+    #     started = time.time()
+    #     while True:
+    #         _raise_if_stopped()
+    #         if _HERO_SMS_VERIFY_LOCK.acquire(timeout=0.5):
+    #             lock_acquired = True
+    #             break
+    #         if time.time() - started >= wait_sec:
+    #             return False, "HeroSMS 手机验证排队超时"
 
     def _verify_once(
             activation_id: str,
@@ -1308,11 +1308,11 @@ def _try_verify_phone_via_hero_sms(
                 )
         except Exception:
             pass
-        if lock_acquired:
-            try:
-                _HERO_SMS_VERIFY_LOCK.release()
-            except Exception:
-                pass
+        # if lock_acquired:
+        #     try:
+        #         _HERO_SMS_VERIFY_LOCK.release()
+        #     except Exception:
+        #         pass
 
 def get_phone_for_signup(proxies: Any) -> tuple[str, str, int, str]:
     if not _hero_sms_enabled():
