@@ -21,6 +21,36 @@ from .oauth import generate_oauth_url, submit_callback_url
 from .user_utils import _generate_password
 
 
+def _needs_post_register_artifacts() -> bool:
+    """Return True only when post-registration artifact work is actually needed."""
+    return any(
+        (
+            getattr(cfg, "ENABLE_IMAGE2API_MODE", False),
+            getattr(cfg, "IMAGE2API_IMG_ONLY_MODE", False),
+            getattr(cfg, "NORMAL_SAVE_IMG_TO_LOCAL", False),
+            getattr(cfg, "TEAM_MODE_ENABLE", False),
+        )
+    )
+
+
+def _resolve_post_register_wait_seconds() -> int:
+    """Keep the settle window short; heavy sync work is handled separately."""
+    try:
+        wait_min = int(getattr(cfg, "LOGIN_DELAY_MIN", 0) or 0)
+    except Exception:
+        wait_min = 0
+    try:
+        wait_max = int(getattr(cfg, "LOGIN_DELAY_MAX", 0) or 0)
+    except Exception:
+        wait_max = wait_min
+
+    wait_min = max(0, min(wait_min, 1))
+    wait_max = max(wait_min, min(wait_max, 1))
+    if wait_max <= 0:
+        return 0
+    return random.randint(wait_min, wait_max)
+
+
 def run(
     proxy: Optional[str],
     run_ctx: dict = None,
@@ -122,7 +152,7 @@ def run(
                     if not aid:
                         print(f"[{cfg.ts()}] [ERROR] 手机取号失败: {err}")
                         if attempt < MAX_REG_RETRIES - 1:
-                            time.sleep(2)
+                            time.sleep(1)
                             continue
                         return None, None
                     print(f"[{cfg.ts()}] [INFO] 成功获取注册手机号: {phone}")
@@ -217,7 +247,7 @@ def run(
                                 "https://auth.openai.com/api/accounts/phone-otp/send",
                                 headers=nav_headers, proxies=proxies, timeout=15, allow_redirects=True
                             )
-                            time.sleep(2)
+                            time.sleep(1)
                         except Exception as e:
                             print(f"[{cfg.ts()}] [WARNING] 请求触发发信时异常: {e}")
 
@@ -253,7 +283,7 @@ def run(
                                             print(f"[{cfg.ts()}] [ERROR] 触发 OpenAI 号段风控！当前号码池已脏。")
                                             sms_report_func(aid, cid, False, "fraud_guard号段拦截", proxies)
                                             break
-                                    time.sleep(3)
+                                    time.sleep(1)
                                 except Exception as e:
                                     pass
 
@@ -369,7 +399,7 @@ def run(
                                                 headers=resend_headers,
                                                 json_body={}, proxies=proxies, timeout=15,
                                             )
-                                            time.sleep(3)
+                                            time.sleep(1)
                                         except Exception as e:
                                             print(f"[{cfg.ts()}] [WARNING] （{masked_login}）无密码通道重新发送请求异常: {e}")
 
@@ -490,7 +520,8 @@ def run(
                         is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                         force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
                         if is_openai_cpa == "openai_cpa" and force_original_pwd:
-                            old_raw = code_pool.get(email, "")
+                            target_email = email.lower().strip()
+                            old_raw = code_pool.get(target_email, "")
                             old_code = _extract_otp_code(old_raw)
                         print(f"\n[{cfg.ts()}] [INFO] 正在向 {masked_login} 主动请求发送验证码...")
                         send_otp_url = "https://auth.openai.com/api/accounts/email-otp/send"
@@ -521,8 +552,8 @@ def run(
                                 is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                                 force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
                                 if is_openai_cpa == "openai_cpa" and force_original_pwd:
-                                    code_pool.pop(email, None)
-                                    old_raw = code_pool.get(email, "")
+                                    target_email = email.lower().strip()
+                                    old_raw = code_pool.get(target_email, "")
                                     old_code = _extract_otp_code(old_raw)
                                 print(f"\n[{cfg.ts()}] [INFO] 正在重试 {resend_attempt}/{cfg.MAX_OTP_RETRIES}...")
                                 try:
@@ -540,7 +571,7 @@ def run(
                                         headers=resend_headers,
                                         json_body={}, proxies=proxies, timeout=15,
                                     )
-                                    time.sleep(2)
+                                    time.sleep(1)
                                 except Exception as e:
                                     print(f"[{cfg.ts()}] [WARNING] （{masked_login}）重新发送请求异常: {e}")
                             is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
@@ -661,7 +692,8 @@ def run(
                     except Exception:
                         target_continue_url = ""
 
-                wait_time = random.randint(cfg.LOGIN_DELAY_MIN, cfg.LOGIN_DELAY_MAX)
+                post_register_artifacts = _needs_post_register_artifacts()
+                wait_time = _resolve_post_register_wait_seconds() if post_register_artifacts else 0
                 print(f"[{cfg.ts()}] [INFO] （{masked_login}）账号已通过，等待 {wait_time} 秒后同步最终状态...")
 
 
@@ -683,7 +715,9 @@ def run(
                         print(f"[{cfg.ts()}] [INFO] [{mode_label}] （{masked_login}）账号已注册成功，根据配置提前作为半成品写入本地库。")
                     except Exception as e:
                         pass
-                data = image2api_data(s_reg, target_continue_url, proxies)
+                data = ""
+                if post_register_artifacts:
+                    data = image2api_data(s_reg, target_continue_url, proxies)
 
 
 
@@ -753,7 +787,8 @@ def run(
                         print(f"[{cfg.ts()}] [INFO] （{masked_login}）即将进入团队静默流程")
                         time.sleep(random.uniform(0.1, 0.5))
                         is_alloc, sys_handle_a, sys_handle_b, sys_handle_c = sys_node_allocate(s_reg, did, saved_temp_at, proxies)
-                time.sleep(wait_time)
+                if wait_time > 0:
+                    time.sleep(wait_time)
 
                 workspace_hint_url = ""
                 if target_continue_url:
@@ -918,7 +953,7 @@ def run(
                                         headers=resend_headers,
                                         json_body={}, proxies=proxies, timeout=15,
                                     )
-                                    time.sleep(2)
+                                    time.sleep(1)
                                 except Exception as e:
                                     print(f"[{cfg.ts()}] [WARNING] （{masked_login}）无密码通道重新发送请求异常: {e}")
 
@@ -1049,7 +1084,7 @@ def run(
                                             headers=log_resend_headers,
                                             json_body={}, proxies=proxies, timeout=15,
                                         )
-                                        time.sleep(2)
+                                        time.sleep(1)
                                     except Exception as e:
                                         print(f"[{cfg.ts()}] [WARNING] （{masked_login}）重新发送请求异常: {e}")
                                 code2 = get_oai_code(email, jwt=email_jwt, proxies=proxies,
@@ -1147,7 +1182,7 @@ def run(
                             if oauth_attempt == 0 and getattr(cfg, 'TEAM_MODE_ENABLE', False):
                                 print(
                                     f"[{cfg.ts()}] [WARNING] （{masked_login}） OAuth重试中...")
-                                time.sleep(random.uniform(2.0, 4.0))
+                                time.sleep(random.uniform(1.0, 2.0))
                                 oauth_needs_retry = True
                                 break
                             print(f"[{cfg.ts()}] [INFO] （{masked_login}） OAuth链路触发风控，进入手机号验证...")
@@ -1222,7 +1257,7 @@ def run(
                                             s_log, "https://auth.openai.com/api/accounts/email-otp/resend",
                                             headers=resend_hdrs, json_body={}, proxies=proxies, timeout=15
                                         )
-                                        time.sleep(2)
+                                        time.sleep(1)
                                     except Exception as e:
                                         print(f"[{cfg.ts()}] [WARNING] （{masked_login}）绑定邮箱重发请求异常: {e}")
 
@@ -1294,7 +1329,7 @@ def run(
                 print(f"[{cfg.ts()}] [ERROR] （{masked_login}） 注册主流程发生严重异常: {e}")
                 if attempt < MAX_REG_RETRIES - 1:
                     print(f"[{cfg.ts()}] [INFO] 正在准备重试...")
-                    time.sleep(2)
+                    time.sleep(1)
                     continue
                 return None, None
         return None, None
@@ -1451,7 +1486,7 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
                                 headers=resend_headers,
                                 json_body={}, proxies=proxies, timeout=15,
                             )
-                            time.sleep(2)
+                            time.sleep(1)
                         except Exception as e:
                             print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）无密码通道重新发送请求异常: {e}")
 
@@ -1582,7 +1617,7 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
                                     headers=log_resend_headers,
                                     json_body={}, proxies=proxies, timeout=15,
                                 )
-                                time.sleep(2)
+                                time.sleep(1)
                             except Exception as e:
                                 print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）重新发送请求异常: {e}")
                         code2 = get_oai_code(email, jwt=email_jwt, proxies=proxies,
@@ -1681,7 +1716,7 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
                     if oauth_attempt == 0:
                         print(
                             f"[{cfg.ts()}] [WARNING] （{mask_email(email)}） OAuth重试中...")
-                        time.sleep(random.uniform(2.0, 4.0))
+                        time.sleep(random.uniform(1.0, 2.0))
                         oauth_needs_retry = True
                         break
                     print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}） OAuth链路触发风控，进入手机号验证...")

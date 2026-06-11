@@ -235,8 +235,8 @@ enable_email_masking: true
 
 
 #注册后等待多少秒在去拿tokens,默认是5-15秒之内
-login_delay_min: 20
-login_delay_max: 45
+login_delay_min: 0
+login_delay_max: 1
 
 #常规模式是否保存仅注册账号，用于后续手动登录或者其他作用
 retain_reg_only: false
@@ -320,6 +320,8 @@ hero_sms:
   min_balance: 1
   max_tries: 3
   poll_timeout_sec: 120
+  poll_interval_sec: 1.0
+  wait_code_timeout_sec: 60
   reuse_max: 2
   use_proxy: false
 
@@ -336,6 +338,8 @@ smsbower:
   min_balance: 1
   max_tries: 3
   poll_timeout_sec: 120
+  poll_interval_sec: 0.8
+  wait_code_timeout_sec: 60
   reuse_max: 2
   operator: ""
   use_proxy: false
@@ -354,6 +358,8 @@ fivesim:
   min_balance: 10.0
   max_tries: 3
   poll_timeout_sec: 180
+  poll_interval_sec: 0.8
+  wait_code_timeout_sec: 60
   reuse_max: 2
   operator: ""
   use_proxy: false

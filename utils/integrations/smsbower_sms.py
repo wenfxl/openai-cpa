@@ -81,6 +81,20 @@ def _smsbower_poll_timeout_sec() -> int:
 def _smsbower_max_tries() -> int:
     return int(getattr(cfg, 'SMSBOWER_MAX_TRIES', 3))
 
+def _smsbower_poll_interval_sec() -> float:
+    try:
+        value = float(getattr(cfg, 'SMSBOWER_POLL_INTERVAL_SEC', 0.8))
+    except Exception:
+        value = 0.8
+    return max(0.1, min(value, 1.0))
+
+def _smsbower_wait_code_timeout_sec() -> int:
+    try:
+        value = int(getattr(cfg, 'SMSBOWER_WAIT_CODE_TIMEOUT_SEC', 60))
+    except Exception:
+        value = 60
+    return max(10, min(value, 60))
+
 def _smsbower_country_timeout_limit() -> int: return 2
 
 def _smsbower_country_cooldown_sec() -> int: return 900
@@ -600,7 +614,7 @@ def _smsbower_get_number(proxies: Any, *, service_code: str, country_id: int) ->
 
 
 def _smsbower_poll_code(activation_id: str, proxies: Any, timeout_override: int = 0) -> str:
-    timeout_sec = timeout_override if timeout_override > 0 else _smsbower_poll_timeout_sec()
+    timeout_sec = timeout_override if timeout_override > 0 else min(_smsbower_poll_timeout_sec(), _smsbower_wait_code_timeout_sec())
     started_at = time.time()
     _info(f"⏳ 开始等待 SmsBower 短信验证码 (最大等待 {timeout_sec} 秒)...")
     last_print_time = time.time()
@@ -622,7 +636,7 @@ def _smsbower_poll_code(activation_id: str, proxies: Any, timeout_override: int 
             _warn(f"❌ 接码被平台取消或状态异常: {text}")
             return ""
 
-        _sleep_interruptible(3.0)
+        _sleep_interruptible(_smsbower_poll_interval_sec())
 
     _warn("⚠️ SmsBower 接码彻底超时！")
     return ""

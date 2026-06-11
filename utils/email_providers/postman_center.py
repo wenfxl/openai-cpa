@@ -113,12 +113,12 @@ class PostmanFleet:
             except Exception as e:
                 from utils.email_providers.mail_service import mask_email
                 print(f"[{cfg.ts()}] [WARNING] 邮递员 ({mask_email(master_email)}) 遭遇阻碍: {e}")
-                time.sleep(5)
+                time.sleep(1)
 
-            for _ in range(8):
+            for _ in range(4):
                 if getattr(cfg, 'GLOBAL_STOP', False) or stop_event.is_set():
                     break
-                time.sleep(0.5)
+                time.sleep(0.1)
         from utils.email_providers.mail_service import mask_email
         print(f"[{cfg.ts()}] [INFO] 🛑 ({mask_email(master_email)}) 的专属邮递员已下班，屏幕前的你下班了吗？。")
 
@@ -127,9 +127,6 @@ global_postman_fleet = PostmanFleet()
 
 def wait_for_code(target_email, timeout=60):
     target_email = target_email.lower().strip()
-    with code_pool_lock:
-        global_code_pool.pop(target_email, None)
-
     start_time = time.time()
     while time.time() - start_time < timeout:
         with code_pool_lock:
@@ -139,6 +136,6 @@ def wait_for_code(target_email, timeout=60):
                 print(f"[{cfg.ts()}] [SUCCESS] 🎉 ({mask_email(target_email)}) 极速领到验证码: {code}")
                 return code
 
-        time.sleep(1)
+        time.sleep(0.1)
 
     return ""

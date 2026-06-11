@@ -1,4 +1,4 @@
-import imaplib
+﻿import imaplib
 import json
 import random
 import re
@@ -22,7 +22,7 @@ from utils.email_providers.duckmail_service import DuckMailService
 from utils.email_providers.postman_center import global_postman_fleet, wait_for_code
 
 class ProxyIMAP4_SSL(imaplib.IMAP4_SSL):
-    """支持 Socks5 和 HTTP 代理的局部 IMAP 客户端"""
+    """鏀寔 Socks5 鍜?HTTP 浠ｇ悊鐨勫眬閮?IMAP 瀹㈡埛绔?""
 
     def __init__(self, host, port, proxy_url=None, **kwargs):
         self.proxy_url = proxy_url
@@ -85,18 +85,18 @@ LAST_NAMES = [
 
 
 def _safe_set_tag(lm_service, p_id, tag_id):
-    """带重试机制的异步打标，防止网络波动导致打标失败变成死循环号"""
+    """甯﹂噸璇曟満鍒剁殑寮傛鎵撴爣锛岄槻姝㈢綉缁滄尝鍔ㄥ鑷存墦鏍囧け璐ュ彉鎴愭寰幆鍙?""
     for _ in range(3):
         try:
             if lm_service.set_email_tag(p_id, tag_id):
                 return
         except Exception:
             pass
-        time.sleep(2)
+        time.sleep(1)
 
 
 def clear_sticky_domain():
-    """注册失败时调用"""
+    """娉ㄥ唽澶辫触鏃惰皟鐢?""
     if hasattr(_thread_data, 'sticky_domain'):
         _thread_data.sticky_domain = None
 
@@ -899,7 +899,7 @@ def _ssl_verify() -> bool:
 
 
 def mask_email(text: str, force_mask: bool = False) -> str:
-    """日志脱敏：隐藏邮箱域名部分。"""
+    """鏃ュ織鑴辨晱锛氶殣钘忛偖绠卞煙鍚嶉儴鍒嗐€?""
     if not force_mask and not getattr(cfg, 'ENABLE_EMAIL_MASKING', False):
         return text if text else ""
     if not text:
@@ -960,9 +960,9 @@ def get_cm_token(proxies=None) -> Optional[str]:
         if data.get("code") == 200:
             _CM_TOKEN_CACHE = data["data"]["token"]
             return _CM_TOKEN_CACHE
-        print(f"[{cfg.ts()}] [ERROR] CloudMail Token 生成失败: {data.get('message')}")
+        print(f"[{cfg.ts()}] [ERROR] CloudMail Token 鐢熸垚澶辫触: {data.get('message')}")
     except Exception as e:
-        print(f"[{cfg.ts()}] [ERROR] CloudMail 接口请求异常: {e}")
+        print(f"[{cfg.ts()}] [ERROR] CloudMail 鎺ュ彛璇锋眰寮傚父: {e}")
     return None
 
 
@@ -983,15 +983,15 @@ def _get_ai_data_package():
 
 
 # def get_email_and_token(proxies: Any = None) -> tuple:
-#     """拦截器"""
+#     """鎷︽埅鍣?""
 #     result = _raw_get_email_and_token(proxies)
 #     if result is None or not isinstance(result, tuple) or len(result) != 2:
 #         print("\n" + "=" * 50)
-#         print(f"[{cfg.ts()}] _raw_get_email_and_token 违规返回了单值: {result}")
-#         print(f"[{cfg.ts()}] 当前系统的 cfg.EMAIL_API_MODE 是: '{getattr(cfg, 'EMAIL_API_MODE', '未知')}'")
+#         print(f"[{cfg.ts()}] _raw_get_email_and_token 杩濊杩斿洖浜嗗崟鍊? {result}")
+#         print(f"[{cfg.ts()}] 褰撳墠绯荤粺鐨?cfg.EMAIL_API_MODE 鏄? '{getattr(cfg, 'EMAIL_API_MODE', '鏈煡')}'")
 #
 #         import traceback
-#         print("以下是问题时的调用路径：")
+#         print("浠ヤ笅鏄棶棰樻椂鐨勮皟鐢ㄨ矾寰勶細")
 #         traceback.print_stack()
 #         print("=" * 50 + "\n")
 #         return None, None
@@ -1004,7 +1004,7 @@ def get_email_and_token(
     worker_index: Optional[int] = None,
 ) -> tuple:
 # def _raw_get_email_and_token(proxies: Any = None) -> tuple:
-    """兼容五种邮箱模式的地址创建，返回 (email, token_or_id)。"""
+    """鍏煎浜旂閭妯″紡鐨勫湴鍧€鍒涘缓锛岃繑鍥?(email, token_or_id)銆?""
     if getattr(cfg, 'GLOBAL_STOP', False): return None, None
     _thread_data.last_attempt_email = None
     _thread_data.last_domain_failure_event = None
@@ -1021,10 +1021,10 @@ def get_email_and_token(
                 email = data["email"]
                 mailbox_id = data["id"]
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] mail-curl 分配邮箱: ({mask_email(email)}) (BoxID: {mailbox_id})")
+                print(f"[{cfg.ts()}] [INFO] mail-curl 鍒嗛厤閭: ({mask_email(email)}) (BoxID: {mailbox_id})")
                 return email, mailbox_id
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] mail-curl 获取邮箱异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] mail-curl 鑾峰彇閭寮傚父: {e}")
         return None, None
 
     if mode == "fvia":
@@ -1033,7 +1033,7 @@ def get_email_and_token(
             current_token = getattr(cfg, 'FVIA_TOKEN', '')
 
             if not current_token:
-                print(f"[{cfg.ts()}] [ERROR] 未在配置中检测到 Fvia Token，请前往前端填写！")
+                print(f"[{cfg.ts()}] [ERROR] 鏈湪閰嶇疆涓娴嬪埌 Fvia Token锛岃鍓嶅線鍓嶇濉啓锛?)
                 return None, None
 
             fs = FviaMailService(token=current_token, proxies=mail_proxies)
@@ -1041,12 +1041,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] FviaInboxes 成功分配邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] FviaInboxes 鎴愬姛鍒嗛厤閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] FviaInboxes 获取域名列表失败。")
+                print(f"[{cfg.ts()}] [ERROR] FviaInboxes 鑾峰彇鍩熷悕鍒楄〃澶辫触銆?)
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] FviaInboxes 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] FviaInboxes 娴佺▼寮傚父: {e}")
         return None, None
 
     if mode == "tmailor":
@@ -1058,12 +1058,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] Tmailor 成功创建邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] Tmailor 鎴愬姛鍒涘缓閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] Tmailor 获取邮箱失败，请检查 Token 是否过期。")
+                print(f"[{cfg.ts()}] [ERROR] Tmailor 鑾峰彇閭澶辫触锛岃妫€鏌?Token 鏄惁杩囨湡銆?)
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] Tmailor 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] Tmailor 娴佺▼寮傚父: {e}")
         return None, None
 
     if mode == "inboxes":
@@ -1074,12 +1074,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] Inboxes.com 成功分配邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] Inboxes.com 鎴愬姛鍒嗛厤閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] Inboxes.com 申请失败。")
+                print(f"[{cfg.ts()}] [ERROR] Inboxes.com 鐢宠澶辫触銆?)
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] Inboxes.com 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] Inboxes.com 娴佺▼寮傚父: {e}")
         return None, None
 
     if mode == "temporarymail":
@@ -1090,12 +1090,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] TemporaryMail 成功分配邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] TemporaryMail 鎴愬姛鍒嗛厤閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] TemporaryMail 申请失败。")
+                print(f"[{cfg.ts()}] [ERROR] TemporaryMail 鐢宠澶辫触銆?)
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] TemporaryMail 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] TemporaryMail 娴佺▼寮傚父: {e}")
         return None, None
 
     # if mode == "temporam":
@@ -1106,12 +1106,12 @@ def get_email_and_token(
     #
     #         if email and token:
     #             set_last_email(email)
-    #             print(f"[{cfg.ts()}] [INFO] Temporam 成功生成邮箱: ({mask_email(email)})")
+    #             print(f"[{cfg.ts()}] [INFO] Temporam 鎴愬姛鐢熸垚閭: ({mask_email(email)})")
     #             return email, token
     #         else:
-    #             print(f"[{cfg.ts()}] [ERROR] Temporam 获取邮箱失败")
+    #             print(f"[{cfg.ts()}] [ERROR] Temporam 鑾峰彇閭澶辫触")
     #     except Exception as e:
-    #         print(f"[{cfg.ts()}] [ERROR] Temporam 流程异常: {e}")
+    #         print(f"[{cfg.ts()}] [ERROR] Temporam 娴佺▼寮傚父: {e}")
     #     return None, None
 
     if mode == "luckmail":
@@ -1130,7 +1130,7 @@ def get_email_and_token(
                 with luckmail_lock:
                     tag_id = getattr(cfg, 'LUCKMAIL_TAG_ID', None)
                     if not tag_id:
-                        tag_id = lm_service.get_or_create_tag_id("已使用")
+                        tag_id = lm_service.get_or_create_tag_id("宸蹭娇鐢?)
                         if tag_id:
                             cfg.LUCKMAIL_TAG_ID = tag_id
                             try:
@@ -1141,9 +1141,9 @@ def get_email_and_token(
                                     y.setdefault("luckmail", {})["tag_id"] = tag_id
                                     with open(cfg.CONFIG_PATH, "w", encoding="utf-8") as f:
                                         yaml.dump(y, f, allow_unicode=True, sort_keys=False)
-                                print(f"[{cfg.ts()}] [系统] 标签 ID {tag_id} 已同步至配置文件")
+                                print(f"[{cfg.ts()}] [绯荤粺] 鏍囩 ID {tag_id} 宸插悓姝ヨ嚦閰嶇疆鏂囦欢")
                             except Exception as e:
-                                print(f"[{cfg.ts()}] [WARNING] 配置文件写入失败: {e}")
+                                print(f"[{cfg.ts()}] [WARNING] 閰嶇疆鏂囦欢鍐欏叆澶辫触: {e}")
 
             if getattr(cfg, 'LUCKMAIL_REUSE_PURCHASED', False):
                 with luckmail_lock:
@@ -1153,11 +1153,11 @@ def get_email_and_token(
                         LOCAL_USED_PIDS.add(p_id)
 
                 if email and token:
-                    print(f"[{cfg.ts()}] [SUCCESS] LuckMail 成功复用历史邮箱: ({mask_email(email)})")
+                    print(f"[{cfg.ts()}] [SUCCESS] LuckMail 鎴愬姛澶嶇敤鍘嗗彶閭: ({mask_email(email)})")
                     if p_id and tag_id:
                         threading.Thread(target=_safe_set_tag, args=(lm_service, p_id, tag_id), daemon=True).start()
                     return email, token
-                print(f"[{cfg.ts()}] [WARNING] 未找到符合条件的历史邮箱，准备购买新号...")
+                print(f"[{cfg.ts()}] [WARNING] 鏈壘鍒扮鍚堟潯浠剁殑鍘嗗彶閭锛屽噯澶囪喘涔版柊鍙?..")
 
             email, token, p_id = lm_service.get_email_and_token(auto_tag=False)
 
@@ -1166,14 +1166,14 @@ def get_email_and_token(
                     with luckmail_lock:
                         LOCAL_USED_PIDS.add(p_id)
 
-                print(f"[{cfg.ts()}] [INFO] LuckMail 成功购买新邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] LuckMail 鎴愬姛璐拱鏂伴偖绠? ({mask_email(email)})")
 
                 if p_id and tag_id:
                     threading.Thread(target=_safe_set_tag, args=(lm_service, p_id, tag_id), daemon=True).start()
                 return email, token
 
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] LuckMail 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] LuckMail 娴佺▼寮傚父: {e}")
             return None, None
 
     if mode == "duckmail":
@@ -1185,12 +1185,12 @@ def get_email_and_token(
             email, token = ds.create_email()
             if email:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] DuckMail ({ds.mode}) 成功创建邮箱: {mask_email(email)}")
+                print(f"[{cfg.ts()}] [INFO] DuckMail ({ds.mode}) 鎴愬姛鍒涘缓閭: {mask_email(email)}")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] DuckMail 获取邮箱失败")
+                print(f"[{cfg.ts()}] [ERROR] DuckMail 鑾峰彇閭澶辫触")
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] DuckMail 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] DuckMail 娴佺▼寮傚父: {e}")
         return None, None
 
     if mode == "generator_email":
@@ -1201,12 +1201,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] GeneratorEmail 成功创建邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] GeneratorEmail 鎴愬姛鍒涘缓閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] GeneratorEmail 获取邮箱失败")
+                print(f"[{cfg.ts()}] [ERROR] GeneratorEmail 鑾峰彇閭澶辫触")
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] GeneratorEmail 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] GeneratorEmail 娴佺▼寮傚父: {e}")
         return None, None
 
     if mode == "tempmail":
@@ -1217,12 +1217,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] Tempmail 成功创建邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] Tempmail 鎴愬姛鍒涘缓閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] Tempmail 获取邮箱失败")
+                print(f"[{cfg.ts()}] [ERROR] Tempmail 鑾峰彇閭澶辫触")
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] Tempmail 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] Tempmail 娴佺▼寮傚父: {e}")
         return None, None
     if mode == "tempmail_org":
         try:
@@ -1232,12 +1232,12 @@ def get_email_and_token(
 
             if email and token:
                 set_last_email(email)
-                print(f"[{cfg.ts()}] [INFO] TempMail.org 成功创建邮箱: ({mask_email(email)})")
+                print(f"[{cfg.ts()}] [INFO] TempMail.org 鎴愬姛鍒涘缓閭: ({mask_email(email)})")
                 return email, token
             else:
-                print(f"[{cfg.ts()}] [ERROR] TempMail.org 获取邮箱失败")
+                print(f"[{cfg.ts()}] [ERROR] TempMail.org 鑾峰彇閭澶辫触")
         except Exception as e:
-            print(f"[{cfg.ts()}] [ERROR] TempMail.org 流程异常: {e}")
+            print(f"[{cfg.ts()}] [ERROR] TempMail.org 娴佺▼寮傚父: {e}")
         return None, None
 
     if mode == "local_microsoft":
@@ -1252,9 +1252,9 @@ def get_email_and_token(
                 empty_retry_count += 1
                 if empty_retry_count >= cfg.REG_THREADS:
                     cfg.POOL_EXHAUSTED = True
-                    print(f"[{cfg.ts()}] [WARNING] {cfg.REG_THREADS} 个线程全都没拿到邮箱，微软邮箱库已耗尽，程序将自动停止，请前往微软邮箱库导入更多账号！")
+                    print(f"[{cfg.ts()}] [WARNING] {cfg.REG_THREADS} 涓嚎绋嬪叏閮芥病鎷垮埌閭锛屽井杞偖绠卞簱宸茶€楀敖锛岀▼搴忓皢鑷姩鍋滄锛岃鍓嶅線寰蒋閭搴撳鍏ユ洿澶氳处鍙凤紒")
                 else:
-                    print(f"[{cfg.ts()}] [WARNING] 当前线程未拿到邮箱 (失败线程/总线程: {empty_retry_count}/{cfg.REG_THREADS})，将跳过等待下一轮。")
+                    print(f"[{cfg.ts()}] [WARNING] 褰撳墠绾跨▼鏈嬁鍒伴偖绠?(澶辫触绾跨▼/鎬荤嚎绋? {empty_retry_count}/{cfg.REG_THREADS})锛屽皢璺宠繃绛夊緟涓嬩竴杞€?)
             return None, None
 
         with empty_lock:
@@ -1263,12 +1263,12 @@ def get_email_and_token(
 
         # if not mailbox_info:
         #     # cfg.POOL_EXHAUSTED = True
-        #     print(f"[{cfg.ts()}] [WARNING] 微软邮箱库已耗尽，请前往前端导入更多账号。")
+        #     print(f"[{cfg.ts()}] [WARNING] 寰蒋閭搴撳凡鑰楀敖锛岃鍓嶅線鍓嶇瀵煎叆鏇村璐﹀彿銆?)
         #     return None, None
 
         email = mailbox_info["email"]
         set_last_email(email)
-        print(f"[{cfg.ts()}] [INFO] 微软库分配并锁定账号: ({mask_email(email)})")
+        print(f"[{cfg.ts()}] [INFO] 寰蒋搴撳垎閰嶅苟閿佸畾璐﹀彿: ({mask_email(email)})")
         global_postman_fleet.add_mailbox_listener(ms_service, mailbox_info)
         return email, json.dumps(mailbox_info, ensure_ascii=False)
 
@@ -1279,12 +1279,12 @@ def get_email_and_token(
 
         if not mailbox_info:
             cfg.POOL_EXHAUSTED = True
-            print(f"[{cfg.ts()}] [WARNING] Gmail 裂变池已耗尽或生成重复过多，停止派发。")
+            print(f"[{cfg.ts()}] [WARNING] Gmail 瑁傚彉姹犲凡鑰楀敖鎴栫敓鎴愰噸澶嶈繃澶氾紝鍋滄娲惧彂銆?)
             return None, None
 
         target_email = mailbox_info["email"]
         set_last_email(target_email)
-        print(f"[{cfg.ts()}] [INFO] Gmail 库分配并锁定账号: ({mask_email(target_email)})")
+        print(f"[{cfg.ts()}] [INFO] Gmail 搴撳垎閰嶅苟閿佸畾璐﹀彿: ({mask_email(target_email)})")
         global_postman_fleet.add_mailbox_listener(gmail_service, mailbox_info)
         return target_email, json.dumps(mailbox_info, ensure_ascii=False)
 
@@ -1298,11 +1298,11 @@ def get_email_and_token(
         # sticky = getattr(_thread_data, 'sticky_domain', None)
         # if sticky:
         #     selected_domain = sticky
-        #     print(f"[{cfg.ts()}] [INFO] 多级域名模式 - 沿用上一轮成功域名: {mask_email(selected_domain)}")
+        #     print(f"[{cfg.ts()}] [INFO] 澶氱骇鍩熷悕妯″紡 - 娌跨敤涓婁竴杞垚鍔熷煙鍚? {mask_email(selected_domain)}")
         # else:
         main_list = [d.strip() for d in cfg.MAIL_DOMAINS.split(",") if d.strip()]
         if not main_list:
-            print(f"[{cfg.ts()}] [ERROR] 未配置主域名池，无法捏造子域！")
+            print(f"[{cfg.ts()}] [ERROR] 鏈厤缃富鍩熷悕姹狅紝鏃犳硶鎹忛€犲瓙鍩燂紒")
             return None, None
 
         if skip_domain_fallback:
@@ -1311,11 +1311,11 @@ def get_email_and_token(
         selected_main = _normalize_main_domain(assigned_domain) if assigned_domain is not None else pick_available_main_domain(main_list)
         if not selected_main:
             if _all_configured_main_domains_disabled():
-                print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
+                print(f"[{cfg.ts()}] [ERROR] 鎵€鏈変富鍩熷悕鍧囧凡琚墜鍔ㄧ鐢紝褰撳墠鏃犳硶缁х画鐢熸垚閭锛?)
             elif use_domain_runtime_control:
-                print(f"[{cfg.ts()}] [ERROR] 所有主域名均处于冷却中，当前无法继续生成邮箱！")
+                print(f"[{cfg.ts()}] [ERROR] 鎵€鏈変富鍩熷悕鍧囧浜庡喎鍗翠腑锛屽綋鍓嶆棤娉曠户缁敓鎴愰偖绠憋紒")
             else:
-                print(f"[{cfg.ts()}] [ERROR] 未找到可用主域名，当前无法继续生成邮箱！")
+                print(f"[{cfg.ts()}] [ERROR] 鏈壘鍒板彲鐢ㄤ富鍩熷悕锛屽綋鍓嶆棤娉曠户缁敓鎴愰偖绠憋紒")
             return None, None
         if getattr(cfg, 'RANDOM_SUB_DOMAIN_LEVEL', False):
             level = random.randint(1, 7)
@@ -1338,18 +1338,18 @@ def get_email_and_token(
     else:
         domain_list = [d.strip() for d in cfg.MAIL_DOMAINS.split(",") if d.strip()]
         if not domain_list:
-            print(f"[{cfg.ts()}] [ERROR] 域名池配置为空，无法生成邮箱！")
+            print(f"[{cfg.ts()}] [ERROR] 鍩熷悕姹犻厤缃负绌猴紝鏃犳硶鐢熸垚閭锛?)
             return None, None
         if skip_domain_fallback:
             return None, None
         selected_domain = _normalize_main_domain(assigned_domain) if assigned_domain is not None else pick_available_main_domain(domain_list)
         if not selected_domain:
             if _all_configured_main_domains_disabled():
-                print(f"[{cfg.ts()}] [ERROR] 所有主域名均已被手动禁用，当前无法继续生成邮箱！")
+                print(f"[{cfg.ts()}] [ERROR] 鎵€鏈変富鍩熷悕鍧囧凡琚墜鍔ㄧ鐢紝褰撳墠鏃犳硶缁х画鐢熸垚閭锛?)
             elif use_domain_runtime_control:
-                print(f"[{cfg.ts()}] [ERROR] 所有主域名均处于冷却中，当前无法继续生成邮箱！")
+                print(f"[{cfg.ts()}] [ERROR] 鎵€鏈変富鍩熷悕鍧囧浜庡喎鍗翠腑锛屽綋鍓嶆棤娉曠户缁敓鎴愰偖绠憋紒")
             else:
-                print(f"[{cfg.ts()}] [ERROR] 域名池配置为空或无有效主域名，无法生成邮箱！")
+                print(f"[{cfg.ts()}] [ERROR] 鍩熷悕姹犻厤缃负绌烘垨鏃犳湁鏁堜富鍩熷悕锛屾棤娉曠敓鎴愰偖绠憋紒")
             return None, None
 
     email_str = f"{prefix}@{selected_domain}"
@@ -1357,26 +1357,26 @@ def get_email_and_token(
 
     ai_switch_on = getattr(cfg, 'AI_ENABLE_PROFILE', False)
     if ai_switch_on:
-        print(f"[{cfg.ts()}] [AI-状态] 已开启 （{mask_email(email_str)}） AI 智能邮箱域名信息增强...")
+        print(f"[{cfg.ts()}] [AI-鐘舵€乚 宸插紑鍚?锛坽mask_email(email_str)}锛?AI 鏅鸿兘閭鍩熷悕淇℃伅澧炲己...")
 
     if mode == "openai_cpa":
         if getattr(cfg, 'OPENAI_CPA_WEBHOOK_SECRET', ""):
-            print(f"[{cfg.ts()}] [INFO] 成功通过 项目专属邮箱 OPENAI-CPA 指定创建邮箱: {mask_email(email_str)}")
+            print(f"[{cfg.ts()}] [INFO] 鎴愬姛閫氳繃 椤圭洰涓撳睘閭 OPENAI-CPA 鎸囧畾鍒涘缓閭: {mask_email(email_str)}")
             return email_str, ""
         else:
-            print(f"[{cfg.ts()}] [ERROR] 项目专属邮箱 OPENAI-CPA 未填写通讯密钥，无法生成邮箱！")
+            print(f"[{cfg.ts()}] [ERROR] 椤圭洰涓撳睘閭 OPENAI-CPA 鏈～鍐欓€氳瀵嗛挜锛屾棤娉曠敓鎴愰偖绠憋紒")
             return None, None
 
     if mode == "cloudmail":
         if getattr(cfg, 'CM_LOCAL_WEBHOOK', False):
             print(
-                f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 cloudmail 指定创建邮箱: {mask_email(email_str)}"
+                f"[{cfg.ts()}] [INFO] 鎴愬姛閫氳繃 鏈」鐩敹浠舵ā寮?cloudmail 鎸囧畾鍒涘缓閭: {mask_email(email_str)}"
             )
             return email_str, ""
         else:
             token = get_cm_token(mail_proxies)
             if not token:
-                print(f"[{cfg.ts()}] [ERROR] 未能获取 CloudMail Token，跳过注册")
+                print(f"[{cfg.ts()}] [ERROR] 鏈兘鑾峰彇 CloudMail Token锛岃烦杩囨敞鍐?)
                 return None, None
             try:
                 res = requests.post(
@@ -1386,16 +1386,16 @@ def get_email_and_token(
                     proxies=mail_proxies, timeout=15,
                 )
                 if res.json().get("code") == 200:
-                    print(f"[{cfg.ts()}] [INFO] CloudMail 成功创建邮箱: {mask_email(email_str)}")
+                    print(f"[{cfg.ts()}] [INFO] CloudMail 鎴愬姛鍒涘缓閭: {mask_email(email_str)}")
                     return email_str, ""
-                print(f"[{cfg.ts()}] [ERROR] CloudMail 邮箱创建失败: {res.text}")
+                print(f"[{cfg.ts()}] [ERROR] CloudMail 閭鍒涘缓澶辫触: {res.text}")
             except Exception as e:
-                print(f"[{cfg.ts()}] [ERROR] CloudMail 邮箱创建异常: {e}")
+                print(f"[{cfg.ts()}] [ERROR] CloudMail 閭鍒涘缓寮傚父: {e}")
             return None, None
 
     if mode == "freemail":
         if getattr(cfg, 'FREEMAIL_LOCAL_WEBHOOK', False):
-            print(f"[{cfg.ts()}] [INFO] 成功通过 本项目收件模式 Freemail 指定创建邮箱: {mask_email(email_str)}")
+            print(f"[{cfg.ts()}] [INFO] 鎴愬姛閫氳繃 鏈」鐩敹浠舵ā寮?Freemail 鎸囧畾鍒涘缓閭: {mask_email(email_str)}")
             return email_str, ""
         else:
             headers = {
@@ -1410,20 +1410,20 @@ def get_email_and_token(
                                         proxies=mail_proxies, verify=_ssl_verify(), timeout=15)
                     res.raise_for_status()
                     print(
-                        f"[{cfg.ts()}] [INFO] 成功通过 Freemail 指定创建邮箱: {mask_email(email_str)}"
+                        f"[{cfg.ts()}] [INFO] 鎴愬姛閫氳繃 Freemail 鎸囧畾鍒涘缓閭: {mask_email(email_str)}"
                     )
                     return email_str, ""
                 except Exception as e:
-                    print(f"[{cfg.ts()}] [ERROR] Freemail 邮箱创建异常: {e}")
-                    time.sleep(2)
+                    print(f"[{cfg.ts()}] [ERROR] Freemail 閭鍒涘缓寮傚父: {e}")
+                    time.sleep(1)
             return None, None
 
     if mode == "Gmail_OAuth":
-        print(f"[{cfg.ts()}] [INFO] Gmail_OAuth成功生成临时域名邮箱: {email_str}")
+        print(f"[{cfg.ts()}] [INFO] Gmail_OAuth鎴愬姛鐢熸垚涓存椂鍩熷悕閭: {email_str}")
         return email_str, ""
 
     if mode == "imap":
-        print(f"[{cfg.ts()}] [INFO] imap成功生成临时域名邮箱: {email_str}")
+        print(f"[{cfg.ts()}] [INFO] imap鎴愬姛鐢熸垚涓存椂鍩熷悕閭: {email_str}")
         return email_str, ""
 
     if mode == "cloudflare_temp_email":
@@ -1443,7 +1443,7 @@ def get_email_and_token(
                 quota_text = text.lower()
                 if status_code in {403, 429, 507} or any(token in quota_text for token in ("quota", "limit", "capacity", "exceeded", "over limit", "full")):
                     terminal_failure_reason = "capacity_exceeded"
-                    print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email邮箱容量疑似超限 (尝试 {attempt + 1}/5): {res.text}")
+                    print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email閭瀹归噺鐤戜技瓒呴檺 (灏濊瘯 {attempt + 1}/5): {res.text}")
                     time.sleep(1)
                     continue
                 res.raise_for_status()
@@ -1453,16 +1453,16 @@ def get_email_and_token(
                     jwt = data.get("jwt", "").strip()
                     set_last_email(email)
                     print(
-                        f"[{cfg.ts()}] [INFO] cloudflare_temp_email成功获取临时邮箱: {_format_grouped_mail_log(selected_domain, email)}"
+                        f"[{cfg.ts()}] [INFO] cloudflare_temp_email鎴愬姛鑾峰彇涓存椂閭: {_format_grouped_mail_log(selected_domain, email)}"
                     )
                     return email, jwt
                 terminal_failure_reason = "cloudflare_temp_email_network"
-                print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email邮箱申请失败 (尝试 {attempt + 1}/5): {res.text}")
+                print(f"[{cfg.ts()}] [WARNING] cloudflare_temp_email閭鐢宠澶辫触 (灏濊瘯 {attempt + 1}/5): {res.text}")
                 time.sleep(1)
             except Exception as e:
                 terminal_failure_reason = "cloudflare_temp_email_network"
-                print(f"[{cfg.ts()}] [ERROR] cloudflare_temp_email邮箱注册网络异常，准备重试: {e}")
-                time.sleep(2)
+                print(f"[{cfg.ts()}] [ERROR] cloudflare_temp_email閭娉ㄥ唽缃戠粶寮傚父锛屽噯澶囬噸璇? {e}")
+                time.sleep(1)
         if terminal_failure_reason:
             _set_last_domain_failure_event(selected_domain, terminal_failure_reason)
         return None, None
@@ -1562,7 +1562,7 @@ def _extract_otp_code(content: str) -> str:
 
 
 def _create_imap_conn(proxy_str=None):
-    """使用原生方式建立 IMAP 连接 (支持局部代理)"""
+    """浣跨敤鍘熺敓鏂瑰紡寤虹珛 IMAP 杩炴帴 (鏀寔灞€閮ㄤ唬鐞?"""
     if proxy_str:
         return ProxyIMAP4_SSL(cfg.IMAP_SERVER, cfg.IMAP_PORT, proxy_url=proxy_str, timeout=15)
     return imaplib.IMAP4_SSL(cfg.IMAP_SERVER, cfg.IMAP_PORT, timeout=15)
@@ -1576,7 +1576,7 @@ def get_oai_code(
         max_attempts: int = 20,
         ignore_code=None,
 ) -> str:
-    """轮询各邮箱服务商收取 OpenAI 验证码，返回 6 位字符串或空串。"""
+    """杞鍚勯偖绠辨湇鍔″晢鏀跺彇 OpenAI 楠岃瘉鐮侊紝杩斿洖 6 浣嶅瓧绗︿覆鎴栫┖涓层€?""
     max_attempts = getattr(cfg, 'OTP_POLL_MAX_ATTEMPTS', 20)
     mailbox_id = jwt
     mail_proxies = proxies if cfg.USE_PROXY_FOR_EMAIL else None
@@ -1589,7 +1589,7 @@ def get_oai_code(
     base_url = cfg.GPTMAIL_BASE.rstrip("/")
     mode = cfg.EMAIL_API_MODE
 
-    print(f"\n[{cfg.ts()}] [INFO] 等待接收验证码 ({mask_email(email)})...")
+    print(f"\n[{cfg.ts()}] [INFO] 绛夊緟鎺ユ敹楠岃瘉鐮?({mask_email(email)})...")
 
     if processed_mail_ids is None:
         processed_mail_ids = set()
@@ -1600,7 +1600,7 @@ def get_oai_code(
             mail_conn = _create_imap_conn(proxy_str)
             mail_conn.login(cfg.IMAP_USER, cfg.IMAP_PASS.replace(" ", ""))
         except Exception as e:
-            print(f"\n[{cfg.ts()}] [ERROR] IMAP 初始登录失败: {e}")
+            print(f"\n[{cfg.ts()}] [ERROR] IMAP 鍒濆鐧诲綍澶辫触: {e}")
             mail_conn = None
 
     local_ms_account = None
@@ -1612,19 +1612,19 @@ def get_oai_code(
             pass
 
         if local_ms_account:
-            timeout = max_attempts * 3
+            timeout = max_attempts
             return wait_for_code(email, timeout=timeout)
         else:
-            print(f"\n[{cfg.ts()}] [ERROR] 缺少微软邮箱凭据，无法收信。")
+            print(f"\n[{cfg.ts()}] [ERROR] 缂哄皯寰蒋閭鍑嵁锛屾棤娉曟敹淇°€?)
             return ""
 
     if mode == "gmail_fission":
-        timeout = max_attempts * 3
+        timeout = max_attempts
         code = wait_for_code(email, timeout=timeout)
         if code:
             return code
         else:
-            print(f"[{cfg.ts()}] [ERROR] ({mask_email(email)}) 邮递员等待超时，未收到验证码。")
+            print(f"[{cfg.ts()}] [ERROR] ({mask_email(email)}) 閭€掑憳绛夊緟瓒呮椂锛屾湭鏀跺埌楠岃瘉鐮併€?)
             return ""
 
     for attempt in range(max_attempts):
@@ -1653,7 +1653,7 @@ def get_oai_code(
                                 code = _extract_otp_code(body)
                                 if code:
                                     processed_mail_ids.add(m_id)
-                                    print(f"\n[{cfg.ts()}] [SUCCESS] mail_curl ({mask_email(email)})邮箱提取成功: {code}")
+                                    print(f"\n[{cfg.ts()}] [SUCCESS] mail_curl ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                                     return code
             elif mode == "fvia":
                 from utils.email_providers.fvia_service import FviaMailService
@@ -1691,7 +1691,7 @@ def get_oai_code(
                         if code:
                             processed_mail_ids.add(m_id)
                             print(
-                                f"\n[{cfg.ts()}] [SUCCESS] Fvia ({mask_email(email)}) 邮箱提取成功: {code}")
+                                f"\n[{cfg.ts()}] [SUCCESS] Fvia ({mask_email(email)}) 閭鎻愬彇鎴愬姛: {code}")
                             return code
 
             elif mode == "temporarymail":
@@ -1734,7 +1734,7 @@ def get_oai_code(
                             #             code = generic[-1]
                             if code:
                                 processed_mail_ids.add(m_id)
-                                print(f"\n[{cfg.ts()}] [SUCCESS] TemporaryMail ({mask_email(email)}) 邮箱提取成功: {code}")
+                                print(f"\n[{cfg.ts()}] [SUCCESS] TemporaryMail ({mask_email(email)}) 閭鎻愬彇鎴愬姛: {code}")
                                 return code
                 except Exception:
                     pass
@@ -1779,14 +1779,14 @@ def get_oai_code(
                             #             code = generic[-1]
                             if code:
                                 processed_mail_ids.add(m_id)
-                                print(f"\n[{cfg.ts()}] [SUCCESS] Inboxes.com ({mask_email(email)}) 邮箱提取成功: {code}")
+                                print(f"\n[{cfg.ts()}] [SUCCESS] Inboxes.com ({mask_email(email)}) 閭鎻愬彇鎴愬姛: {code}")
                                 return code
                 except Exception:
                     pass
 
             elif mode == "tmailor":
                 if not jwt:
-                    print(f"\n[{cfg.ts()}] [ERROR] Tmailor 缺少 token，无法提取验证码！")
+                    print(f"\n[{cfg.ts()}] [ERROR] Tmailor 缂哄皯 token锛屾棤娉曟彁鍙栭獙璇佺爜锛?)
                     return ""
                 try:
                     from utils.email_providers.tmailor_service import TmailorService
@@ -1834,14 +1834,14 @@ def get_oai_code(
                             #             code = generic[-1]
                             if code:
                                 processed_mail_ids.add(msg_id)
-                                print(f"\n[{cfg.ts()}] [SUCCESS] Tmailor ({mask_email(email)}) 提取成功: {code}")
+                                print(f"\n[{cfg.ts()}] [SUCCESS] Tmailor ({mask_email(email)}) 鎻愬彇鎴愬姛: {code}")
                                 return code
                 except Exception as e:
                     pass
 
             # elif mode == "temporam":
             #     if not jwt:
-            #         print(f"\n[{cfg.ts()}] [ERROR] Temporam 缺少 token(即邮箱号)，无法提取验证码！")
+            #         print(f"\n[{cfg.ts()}] [ERROR] Temporam 缂哄皯 token(鍗抽偖绠卞彿)锛屾棤娉曟彁鍙栭獙璇佺爜锛?)
             #         return ""
             #     try:
             #         from utils.email_providers.temporam_service import TemporamService
@@ -1885,7 +1885,7 @@ def get_oai_code(
             #                             code = generic[-1]
             #             if code:
             #                 processed_mail_ids.add(msg_id)
-            #                 print(f"\n[{cfg.ts()}] [SUCCESS] Temporam ({mask_email(email)})邮箱提取成功: {code}")
+            #                 print(f"\n[{cfg.ts()}] [SUCCESS] Temporam ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
             #                 return code
             #
             #     except Exception as e:
@@ -1910,11 +1910,11 @@ def get_oai_code(
                                 except Exception:
                                     pass
                             if code:
-                                print(f"[{cfg.ts()}] [SUCCESS] cloudmail (本项目极速) ({mask_email(target_email)}) 提取成功: {code}")
+                                print(f"[{cfg.ts()}] [SUCCESS] cloudmail (鏈」鐩瀬閫? ({mask_email(target_email)}) 鎻愬彇鎴愬姛: {code}")
                                 return code
 
                     except ImportError:
-                        print(f"[{cfg.ts()}] [ERROR] 无法导入内存池！")
+                        print(f"[{cfg.ts()}] [ERROR] 鏃犳硶瀵煎叆鍐呭瓨姹狅紒")
                 else:
                     token = get_cm_token(mail_proxies)
                     if token:
@@ -1959,7 +1959,7 @@ def get_oai_code(
                                 #             code = generic[-1]
                                 if code:
                                     processed_mail_ids.add(m_id)
-                                    print(f"\n[{cfg.ts()}] [SUCCESS] CloudMail ({mask_email(email)})邮箱提取成功: {code}")
+                                    print(f"\n[{cfg.ts()}] [SUCCESS] CloudMail ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                                     return code
             elif mode == "duckmail":
                 duck_use_proxy = getattr(cfg, 'DUCK_USE_PROXY', True)
@@ -1974,13 +1974,13 @@ def get_oai_code(
                         otp_code = get_gmail_otp_via_oauth(email, mail_proxies)
                         if otp_code:
                             print(
-                                f"\n[{cfg.ts()}] [SUCCESS] Duck转发 (Gmail OAuth) ({mask_email(email)}) 提取成功: {otp_code}")
+                                f"\n[{cfg.ts()}] [SUCCESS] Duck杞彂 (Gmail OAuth) ({mask_email(email)}) 鎻愬彇鎴愬姛: {otp_code}")
                             return otp_code
 
                     # elif forward_mode == "cloudmail":
                     #     if not forward_email:
                     #         print(
-                    #             f"\n[{cfg.ts()}] [ERROR] Duckmail 运行失败: 未配置转发邮箱地址({forward_email})！")
+                    #             f"\n[{cfg.ts()}] [ERROR] Duckmail 杩愯澶辫触: 鏈厤缃浆鍙戦偖绠卞湴鍧€({forward_email})锛?)
                     #         return ""
                     #     token = get_cm_token(mail_proxies)
                     #     if token:
@@ -2007,13 +2007,13 @@ def get_oai_code(
                     #                 code = _extract_otp_code(content)
                     #                 if code:
                     #                     processed_mail_ids.add(m_id)
-                    #                     print(f"\n[{cfg.ts()}] [SUCCESS] Duck转发 (CloudMail) 提取成功: {code}")
+                    #                     print(f"\n[{cfg.ts()}] [SUCCESS] Duck杞彂 (CloudMail) 鎻愬彇鎴愬姛: {code}")
                     #                     return code
                     #
                     #
                     # elif forward_mode == "freemail":
                     #     if not forward_email:
-                    #         print(f"\n[{cfg.ts()}] [ERROR] Duckmail 运行失败: 未配置转发邮箱地址(forward_email)！")
+                    #         print(f"\n[{cfg.ts()}] [ERROR] Duckmail 杩愯澶辫触: 鏈厤缃浆鍙戦偖绠卞湴鍧€(forward_email)锛?)
                     #         return ""
                     #     headers = {"Content-Type": "application/json",
                     #                "Authorization": f"Bearer {cfg.FREEMAIL_API_TOKEN}"}
@@ -2052,7 +2052,7 @@ def get_oai_code(
                     #                     if not code: code = str(d.get("code") or d.get("verification_code") or "")
                     #                     if code:
                     #                         processed_mail_ids.add(mail_id)
-                    #                         print(f"[{cfg.ts()}] [SUCCESS] Duck转发 (Freemail) 提取成功: {code}")
+                    #                         print(f"[{cfg.ts()}] [SUCCESS] Duck杞彂 (Freemail) 鎻愬彇鎴愬姛: {code}")
                     #                         return code
                     #             except Exception:
                     #                 pass
@@ -2060,7 +2060,7 @@ def get_oai_code(
                     # elif forward_mode == "mail_curl":
                     #     if not forward_email:
                     #         print(
-                    #             f"\n[{cfg.ts()}] [ERROR] Duckmail 运行失败: 未配置转发邮箱地址(forward_email)！")
+                    #             f"\n[{cfg.ts()}] [ERROR] Duckmail 杩愯澶辫触: 鏈厤缃浆鍙戦偖绠卞湴鍧€(forward_email)锛?)
                     #         return ""
                     #     inbox_url = f"{cfg.MC_API_BASE}/api/inbox?key={cfg.MC_KEY}&mailbox_id={forward_email}"
                     #     res = requests.get(inbox_url, proxies=mail_proxies, verify=_ssl_verify(),
@@ -2083,11 +2083,11 @@ def get_oai_code(
                     #                     code = _extract_otp_code(body)
                     #                     if code:
                     #                         processed_mail_ids.add(m_id)
-                    #                         print(f"\n[{cfg.ts()}] [SUCCESS] Duck转发 (mail_curl) 提取成功: {code}")
+                    #                         print(f"\n[{cfg.ts()}] [SUCCESS] Duck杞彂 (mail_curl) 鎻愬彇鎴愬姛: {code}")
                     #                         return code
                     # elif forward_mode == "cloudflare_temp_email":
                     #     if not forward_email:
-                    #         print(f"[{cfg.ts()}] [ERROR] Duckmail 运行失败: 未配置转发邮箱地址(forward_email)！")
+                    #         print(f"[{cfg.ts()}] [ERROR] Duckmail 杩愯澶辫触: 鏈厤缃浆鍙戦偖绠卞湴鍧€(forward_email)锛?)
                     #         return ""
                     #     res = requests.get(
                     #         f"{cfg.GPTMAIL_BASE}/admin/mails",
@@ -2114,7 +2114,7 @@ def get_oai_code(
                     #             code = _extract_otp_code(content)
                     #             if code:
                     #                 processed_mail_ids.add(m_id)
-                    #                 print(f"\n[{cfg.ts()}] [SUCCESS] Duck转发 (CF 临时邮箱) 提取成功: {code}")
+                    #                 print(f"\n[{cfg.ts()}] [SUCCESS] Duck杞彂 (CF 涓存椂閭) 鎻愬彇鎴愬姛: {code}")
                     #                 return code
                     else:
                         pass
@@ -2127,11 +2127,11 @@ def get_oai_code(
                             code = _extract_otp_code(content)
                             if code:
                                 print(
-                                    f"\n[{cfg.ts()}] [SUCCESS] Duck API ({mask_email(email)}) 提取成功: {code}")
+                                    f"\n[{cfg.ts()}] [SUCCESS] Duck API ({mask_email(email)}) 鎻愬彇鎴愬姛: {code}")
                                 return code
             elif mode == "generator_email":
                 if not jwt:
-                    print(f"\n[{cfg.ts()}] [ERROR] GeneratorEmail 缺少凭证 (surl)，无法提取验证码！")
+                    print(f"\n[{cfg.ts()}] [ERROR] GeneratorEmail 缂哄皯鍑瘉 (surl)锛屾棤娉曟彁鍙栭獙璇佺爜锛?)
                     return ""
                 try:
                     from utils.email_providers.generator_email_service import GeneratorEmailService
@@ -2150,7 +2150,7 @@ def get_oai_code(
                         if code:
                             processed_mail_ids.add(m_id)
                             print(
-                                f"\n[{cfg.ts()}] [SUCCESS] GeneratorEmail ({mask_email(email)})邮箱提取成功: {code}")
+                                f"\n[{cfg.ts()}] [SUCCESS] GeneratorEmail ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                             return code
 
                 except Exception as e:
@@ -2158,7 +2158,7 @@ def get_oai_code(
 
             elif mode == "tempmail":
                 if not jwt:
-                    print(f"\n[{cfg.ts()}] [ERROR] Tempmail 缺少 token，无法提取验证码！")
+                    print(f"\n[{cfg.ts()}] [ERROR] Tempmail 缂哄皯 token锛屾棤娉曟彁鍙栭獙璇佺爜锛?)
                     return ""
                 try:
                     from utils.email_providers.tempmail_service import TempmailService
@@ -2184,14 +2184,14 @@ def get_oai_code(
                         code = _extract_otp_code(safe_content)
                         if code:
                             processed_mail_ids.add(msg_date)
-                            print(f"\n[{cfg.ts()}] [SUCCESS] Tempmail ({mask_email(email)})邮箱提取成功: {code}")
+                            print(f"\n[{cfg.ts()}] [SUCCESS] Tempmail ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                             return code
                 except Exception as e:
                     pass
 
             elif mode == "tempmail_org":
                 if not jwt:
-                    print(f"\n[{cfg.ts()}] [ERROR] TempMail.org 缺少 token，无法提取验证码！")
+                    print(f"\n[{cfg.ts()}] [ERROR] TempMail.org 缂哄皯 token锛屾棤娉曟彁鍙栭獙璇佺爜锛?)
                     return ""
                 try:
                     from utils.email_providers.tempmail_org import TempMailOrgService
@@ -2213,7 +2213,7 @@ def get_oai_code(
 
                         if code:
                             processed_mail_ids.add(msg_id)
-                            print(f"\n[{cfg.ts()}] [SUCCESS] TempMail.org ({mask_email(email)})邮箱提取成功: {code}")
+                            print(f"\n[{cfg.ts()}] [SUCCESS] TempMail.org ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                             return code
                 except Exception as e:
                     pass
@@ -2221,7 +2221,7 @@ def get_oai_code(
             elif mode == "Gmail_OAuth":
                 otp_code = get_gmail_otp_via_oauth(email, mail_proxies)
                 if otp_code:
-                    print(f"\n[{cfg.ts()}] [SUCCESS] Gmail OAuth ({mask_email(email)}) 提取成功: {otp_code}")
+                    print(f"\n[{cfg.ts()}] [SUCCESS] Gmail OAuth ({mask_email(email)}) 鎻愬彇鎴愬姛: {otp_code}")
                     return otp_code
 
             elif mode == "imap":
@@ -2230,11 +2230,11 @@ def get_oai_code(
                         mail_conn = _create_imap_conn(proxy_str)
                         mail_conn.login(cfg.IMAP_USER, cfg.IMAP_PASS.replace(" ", ""))
                     except Exception:
-                        time.sleep(5)
+                        time.sleep(1)
                         continue
 
                 folders = ["INBOX", "Junk", '"Junk Email"', "Spam",
-                           '"[Gmail]/Spam"', '"垃圾邮件"']
+                           '"[Gmail]/Spam"', '"鍨冨溇閭欢"']
                 found = False
                 for folder in folders:
                     try:
@@ -2316,7 +2316,7 @@ def get_oai_code(
                                 code = _extract_otp_code(f"{subject}\n{content}")
                                 if code:
                                     processed_mail_ids.add(mail_id)
-                                    print(f"\n[{cfg.ts()}] [SUCCESS] IMAP ({mask_email(email)})邮箱提取成功: {code}")
+                                    print(f"\n[{cfg.ts()}] [SUCCESS] IMAP ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                                     try:
                                         mail_conn.logout()
                                     except Exception:
@@ -2326,12 +2326,12 @@ def get_oai_code(
                         found = True
                         break
                     except imaplib.IMAP4.abort:
-                        print(f"\n[{cfg.ts()}] [WARNING] IMAP 连接断开，将在下次循环重连...")
+                        print(f"\n[{cfg.ts()}] [WARNING] IMAP 杩炴帴鏂紑锛屽皢鍦ㄤ笅娆″惊鐜噸杩?..")
                         mail_conn = None
                         break
                     except Exception as e:
                         if "Spam" in folder:
-                            print(f"\n[{cfg.ts()}] [DEBUG] 访问垃圾箱失败: {e}")
+                            print(f"\n[{cfg.ts()}] [DEBUG] 璁块棶鍨冨溇绠卞け璐? {e}")
                 if not found:
                     pass
             elif mode == "openai_cpa":
@@ -2339,21 +2339,26 @@ def get_oai_code(
                     try:
                         from utils.auth_core import code_pool
                         target_email = email.lower().strip()
-                        for attempt in range(max_attempts):
-                            if target_email in code_pool:
-                                raw_text = code_pool.get(target_email, "")
+                        timeout_seconds = max(1, int(max_attempts))
+                        start_time = time.time()
+                        last_log_second = -1
+                        while time.time() - start_time < timeout_seconds:
+                            raw_text = code_pool.get(target_email, "")
+                            if raw_text:
                                 current_code = _extract_otp_code(_clean_html_to_text(raw_text))
                                 if current_code and current_code != ignore_code:
                                     code_pool.pop(target_email, None)
-                                    print(f"[{cfg.ts()}] [SUCCESS] 项目专属邮箱 OPENAI-CPA ({mask_email(target_email)}) 提取成功: {current_code}")
+                                    print(f"[{cfg.ts()}] [SUCCESS] 椤圭洰涓撳睘閭 OPENAI-CPA ({mask_email(target_email)}) 鎻愬彇鎴愬姛: {current_code}")
                                     return current_code
-                                elif current_code == ignore_code:
-                                    pass
-                            time.sleep(2)
-                        print(f"[{cfg.ts()}] [ERROR] 超时未获取到不同于 {ignore_code} 的新验证码")
+                            elapsed_second = int(time.time() - start_time)
+                            if elapsed_second > 0 and elapsed_second % 3 == 0 and elapsed_second != last_log_second:
+                                last_log_second = elapsed_second
+                                print(f"[{cfg.ts()}] [INFO] 仍在查询({mask_email(email)})邮箱，暂未收到验证码 (已等待 {elapsed_second}/{timeout_seconds}s)...")
+                            time.sleep(0.1)
+                        print(f"[{cfg.ts()}] [ERROR] 瓒呮椂鏈幏鍙栧埌涓嶅悓浜?{ignore_code} 鐨勬柊楠岃瘉鐮?)
                         return ""
                     except ImportError:
-                        print(f"[{cfg.ts()}] [ERROR] 无法导入内存池！")
+                        print(f"[{cfg.ts()}] [ERROR] 鏃犳硶瀵煎叆鍐呭瓨姹狅紒")
             elif mode == "freemail":
                 if getattr(cfg, 'FREEMAIL_LOCAL_WEBHOOK', False):
                     try:
@@ -2373,11 +2378,11 @@ def get_oai_code(
                                 except Exception:
                                     pass
                             if code:
-                                print(f"[{cfg.ts()}] [SUCCESS] freemail (本项目极速) ({mask_email(target_email)}) 提取成功: {code}")
+                                print(f"[{cfg.ts()}] [SUCCESS] freemail (鏈」鐩瀬閫? ({mask_email(target_email)}) 鎻愬彇鎴愬姛: {code}")
                                 return code
 
                     except ImportError:
-                        print(f"[{cfg.ts()}] [ERROR] 无法导入内存池！")
+                        print(f"[{cfg.ts()}] [ERROR] 鏃犳硶瀵煎叆鍐呭瓨姹狅紒")
                 else:
                     headers = {
                         "Content-Type": "application/json",
@@ -2427,11 +2432,11 @@ def get_oai_code(
                                     pass
                             if code:
                                 processed_mail_ids.add(mail_id)
-                                print(f"[{cfg.ts()}] [SUCCESS] freemail ({mask_email(email)})邮箱提取成功: {code}")
+                                print(f"[{cfg.ts()}] [SUCCESS] freemail ({mask_email(email)})閭鎻愬彇鎴愬姛: {code}")
                                 return code
             elif mode == "luckmail":
                 if not jwt:
-                    print(f"\n[{cfg.ts()}] [ERROR] LuckMail 缺少 token，无法提取验证码！")
+                    print(f"\n[{cfg.ts()}] [ERROR] LuckMail 缂哄皯 token锛屾棤娉曟彁鍙栭獙璇佺爜锛?)
                     return ""
                 try:
                     from utils.email_providers.luckmail_service import LuckMailService
@@ -2440,7 +2445,7 @@ def get_oai_code(
                     code = lm_service.get_code(jwt)
                     if code:
                         processed_mail_ids.add(jwt)
-                        print(f"\n[{cfg.ts()}] [SUCCESS] LuckMail ({mask_email(email)})邮箱提取验证码成功: {code}")
+                        print(f"\n[{cfg.ts()}] [SUCCESS] LuckMail ({mask_email(email)})閭鎻愬彇楠岃瘉鐮佹垚鍔? {code}")
                         return code
                 except Exception as e:
                     pass
@@ -2464,8 +2469,8 @@ def get_oai_code(
                         proxies=mail_proxies, verify=_ssl_verify(), timeout=15,
                     )
                 if res.status_code != 200:
-                    print(f"\n[{cfg.ts()}] [ERROR] ({mask_email(email)})邮箱接口请求失败 (HTTP {res.status_code}): {res.text}")
-                    time.sleep(3)
+                    print(f"\n[{cfg.ts()}] [ERROR] ({mask_email(email)})閭鎺ュ彛璇锋眰澶辫触 (HTTP {res.status_code}): {res.text}")
+                    time.sleep(1)
                     continue
                 results = res.json().get("results")
                 if results:
@@ -2482,7 +2487,7 @@ def get_oai_code(
                         m = re.search(pattern, content)
                         if m:
                             processed_mail_ids.add(mail_id)
-                            print(f"[{cfg.ts()}] [SUCCESS] ({mask_email(email)})邮箱提取成功: {m.group(1)}")
+                            print(f"[{cfg.ts()}] [SUCCESS] ({mask_email(email)})閭鎻愬彇鎴愬姛: {m.group(1)}")
                             return m.group(1)
                     pass
                 else:
@@ -2492,15 +2497,15 @@ def get_oai_code(
             if getattr(cfg, 'GLOBAL_STOP', False):
                 return None
             if "timeout" in str(e).lower() or "time out" in str(e).lower():
-                print(f"[{cfg.ts()}] [ERROR] 代理节点严重超时，终止本次邮箱查询。")
+                print(f"[{cfg.ts()}] [ERROR] 浠ｇ悊鑺傜偣涓ラ噸瓒呮椂锛岀粓姝㈡湰娆￠偖绠辨煡璇€?)
                 return ""
-            print(f"[{cfg.ts()}] [ERROR] 邮件循环发生异常: {str(e)}")
+            print(f"[{cfg.ts()}] [ERROR] 閭欢寰幆鍙戠敓寮傚父: {str(e)}")
             import traceback
             traceback.print_exc()
 
         if attempt > 0 and attempt % 3 == 0:
-            print(f"[{cfg.ts()}] [INFO] 仍在查询({mask_email(email)})邮箱，暂未收到验证码 (已尝试 {attempt + 1}/{max_attempts})...")
-        time.sleep(3)
+            print(f"[{cfg.ts()}] [INFO] 浠嶅湪鏌ヨ({mask_email(email)})閭锛屾殏鏈敹鍒伴獙璇佺爜 (宸插皾璇?{attempt + 1}/{max_attempts})...")
+        time.sleep(1)
 
-    print(f"\n[{cfg.ts()}] [ERROR] ({mask_email(email)})邮箱接收验证码超时")
+    print(f"\n[{cfg.ts()}] [ERROR] ({mask_email(email)})閭鎺ユ敹楠岃瘉鐮佽秴鏃?)
     return ""

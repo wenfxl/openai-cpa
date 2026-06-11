@@ -231,8 +231,8 @@ MAX_OTP_RETRIES: int = 5
 OTP_POLL_MAX_ATTEMPTS: int = 20
 USE_PROXY_FOR_EMAIL: bool = False
 ENABLE_EMAIL_MASKING: bool = True
-LOGIN_DELAY_MIN: int = 20
-LOGIN_DELAY_MAX: int = 45
+LOGIN_DELAY_MIN: int = 0
+LOGIN_DELAY_MAX: int = 1
 ENABLE_CPA_MODE: bool = False
 SAVE_TO_LOCAL_IN_CPA_MODE: bool = True
 CPA_API_URL: str = ""
@@ -717,8 +717,8 @@ def reload_all_configs(new_config_dict=None):
     USE_PROXY_FOR_EMAIL = _c.get("use_proxy_for_email", False)
     ENABLE_EMAIL_MASKING = _c.get("enable_email_masking", True)
 
-    LOGIN_DELAY_MIN = _c.get("login_delay_min", 20)
-    LOGIN_DELAY_MAX = _c.get("login_delay_max", 45)
+    LOGIN_DELAY_MIN = _c.get("login_delay_min", 0)
+    LOGIN_DELAY_MAX = _c.get("login_delay_max", 1)
 
     _cpa = _c.get("cpa_mode", {})
     ENABLE_CPA_MODE = _cpa.get("enable", False)
@@ -860,6 +860,8 @@ def reload_all_configs(new_config_dict=None):
         HERO_SMS_POLL_TIMEOUT_SEC = int(_hero_sms_conf.get("poll_timeout_sec", 120))
     except:
         HERO_SMS_POLL_TIMEOUT_SEC = 120
+    HERO_SMS_POLL_INTERVAL_SEC = safe_float(_hero_sms_conf.get("poll_interval_sec", 1.0), default=1.0, minimum=0.1)
+    HERO_SMS_WAIT_CODE_TIMEOUT_SEC = safe_int(_hero_sms_conf.get("wait_code_timeout_sec", 60), default=60, minimum=10)
 
     _smsbower = _c.get("smsbower", {})
     SMSBOWER_ENABLED = safe_bool(_smsbower.get("enabled", False), default=False)
@@ -874,6 +876,8 @@ def reload_all_configs(new_config_dict=None):
     SMSBOWER_MIN_BALANCE = safe_float(_smsbower.get("min_balance", 0.0), default=0.0)
     SMSBOWER_MAX_TRIES = safe_int(_smsbower.get("max_tries", 3), default=3)
     SMSBOWER_POLL_TIMEOUT_SEC = safe_int(_smsbower.get("poll_timeout_sec", 120), default=120)
+    SMSBOWER_POLL_INTERVAL_SEC = safe_float(_smsbower.get("poll_interval_sec", 0.8), default=0.8, minimum=0.1)
+    SMSBOWER_WAIT_CODE_TIMEOUT_SEC = safe_int(_smsbower.get("wait_code_timeout_sec", 60), default=60, minimum=10)
     SMSBOWER_MIN_PRICE = safe_float(_smsbower.get("min_price", 0.05), default=0.05)
     SMSBOWER_REUSE_MAX = safe_int(_smsbower.get("reuse_max", 2), default=2)
     SMSBOWER_OPERATOR = str(_smsbower.get("operator", ) or "").strip()
@@ -893,6 +897,8 @@ def reload_all_configs(new_config_dict=None):
     FIVESIM_MIN_BALANCE = safe_float(_fivesim.get("min_balance", 10.0), default=10.0)
     FIVESIM_MAX_TRIES = safe_int(_fivesim.get("max_tries", 3), default=3)
     FIVESIM_POLL_TIMEOUT_SEC = safe_int(_fivesim.get("poll_timeout_sec", 180), default=180)
+    FIVESIM_POLL_INTERVAL_SEC = safe_float(_fivesim.get("poll_interval_sec", 0.8), default=0.8, minimum=0.1)
+    FIVESIM_WAIT_CODE_TIMEOUT_SEC = safe_int(_fivesim.get("wait_code_timeout_sec", 60), default=60, minimum=10)
     FIVESIM_REUSE_MAX = safe_int(_fivesim.get("reuse_max", 2), default=2)
     FIVESIM_OPERATOR = str(_fivesim.get("operator", ) or "").strip()
 

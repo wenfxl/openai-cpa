@@ -76,6 +76,20 @@ def _hero_sms_poll_timeout_sec() -> int:
 def _hero_sms_max_tries() -> int:
     return int(cfg.HERO_SMS_MAX_TRIES)
 
+def _hero_sms_poll_interval_sec() -> float:
+    try:
+        value = float(getattr(cfg, 'HERO_SMS_POLL_INTERVAL_SEC', 1.0))
+    except Exception:
+        value = 1.0
+    return max(0.1, min(value, 1.0))
+
+def _hero_sms_wait_code_timeout_sec() -> int:
+    try:
+        value = int(getattr(cfg, 'HERO_SMS_WAIT_CODE_TIMEOUT_SEC', 60))
+    except Exception:
+        value = 60
+    return max(10, min(value, 60))
+
 def _hero_sms_country_timeout_limit() -> int: return 2
 
 def _hero_sms_country_cooldown_sec() -> int: return 900
@@ -875,10 +889,10 @@ def _hero_sms_get_number(
 def _hero_sms_poll_code(activation_id: str, proxies: Any) -> str:
     if not activation_id:
         return ""
-    timeout_sec = _hero_sms_poll_timeout_sec()
-    interval_sec = 3.0
-    progress_sec = 8
-    resend_after_sec = 24
+    timeout_sec = min(_hero_sms_poll_timeout_sec(), _hero_sms_wait_code_timeout_sec())
+    interval_sec = _hero_sms_poll_interval_sec()
+    progress_sec = 5
+    resend_after_sec = 15
 
     started_at = time.time()
     next_progress_at = float(progress_sec)

@@ -39,6 +39,20 @@ def _fivesim_max_tries() -> int: return int(getattr(cfg, 'FIVESIM_MAX_TRIES', 3)
 
 def _fivesim_poll_timeout() -> int: return int(getattr(cfg, 'FIVESIM_POLL_TIMEOUT_SEC', 180))
 
+def _fivesim_poll_interval_sec() -> float:
+    try:
+        value = float(getattr(cfg, 'FIVESIM_POLL_INTERVAL_SEC', 0.8))
+    except Exception:
+        value = 0.8
+    return max(0.1, min(value, 1.0))
+
+def _fivesim_wait_code_timeout_sec() -> int:
+    try:
+        value = int(getattr(cfg, 'FIVESIM_WAIT_CODE_TIMEOUT_SEC', 60))
+    except Exception:
+        value = 60
+    return max(10, min(value, 60))
+
 
 def _fivesim_auto_pick() -> bool: return bool(getattr(cfg, 'FIVESIM_AUTO_PICK_COUNTRY', True))
 
@@ -317,7 +331,7 @@ def _fivesim_set_status(action: str, order_id: str, proxies: Any):
     _fivesim_request("GET", f"user/{action}/{order_id}", proxies)
 
 def _fivesim_poll_code(order_id: str, proxies: Any, expected_sms_index: int = 0, timeout_override: int = 0) -> str:
-    timeout_sec = timeout_override if timeout_override > 0 else _fivesim_poll_timeout()
+    timeout_sec = timeout_override if timeout_override > 0 else min(_fivesim_poll_timeout(), _fivesim_wait_code_timeout_sec())
     started = time.time()
     _info(f"⏳ 正在等待 5SIM 验证码 (第 {expected_sms_index + 1} 条, 本次最大等待 {timeout_sec} 秒)...")
     last_print = time.time()
@@ -342,7 +356,7 @@ def _fivesim_poll_code(order_id: str, proxies: Any, expected_sms_index: int = 0,
             _warn(f"❌ 接码被平台取消: {data.get('status')}")
             return ""
 
-        _sleep_interruptible(3.0)
+        _sleep_interruptible(_fivesim_poll_interval_sec())
 
     _warn("⚠️ 5SIM 接码彻底超时！")
     return ""
@@ -538,7 +552,7 @@ def get_phone_for_signup(proxies: Any) -> tuple[str, str, str, str]:
 
 
 def wait_code_for_signup(order_id: str, proxies: Any) -> str:
-    timeout_sec = _fivesim_poll_timeout()
+    timeout_sec = min(_fivesim_poll_timeout(), _fivesim_wait_code_timeout_sec())
     started = time.time()
     _info(f"⏳ 正在等待 5SIM 首发注册短信验证码...")
     last_print = time.time()
@@ -563,7 +577,7 @@ def wait_code_for_signup(order_id: str, proxies: Any) -> str:
             _warn(f"❌ 5SIM 订单已取消或超时: {data.get('status')}")
             return ""
 
-        _sleep_interruptible(3.0)
+        _sleep_interruptible(_fivesim_poll_interval_sec())
 
     _warn("⚠5SIM 接码彻底超时！")
     return ""
