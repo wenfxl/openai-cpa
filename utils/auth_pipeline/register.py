@@ -13,7 +13,7 @@ from utils.integrations.smsbower_sms import handle_smsbower_verification
 from utils.integrations.smsbower_sms import get_phone_for_signup as sb_get_phone, wait_code_for_signup as sb_wait_code, report_signup_result as sb_report
 from utils.integrations.fivesim_sms import try_verify_phone_via_fivesim
 from utils.integrations.fivesim_sms import get_phone_for_signup as fs_get_phone, wait_code_for_signup as fs_wait_code, report_signup_result as fs_report
-from utils.auth_core import generate_payload, init_auth, image2api_data, sys_node_allocate, sys_node_release, code_pool
+from utils.auth_core import generate_payload, init_auth, image2api_data, sys_node_allocate, sys_node_release, code_pool,sys_team_domain_verify
 from utils.integrations.image2api_client import Image2APIClient
 from .http_utils import _ssl_verify, _skip_net_check, _post_with_retry, _oai_headers, _follow_redirect_chain_local
 from .common import _extract_next_url, _parse_workspace_from_auth_cookie, _otp_verify_loop, _create_account_about_you
@@ -111,10 +111,21 @@ def run(
         password = _generate_password()
 
         is_phone_mode = str(getattr(cfg, 'REG_MODE', '')).strip()
+
         if is_phone_mode == "phone":
             print(f"[{cfg.ts()}] [INFO] 【手机首发模式】已生成备用邮箱({mask_email(email)})及密码用于后续绑定和存库")
         else:
             print(f"[{cfg.ts()}] [INFO] 提交注册信息 (密码: {password[:4]}****)")
+
+
+        is_overspeed = getattr(cfg, 'TEAM_MODE_OVERSPEED', False)
+        if is_overspeed:
+            print(f"[{cfg.ts()}] [INFO] 超速妙已启动！正在验证邮箱: {mask_email(email)}...")
+            is_verified, sys_handle_a, sys_handle_b, sys_handle_c = sys_team_domain_verify(email, proxies)
+            if not is_verified:
+                print(f"[{cfg.ts()}] [ERROR] 超速妙验证失败，丢弃邮箱。")
+                return None, None
+            print(f"[{cfg.ts()}] [SUCCESS] 邮箱 {mask_email(email)} 验证完成...")
 
         MAX_REG_RETRIES = 2
 
@@ -171,23 +182,44 @@ def run(
                     proxies=proxies,
                     verify=_ssl_verify()
                 )
+
+                if not did or not current_ua:
+                    print(f"[{cfg.ts()}] [WARNING] 未获取到 oai-did，节点环境可能被关注，正在为你生成did。")
+                    did = str(uuid.uuid4())
+
                 if run_ctx is not None:
                     run_ctx['device_id'] = did
                     run_ctx['user_agent'] = current_ua
 
-                if not did or not current_ua:
-                    print(f"[{cfg.ts()}] [WARNING] 未获取到 oai-did，节点环境可能被关注。")
-                    return None, None
 
                 reg_ctx = {}
 
                 print(f"[{cfg.ts()}] [INFO] 正在计算（{masked_login}）风控算力挑战...")
+
+                start_url = "https://auth.openai.com/create-account"
+                screen_hint_val = "login_or_signup"
+
+                if getattr(cfg, 'TEAM_MODE_OVERSPEED', False):
+                    screen_hint_val = "signup"
+                    target_auth_url = oauth_reg.auth_url.replace("prompt=login", "")
+                    if "screen_hint=" not in target_auth_url:
+                        target_auth_url += "&screen_hint=signup"
+                    try:
+                        _, start_url = _follow_redirect_chain_local(s_reg, target_auth_url, proxies)
+                    except Exception:
+                        start_url = target_auth_url
+
+
                 sentinel_signup = generate_payload(did=did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
                                                    impersonate="chrome", ctx=reg_ctx)
                 if sentinel_signup:
                     print(f"[{cfg.ts()}] [SUCCESS] （{masked_login}）算力挑战成功。")
                 signup_headers = _oai_headers(did, {
                     "Referer": "https://auth.openai.com/create-account",
+                    "content-type": "application/json",
+                })
+                signup_headers = _oai_headers(did, {
+                    "Referer": start_url,
                     "content-type": "application/json",
                 })
                 if sentinel_signup:
@@ -197,7 +229,8 @@ def run(
                     s_reg,
                     "https://auth.openai.com/api/accounts/authorize/continue",
                     headers=signup_headers,
-                    json_body={"username": {"value": login_username, "kind": login_kind}, "screen_hint": "login_or_signup"},
+                    json_body={"username": {"value": login_username, "kind": login_kind},
+                               "screen_hint": screen_hint_val},
                     proxies=proxies,
                 )
 
@@ -209,6 +242,7 @@ def run(
                     return None, None
 
                 try:
+                    is_overspeed = getattr(cfg, 'TEAM_MODE_OVERSPEED', False)
                     if is_phone_mode == "phone":
                         sentinel_pwd = generate_payload(did=did, flow="username_password_create", proxy=proxy,
                                                         user_agent=current_ua, impersonate="chrome", ctx=reg_ctx)
@@ -335,10 +369,10 @@ def run(
                     else:
                         signup_json = signup_resp.json()
                         continue_url = signup_json.get("continue_url", "")
-                        if "log-in" in continue_url or "/email-verification" in continue_url:
+                        if is_overspeed or "log-in" in continue_url or "/email-verification" in continue_url:
                             is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                             force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
-                            if is_openai_cpa == "openai_cpa" and force_original_pwd:
+                            if is_overspeed or (is_openai_cpa == "openai_cpa" and force_original_pwd):
                                 pass
                             else:
                                 print(f"[{cfg.ts()}] [WARNING] （{masked_login}）该邮箱无需密码注册！准备走【无密码通道】进行接管...")
@@ -718,7 +752,6 @@ def run(
                 data = ""
                 if post_register_artifacts:
                     data = image2api_data(s_reg, target_continue_url, proxies)
-
 
 
                 if mode_label == "常规模式":
@@ -1337,7 +1370,7 @@ def run(
         if getattr(cfg, 'TEAM_MODE_ENABLE', False):
             try:
                 time.sleep(random.uniform(0.1, 0.5))
-                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
+                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies, original_email=email)
             except Exception:
                 pass
         if s_reg is not None:
@@ -1778,7 +1811,7 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
         if getattr(cfg, 'TEAM_MODE_ENABLE', False):
             try:
                 time.sleep(random.uniform(0.1, 0.5))
-                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies)
+                sys_node_release(saved_temp_at, sys_handle_a, sys_handle_b, sys_handle_c, proxies, original_email=email)
             except Exception:
                 pass
         if s_log is not None:
