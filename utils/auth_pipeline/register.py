@@ -727,7 +727,12 @@ def run(
                         target_continue_url = ""
 
                 post_register_artifacts = _needs_post_register_artifacts()
-                wait_time = _resolve_post_register_wait_seconds() if post_register_artifacts else 0
+                wait_time = _resolve_post_register_wait_seconds() if post_register_artifacts else random.randint(
+                    cfg.LOGIN_DELAY_MIN, cfg.LOGIN_DELAY_MAX)
+
+                if not target_continue_url:
+                    print(f"[{cfg.ts()}] [INFO] （{masked_login}）账号创建被拦截，域名已被风控。请更换域名...")
+                    return None, None
                 print(f"[{cfg.ts()}] [INFO] （{masked_login}）账号已通过，等待 {wait_time} 秒后同步最终状态...")
 
 
