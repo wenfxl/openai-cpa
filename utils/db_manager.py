@@ -124,6 +124,16 @@ def init_db():
                 last_heartbeat TIMESTAMP DEFAULT NULL
             )
         ''')
+        execute_sql(c, '''
+                    CREATE TABLE IF NOT EXISTS team_accounts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        email TEXT UNIQUE,
+                        access_token TEXT,
+                        cookies TEXT,
+                        status INTEGER DEFAULT 1,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
         try:
             execute_sql(c, 'ALTER TABLE cluster_sync_tasks ADD COLUMN file_sha256 VARCHAR(255) DEFAULT \'\';')
         except Exception:
