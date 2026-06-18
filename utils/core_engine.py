@@ -2066,7 +2066,6 @@ class RegEngine:
         cfg.GLOBAL_STOP = False
         cfg.POOL_EXHAUSTED = False
         self.thread_stop_event = threading.Event()
-
         self._ensure_executor()
         self.current_thread = threading.Thread(
             target=self._run_sub2api_in_thread, args=(args,), daemon=True
