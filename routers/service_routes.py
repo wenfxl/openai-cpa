@@ -562,10 +562,10 @@ async def cloudflare_deploy_worker(req: CFDeployWorkerReq, token: str = Depends(
                     {"name": "EMAIL_WEBHOOK_SECRET", "type": "secret_text", "text": req.webhook_secret}
                 ]
             }
-
+            safe_code = code_resp.text.strip()
             files = {
                 "metadata": (None, json.dumps(metadata), "application/json"),
-                "worker.js": ("worker.js", code_resp.text, "application/javascript+module")
+                "worker.js": ("worker.js", safe_code, "application/javascript+module")
             }
             print(f"[{core_engine.ts()}] [CF Worker] 正在注入环境变量并推送至边缘节点...")
             deploy_resp = await client.put(
