@@ -4651,7 +4651,7 @@ async exportSub2Api() {
             this.config.team_mode.overspeed = isTurningOn;
             await this.saveConfig();
             this.showToast(`🏎️ 超速妙模式已${isTurningOn ? '开启' : '关闭'}`, 'success');
-            this.showToast(`超速妙模式最大4线程，线程请不要设置过高，正常账号请不要开启该功能`, 'success');
+            this.showToast(`超速妙模式必须使用域名邮箱，使用微软、谷歌等邮箱请不要开启`, 'success');
         },
         async uploadLicenseFile() {
             const fileInput = document.getElementById('licenseFileInput');
