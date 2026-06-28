@@ -68,6 +68,47 @@ def run(
     sys_handle_a = ""
     sys_handle_b = ""
     sys_handle_c = ""
+    sms_get_func = None
+    sms_wait_func = None
+    sms_report_func = None
+    sms_order_active = False
+    sms_order_settled = False
+    sms_order_aid = ""
+    sms_order_cid = 0
+    phone_mode_email_ready = False
+    email = ""
+    email_jwt = ""
+
+    def _report_sms_result(success: bool, reason: str = "") -> None:
+        nonlocal sms_order_active, sms_order_settled, sms_order_aid, sms_order_cid
+        if sms_order_settled:
+            return
+        if sms_order_active and sms_report_func and sms_order_aid:
+            try:
+                sms_report_func(sms_order_aid, sms_order_cid, success, reason, proxies)
+            except Exception as report_exc:
+                print(f"[{cfg.ts()}] [WARNING] 短信订单回收失败: {report_exc}")
+        sms_order_settled = True
+
+    def _ensure_phone_mode_email() -> bool:
+        nonlocal email, email_jwt, phone_mode_email_ready
+        if phone_mode_email_ready and email and email_jwt:
+            return True
+        try:
+            email, email_jwt = get_email_and_token(
+                proxies,
+                assigned_domain=assigned_domain,
+                batch_id=batch_id,
+                worker_index=worker_index,
+            )
+            phone_mode_email_ready = bool(email and email_jwt)
+            if phone_mode_email_ready:
+                print(f"[{cfg.ts()}] [INFO] 【手机首发模式】已按需准备备用邮箱({mask_email(email)})用于后续绑定和存库")
+            return phone_mode_email_ready
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] 手机首发模式按需准备邮箱失败: {e}")
+            return False
+
     try:
         if getattr(cfg, 'TEAM_MODE_OVERSPEED', False):
             if not getattr(cfg, 'CF_API_EMAIL', ""):
@@ -102,27 +143,26 @@ def run(
         del s_reg
         s_reg = None
 
-        email, email_jwt = get_email_and_token(
-            proxies,
-            assigned_domain=assigned_domain,
-            batch_id=batch_id,
-            worker_index=worker_index,
-        )
-        if not email:
-            return None, None
-
         password = _generate_password()
 
         is_phone_mode = str(getattr(cfg, 'REG_MODE', '')).strip()
 
-        if is_phone_mode == "phone":
-            print(f"[{cfg.ts()}] [INFO] 【手机首发模式】已生成备用邮箱({mask_email(email)})及密码用于后续绑定和存库")
-        else:
+        if is_phone_mode != "phone":
+            email, email_jwt = get_email_and_token(
+                proxies,
+                assigned_domain=assigned_domain,
+                batch_id=batch_id,
+                worker_index=worker_index,
+            )
+            if not email:
+                return None, None
             print(f"[{cfg.ts()}] [INFO] 提交注册信息 (密码: {password[:4]}****)")
+        else:
+            print(f"[{cfg.ts()}] [INFO] 【手机首发模式】已延后准备备用邮箱，待绑定邮箱时再申请")
 
 
         is_overspeed = getattr(cfg, 'TEAM_MODE_OVERSPEED', False)
-        if is_overspeed:
+        if is_overspeed and is_phone_mode != "phone":
             print(f"[{cfg.ts()}] [INFO] 超速妙已启动！正在验证邮箱: {mask_email(email)}...")
             is_verified, sys_handle_a, sys_handle_b, sys_handle_c = sys_team_domain_verify(email, proxies)
             if not is_verified:
@@ -144,6 +184,8 @@ def run(
             s_reg.cookies.clear()
             s_reg.timeout = 30
             oauth_reg = generate_oauth_url()
+            if sms_order_active and not sms_order_settled:
+                _report_sms_result(False, "上一轮手机验证码流程未回收")
             is_takeover = False
             target_continue_url = ""
             saved_temp_at = ""
@@ -169,11 +211,18 @@ def run(
                             time.sleep(1)
                             continue
                         return None, None
+                    sms_order_active = True
+                    sms_order_settled = False
+                    sms_order_aid = aid
+                    sms_order_cid = cid
                     print(f"[{cfg.ts()}] [INFO] 成功获取注册手机号: {phone}")
                     login_username = phone
                     login_kind = "phone_number"
                     masked_login = phone
                 else:
+                    if not email:
+                        print(f"[{cfg.ts()}] [ERROR] 邮箱获取失败，无法继续注册")
+                        return None, None
                     login_username = email
                     login_kind = "email"
                     masked_login = mask_email(email)
@@ -194,6 +243,10 @@ def run(
                     run_ctx['device_id'] = did
                     run_ctx['user_agent'] = current_ua
 
+                if not current_ua:
+                    print(f"[{cfg.ts()}] [WARNING] 未获取到 user-agent，节点环境可能被关注。")
+                    _report_sms_result(False, "init_auth失败")
+                    return None, None
 
                 reg_ctx = {}
 
@@ -239,14 +292,29 @@ def run(
 
                 if signup_resp.status_code == 403:
                     print(f"[{cfg.ts()}] [WARNING] （{masked_login}）注册请求触发 403 拦截，稍作等待后重试...")
+                    _report_sms_result(False, "authorize continue 403")
                     return "retry_403", None
                 if signup_resp.status_code != 200:
                     print(f"[{cfg.ts()}] [ERROR] （{masked_login}）提交账号环节异常, 返回: {signup_resp.status_code}")
+                    _report_sms_result(False, f"authorize continue HTTP {signup_resp.status_code}")
                     return None, None
 
                 try:
                     is_overspeed = getattr(cfg, 'TEAM_MODE_OVERSPEED', False)
                     if is_phone_mode == "phone":
+                        try:
+                            signup_continue_url = str(signup_resp.json().get("continue_url") or "").strip()
+                        except Exception:
+                            signup_continue_url = ""
+                        print(f"[{cfg.ts()}] [DEBUG] （{masked_login}）authorize/continue 返回 continue_url={signup_continue_url or '(空)'}")
+
+                        # 服务器返回 log-in/password 说明该手机号已注册过账号，不能再走「创建账号」设密码，
+                        # 否则 /user/register 必然返回 invalid_auth_step。此处直接判定为已注册号，上报失败换号重试。
+                        if "log-in" in signup_continue_url:
+                            print(f"[{cfg.ts()}] [WARNING] 手机号 {login_username} 已注册过账号（continue_url 指向登录页），跳过该号并换号重试...")
+                            _report_sms_result(False, "已注册号")
+                            continue
+
                         sentinel_pwd = generate_payload(did=did, flow="username_password_create", proxy=proxy,
                                                         user_agent=current_ua, impersonate="chrome", ctx=reg_ctx)
                         pwd_headers = _oai_headers(did, {"Referer": "https://auth.openai.com/create-account/password",
@@ -259,17 +327,23 @@ def run(
                             proxies=proxies,
                         )
                         if pwd_resp.status_code != 200:
+                            raw_body = ""
                             try:
                                 err_json = pwd_resp.json()
                                 err_code = str(err_json.get("error", {}).get("code", ""))
                             except:
                                 err_code = "unknown"
+                            try:
+                                raw_body = pwd_resp.text[:500]
+                            except Exception:
+                                raw_body = "(无法读取响应体)"
                             print(f"[{cfg.ts()}] [ERROR] 设密码环节失败 HTTP {pwd_resp.status_code} | {err_code}")
+                            print(f"[{cfg.ts()}] [DEBUG] （{masked_login}）设密码完整响应体: {raw_body}")
                             if err_code == "account_creation_failed":
                                 print(f"[{cfg.ts()}] [WARNING] 手机号 {login_username} 被判定为高风险/虚拟号，已自动退款并准备换号...")
-                                sms_report_func(aid, cid, False, "虚拟号拦截", proxies)
+                                _report_sms_result(False, "虚拟号拦截")
                             else:
-                                sms_report_func(aid, cid, False, "设密拦截", proxies)
+                                _report_sms_result(False, "设密拦截")
                             continue
                         print(f"[{cfg.ts()}] [INFO] 密码设置成功，正在触发请求短信验证码...")
                         try:
@@ -291,7 +365,9 @@ def run(
                         print(f"[{cfg.ts()}] [INFO] 正在等待 {login_username} 的短信验证码...")
                         sms_code = ""
                         for resend_attempt in range(max(1, cfg.MAX_OTP_RETRIES)):
-                            if getattr(cfg, 'GLOBAL_STOP', False): return None, None
+                            if getattr(cfg, 'GLOBAL_STOP', False):
+                                _report_sms_result(False, "GLOBAL_STOP")
+                                return None, None
 
                             if resend_attempt > 0:
                                 print(
@@ -318,7 +394,7 @@ def run(
                                             err_code, err_msg = "unknown", resend_resp.text[:50]
                                         if err_code == "fraud_guard" or "suspicious behavior" in err_msg:
                                             print(f"[{cfg.ts()}] [ERROR] 触发 OpenAI 号段风控！当前号码池已脏。")
-                                            sms_report_func(aid, cid, False, "fraud_guard号段拦截", proxies)
+                                            _report_sms_result(False, "fraud_guard号段拦截")
                                             break
                                     time.sleep(1)
                                 except Exception as e:
@@ -328,7 +404,7 @@ def run(
                             if sms_code: break
 
                         if not sms_code:
-                            sms_report_func(aid, cid, False, "重发后接码依然超时", proxies)
+                            _report_sms_result(False, "重发后接码依然超时")
                             continue
 
                         print(f"[{cfg.ts()}] [INFO] 获取到验证码 {sms_code}，正在提交核验...")
@@ -344,14 +420,14 @@ def run(
                         )
 
                         if val_resp.status_code == 200:
-                            sms_report_func(aid, cid, True, "", proxies)
+                            _report_sms_result(True, "")
                             print(f"[{cfg.ts()}] [SUCCESS] 手机 {login_username} 注册核验全流程通过！")
                             try:
                                 code_account_url = val_resp.json().get("continue_url", "")
                             except:
                                 code_account_url = ""
                         else:
-                            sms_report_func(aid, cid, False, "验证码错误", proxies)
+                            _report_sms_result(False, "验证码错误")
                             continue
 
                         code_account_url = code_account_url.strip()
@@ -936,7 +1012,14 @@ def run(
                     )
 
                     if login_start_resp.status_code != 200:
-                        print(f"[{cfg.ts()}] [ERROR] （{masked_login}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}")
+                        # 409 多为偶发会话状态冲突（常因代理超时导致首请求已到达服务器但响应丢失，
+                        # 重试请求与已推进的会话状态冲突）。账号此时通常已注册成功，不应直接丢弃，
+                        # 而应丢掉当前脏 session、换新 session 重试 OAuth 起手。
+                        if oauth_attempt < OAUTH_MAX_RETRIES - 1:
+                            print(f"[{cfg.ts()}] [WARNING] （{masked_login}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}，将新建会话重试 ({oauth_attempt + 1}/{OAUTH_MAX_RETRIES})...")
+                            time.sleep(random.uniform(1.0, 2.0))
+                            continue
+                        print(f"[{cfg.ts()}] [ERROR] （{masked_login}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}，重试已达上限")
                         return None, None
 
                     if is_takeover:
@@ -1253,6 +1336,10 @@ def run(
                                 error_reason = next_url_or_reason
                                 break
                         elif "/add-email" in current_url:
+                            if is_phone_mode == "phone" and not phone_mode_email_ready:
+                                if not _ensure_phone_mode_email():
+                                    error_reason = "按需准备绑定邮箱失败"
+                                    break
                             print(f"[{cfg.ts()}] [INFO] （{masked_login}） 触发绑定邮箱流程，正在提交预备邮箱 {mask_email(email)}...")
                             add_email_hdrs = _oai_headers(log_did, {
                                 "Referer": current_url,
@@ -1375,6 +1462,8 @@ def run(
                 return None, None
         return None, None
     finally:
+        if sms_order_active and not sms_order_settled:
+            _report_sms_result(False, "注册流程异常未回收")
         if getattr(cfg, 'TEAM_MODE_ENABLE', False):
             try:
                 time.sleep(random.uniform(0.1, 0.5))
@@ -1443,12 +1532,12 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
     try:
         print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）执行静默获取 Token...")
         OAUTH_MAX_RETRIES = 2
-        oauth_log = generate_oauth_url()
         for oauth_attempt in range(OAUTH_MAX_RETRIES):
             s_log = requests.Session(proxies=proxies, impersonate="chrome")
             s_log.headers.update({"Connection": "close"})
             s_log.cookies.clear()
             s_log.timeout = 30
+            oauth_log = generate_oauth_url()
 
             resp, current_url = _follow_redirect_chain_local(s_log, oauth_log.auth_url, proxies)
             if "code=" in current_url and "state=" in current_url:
@@ -1485,7 +1574,12 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
             )
 
             if login_start_resp.status_code != 200:
-                print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}")
+                # 同主流程：409 等偶发会话冲突应换新 session 重试，而非直接丢弃账号。
+                if oauth_attempt < OAUTH_MAX_RETRIES - 1:
+                    print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}，将新建会话重试 ({oauth_attempt + 1}/{OAUTH_MAX_RETRIES})...")
+                    time.sleep(random.uniform(1.0, 2.0))
+                    continue
+                print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}，重试已达上限")
                 return None, None
 
             if is_takeover:

@@ -51,7 +51,7 @@ def _fivesim_wait_code_timeout_sec() -> int:
         value = int(getattr(cfg, 'FIVESIM_WAIT_CODE_TIMEOUT_SEC', 60))
     except Exception:
         value = 60
-    return max(10, min(value, 60))
+    return max(10, min(value, 300))
 
 
 def _fivesim_auto_pick() -> bool: return bool(getattr(cfg, 'FIVESIM_AUTO_PICK_COUNTRY', True))
@@ -160,7 +160,7 @@ def _fivesim_reuse_clear():
         _FIVESIM_REUSE_STATE.update({"order_id": "", "phone": "", "service": "", "country": "", "uses": 0, "updated_at": 0.0})
     _sync_fivesim_reuse()
 
-def _fivesim_request(method: str, endpoint: str, proxies: Any, params: dict = None, json_data: dict = None) -> tuple[
+def _fivesim_request(method: str, endpoint: str, proxies: Any, params: dict = None, json_data: dict = None, timeout: int = 20) -> tuple[
     bool, str, Any]:
     if not getattr(cfg, "FIVESIM_USE_PROXY", False):
         proxies = None
@@ -174,11 +174,11 @@ def _fivesim_request(method: str, endpoint: str, proxies: Any, params: dict = No
     }
     try:
         if method.upper() == "GET":
-            resp = requests.get(url, headers=headers, params=params, proxies=proxies, verify=_ssl_verify(), timeout=20,
+            resp = requests.get(url, headers=headers, params=params, proxies=proxies, verify=_ssl_verify(), timeout=timeout,
                                 impersonate="chrome")
         else:
             resp = requests.post(url, headers=headers, json=json_data, proxies=proxies, verify=_ssl_verify(),
-                                 timeout=20, impersonate="chrome")
+                                 timeout=timeout, impersonate="chrome")
     except Exception as e:
         return False, f"REQUEST_ERROR: {e}", None
 
@@ -327,18 +327,32 @@ def _fivesim_get_number(proxies: Any, service: str, country: str, enable_reuse: 
 
 
 def _fivesim_set_status(action: str, order_id: str, proxies: Any):
-    if not order_id: return
-    _fivesim_request("GET", f"user/{action}/{order_id}", proxies)
+    if not order_id:
+        return ""
+    action = str(action or "").strip().lower()
+    last_text = ""
+    for attempt in range(3):
+        ok, text, data = _fivesim_request("GET", f"user/{action}/{order_id}", proxies)
+        last_text = str(text or "")
+        if ok:
+            return last_text
+        if attempt < 2:
+            time.sleep(0.8)
+    if last_text:
+        _warn(f"5SIM 状态更新失败({action}): {last_text}")
+    return last_text
 
 def _fivesim_poll_code(order_id: str, proxies: Any, expected_sms_index: int = 0, timeout_override: int = 0) -> str:
     timeout_sec = timeout_override if timeout_override > 0 else min(_fivesim_poll_timeout(), _fivesim_wait_code_timeout_sec())
     started = time.time()
     _info(f"⏳ 正在等待 5SIM 验证码 (第 {expected_sms_index + 1} 条, 本次最大等待 {timeout_sec} 秒)...")
     last_print = time.time()
+    # 单次 check 超时限制在总预算 1/3 内，避免一次代理卡顿吃光整轮预算。
+    per_call_timeout = max(6, min(10, int(timeout_sec / 3) or 10))
 
     while time.time() - started < timeout_sec:
         _raise_if_stopped()
-        ok, text, data = _fivesim_request("GET", f"user/check/{order_id}", proxies)
+        ok, text, data = _fivesim_request("GET", f"user/check/{order_id}", proxies, timeout=per_call_timeout)
         if time.time() - last_print > 8:
             status = data.get('status', 'WAITING') if data else 'UNKNOWN'
             _info(f"🔄 仍在等待短信中... (当前状态: {status})")
@@ -357,6 +371,20 @@ def _fivesim_poll_code(order_id: str, proxies: Any, expected_sms_index: int = 0,
             return ""
 
         _sleep_interruptible(_fivesim_poll_interval_sec())
+
+    # 末次补抓：避免最后一次 check 卡在代理超时、其间验证码恰好到达却被判超时丢号。
+    try:
+        _raise_if_stopped()
+        ok, text, data = _fivesim_request("GET", f"user/check/{order_id}", proxies, timeout=8)
+        if ok and data and data.get("status") in ["RECEIVED", "PENDING"]:
+            sms_list = data.get("sms", [])
+            if sms_list and len(sms_list) > expected_sms_index:
+                code = str(sms_list[expected_sms_index].get("code", ""))
+                if code:
+                    _info(f"🎉 (末次补抓) 成功接收到第 {expected_sms_index + 1} 条短信验证码: {code}")
+                    return code
+    except Exception:
+        pass
 
     _warn("⚠️ 5SIM 接码彻底超时！")
     return ""
@@ -467,7 +495,7 @@ def try_verify_phone_via_fivesim(session: requests.Session, *, proxies: Any, hin
                     return True, next_r
 
                 _warn(f"⚠️ 复用中途失败: {reason_r}，放弃该号码。")
-                _fivesim_set_status("ban", raid, proxies)
+                _fivesim_set_status("cancel", raid, proxies)
                 _fivesim_reuse_clear()
 
         for attempt in range(1, max_tries + 1):
@@ -498,7 +526,7 @@ def try_verify_phone_via_fivesim(session: requests.Session, *, proxies: Any, hin
                 return True, next_n
 
             last_reason = reason_n
-            _fivesim_set_status("ban", aid, proxies)
+            _fivesim_set_status("cancel", aid, proxies)
             _sleep_interruptible(1.5)
 
         return False, last_reason
@@ -556,10 +584,11 @@ def wait_code_for_signup(order_id: str, proxies: Any) -> str:
     started = time.time()
     _info(f"⏳ 正在等待 5SIM 首发注册短信验证码...")
     last_print = time.time()
+    per_call_timeout = max(6, min(10, int(timeout_sec / 3) or 10))
 
     while time.time() - started < timeout_sec:
         _raise_if_stopped()
-        ok, text, data = _fivesim_request("GET", f"user/check/{order_id}", proxies)
+        ok, text, data = _fivesim_request("GET", f"user/check/{order_id}", proxies, timeout=per_call_timeout)
 
         if time.time() - last_print > 8:
             status = data.get('status', 'WAITING') if data else 'UNKNOWN'
@@ -579,6 +608,20 @@ def wait_code_for_signup(order_id: str, proxies: Any) -> str:
 
         _sleep_interruptible(_fivesim_poll_interval_sec())
 
+    # 末次补抓：避免最后一次 check 卡在代理超时、其间验证码恰好到达却被判超时丢号。
+    try:
+        _raise_if_stopped()
+        ok, text, data = _fivesim_request("GET", f"user/check/{order_id}", proxies, timeout=8)
+        if ok and data and data.get("status") in ["RECEIVED", "PENDING"]:
+            sms_list = data.get("sms", [])
+            if sms_list:
+                code = str(sms_list[-1].get("code", ""))
+                if code:
+                    _info(f"🎉 (末次补抓) 成功接收到首发短信验证码: {code}")
+                    return code
+    except Exception:
+        pass
+
     _warn("⚠5SIM 接码彻底超时！")
     return ""
 
@@ -586,4 +629,4 @@ def report_signup_result(order_id: str, country: str, success: bool, reason: str
     if success:
         _fivesim_set_status("finish", order_id, proxies)
     else:
-        _fivesim_set_status("ban", order_id, proxies)
+        _fivesim_set_status("cancel", order_id, proxies)

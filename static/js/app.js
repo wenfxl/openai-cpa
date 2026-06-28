@@ -330,6 +330,7 @@ createApp({
                     { id: 'image_accounts', name: '半成品库存', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>' },
                     { id: 'cloud', name: '云端库存', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h11a5 5 0 00-.1-9.995A5.002 5.002 0 1010.5 6H9.75a4 4 0 00-6.75 9z"></path></svg>' },
                     { id: 'sms', name: '手机接码', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>' },
+                    { id: 'sms_scanner', name: '超时接码清理', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>' },
                     { id: 'proxy', name: '网络代理', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>' },
                     { id: 'relay', name: '中转管仓', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h11a5 5 0 00-.1-9.995A5.002 5.002 0 1010.5 6H9.75a4 4 0 00-6.75 9z"></path></svg>' },
                     { id: 'notify', name: '消息通知', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h6a3 3 0 013 3v1a3 3 0 01-3 3H9.436c-1.532 0-2.22.24-2.893.542z"></path></svg>' },
@@ -347,6 +348,7 @@ createApp({
             heroSmsPrices: [],
             isLoadingBalance: false,
             isLoadingPrices: false,
+            isCancellingHeroSmsScanner: false,
             selectedCfRoutes: [],
 			cfGlobalStatusList: [],
 			cfStatusTimer: null,
@@ -429,6 +431,7 @@ createApp({
                 clash_test: true, tg_token: false, tg_chatid: false, cpa_url: true, sub_url: true,
                 cluster_secret: false, hero_key: false, duck_token: false, duck_cookie: false,
                 smsbower_key: false,fivesim_key: false,smsbower_cookie: false,
+                hero_scanner_key: false,
                 luckmail: false,
                 temporam: false,
                 tmailor_token: false,
@@ -1365,6 +1368,14 @@ createApp({
                         if(this.config.hero_sms.reuse_max === undefined) this.config.hero_sms.reuse_max = 2;
                         if(this.config.hero_sms.use_proxy === undefined) this.config.hero_sms.use_proxy = false;
                     }
+
+                    if (!this.config.hero_sms_scanner || typeof this.config.hero_sms_scanner !== 'object') {
+                        this.config.hero_sms_scanner = {};
+                    }
+                    this.config.hero_sms_scanner.enabled = normalizeBooleanLike(this.config.hero_sms_scanner.enabled, false);
+                    if(this.config.hero_sms_scanner.api_key === undefined) this.config.hero_sms_scanner.api_key = '';
+                    if(this.config.hero_sms_scanner.scan_interval_sec === undefined) this.config.hero_sms_scanner.scan_interval_sec = 60;
+                    if(this.config.hero_sms_scanner.use_proxy === undefined) this.config.hero_sms_scanner.use_proxy = false;
                 }
 
 
@@ -1481,9 +1492,10 @@ createApp({
                     this.clashPool.subUrl = this.config.clash_proxy_pool.sub_url;
                 }
                 if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
-                    this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
+                    this.config.raw_proxy_pool = { enable: false, share_mode: false, proxy_list: [] };
                 } else {
                     this.config.raw_proxy_pool.enable = normalizeBooleanLike(this.config.raw_proxy_pool.enable, false);
+                    this.config.raw_proxy_pool.share_mode = normalizeBooleanLike(this.config.raw_proxy_pool.share_mode, false);
                     if (!Array.isArray(this.config.raw_proxy_pool.proxy_list)) {
                         this.config.raw_proxy_pool.proxy_list = [];
                     }
@@ -1839,9 +1851,10 @@ createApp({
                 this.config.cluster_upload_timeout_sec = Math.max(15, Math.min(3600, clusterUploadTimeout));
                 this.config.warp_proxy_list = this.warpListStr.split('\n').map(s => s.trim()).filter(s => s);
                 if (!this.config.raw_proxy_pool || typeof this.config.raw_proxy_pool !== 'object' || Array.isArray(this.config.raw_proxy_pool)) {
-                    this.config.raw_proxy_pool = { enable: false, proxy_list: [] };
+                    this.config.raw_proxy_pool = { enable: false, share_mode: false, proxy_list: [] };
                 }
                 this.config.raw_proxy_pool.enable = normalizeBooleanLike(this.config.raw_proxy_pool.enable, false);
+                this.config.raw_proxy_pool.share_mode = normalizeBooleanLike(this.config.raw_proxy_pool.share_mode, false);
                 this.config.raw_proxy_pool.proxy_list = this.rawProxyListStr.split('\n').map(s => s.trim()).filter(s => s);
                 const res = await this.authFetch('/api/config', {
                     method: 'POST', body: JSON.stringify(this.config)
@@ -2728,6 +2741,24 @@ createApp({
                 this.showToast('通信异常: ' + e.message, 'error');
             } finally {
                 this.isLoadingPrices = false;
+            }
+        },
+        async cancelHeroSmsScannerCleanup() {
+            this.isCancellingHeroSmsScanner = true;
+            try {
+                const res = await this.authFetch('/api/hero_sms_scanner/cancel', {
+                    method: 'POST',
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.showToast(data.message || '已请求取消当前清理轮次', 'success');
+                } else {
+                    this.showToast(data.message || '取消请求失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('取消请求异常: ' + e.message, 'error');
+            } finally {
+                this.isCancellingHeroSmsScanner = false;
             }
         },
         async fetchSmsBowerBalance() {

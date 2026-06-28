@@ -707,24 +707,47 @@ def get_and_lock_unused_local_mailbox() -> dict:
         return None
 
 
-def get_mailbox_for_pool_fission() -> dict:
+def get_mailbox_for_pool_fission(max_fission_count: int = 0) -> dict:
     """带重试优先级的并发取号"""
     try:
+        effective_limit = max_fission_count or getattr(cfg, "LOCAL_MS_MAX_FISSION_COUNT", 0)
+        try:
+            effective_limit = int(effective_limit or 0)
+        except Exception:
+            effective_limit = 0
+        limit_clause = " AND fission_count < ?" if effective_limit > 0 else ""
+        limit_params = (effective_limit,) if effective_limit > 0 else ()
         with get_db_conn(as_dict=True, is_write=True) as conn:
             c = get_cursor(conn, as_dict=True)
             if DB_TYPE == "mysql":
                 execute_sql(c, "START TRANSACTION")
-                execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts) LIMIT 1 FOR UPDATE")
+                execute_sql(
+                    c,
+                    f"SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts){limit_clause} LIMIT 1 FOR UPDATE",
+                    limit_params,
+                )
             else:
-                execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts) LIMIT 1")
+                execute_sql(
+                    c,
+                    f"SELECT * FROM local_mailboxes WHERE status = 0 AND retry_master = 1 AND email NOT IN (SELECT email FROM accounts){limit_clause} LIMIT 1",
+                    limit_params,
+                )
 
             row = c.fetchone()
 
             if not row:
                 if DB_TYPE == "mysql":
-                    execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 ORDER BY fission_count ASC LIMIT 1 FOR UPDATE")
+                    execute_sql(
+                        c,
+                        f"SELECT * FROM local_mailboxes WHERE status = 0{limit_clause} ORDER BY fission_count ASC LIMIT 1 FOR UPDATE",
+                        limit_params,
+                    )
                 else:
-                    execute_sql(c, "SELECT * FROM local_mailboxes WHERE status = 0 ORDER BY fission_count ASC LIMIT 1")
+                    execute_sql(
+                        c,
+                        f"SELECT * FROM local_mailboxes WHERE status = 0{limit_clause} ORDER BY fission_count ASC LIMIT 1",
+                        limit_params,
+                    )
                 row = c.fetchone()
 
             if row:

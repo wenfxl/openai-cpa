@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge 请求录制器</title>
+    <link rel="stylesheet" href="/static/css/edge-monitor.css">
+</head>
+<body>
+<div class="page-shell">
+    <header class="hero">
+        <div>
+            <p class="eyebrow">EDGE DEVTOOLS RECORDER</p>
+            <h1>浏览器行为转 HTTP 请求代码</h1>
+            <p class="hero-copy">启动一个带调试端口的 Edge 窗口，监听你后续的页面请求，并把选中的请求生成 `requests` 代码保存到当前项目。</p>
+        </div>
+        <a class="back-link" href="/">返回主面板</a>
+    </header>
+
+    <main class="layout">
+        <section class="panel control-panel">
+            <div class="panel-title-row">
+                <h2>连接与监听</h2>
+                <span id="captureBadge" class="status-badge status-idle">未监听</span>
+            </div>
+
+            <div class="field-grid">
+                <label class="field">
+                    <span>调试端口</span>
+                    <input id="portInput" type="number" value="9222">
+                </label>
+                <label class="field field-wide">
+                    <span>启动地址</span>
+                    <input id="startUrlInput" type="text" value="https://www.bing.com">
+                </label>
+                <label class="field field-wide">
+                    <span>用户数据目录</span>
+                    <input id="profileDirInput" type="text" value="data/edge-recorder-profile">
+                </label>
+                <label class="field field-wide">
+                    <span>URL 关键词过滤</span>
+                    <input id="keywordInput" type="text" placeholder="留空表示不过滤">
+                </label>
+                <label class="field field-wide">
+                    <span>监听资源类型</span>
+                    <div class="chip-row">
+                        <label class="chip-option"><input class="resourceType" type="checkbox" value="document" checked>Document</label>
+                        <label class="chip-option"><input class="resourceType" type="checkbox" value="fetch" checked>Fetch</label>
+                        <label class="chip-option"><input class="resourceType" type="checkbox" value="xhr" checked>XHR</label>
+                        <label class="chip-option"><input class="resourceType" type="checkbox" value="script">Script</label>
+                        <label class="chip-option"><input class="resourceType" type="checkbox" value="image">Image</label>
+                    </div>
+                </label>
+            </div>
+
+            <div class="button-row">
+                <button id="launchBtn" class="btn btn-primary">启动 Edge 调试窗口</button>
+                <button id="targetsBtn" class="btn btn-secondary">刷新页面目标</button>
+                <button id="connectBtn" class="btn btn-secondary">连接所选页面</button>
+                <button id="startBtn" class="btn btn-accent">开始监听</button>
+                <button id="stopBtn" class="btn btn-secondary">停止监听</button>
+                <button id="clearBtn" class="btn btn-danger">清空记录</button>
+            </div>
+
+            <label class="field field-wide">
+                <span>当前页面目标</span>
+                <select id="targetSelect"></select>
+            </label>
+
+            <div class="steps">
+                <p>推荐流程</p>
+                <ol>
+                    <li>点击“启动 Edge 调试窗口”。</li>
+                    <li>刷新页面目标并选中你正在操作的标签页。</li>
+                    <li>点击“开始监听”，然后在 Edge 里继续你的操作。</li>
+                    <li>在右侧选中某条请求，生成并保存代码。</li>
+                </ol>
+            </div>
+
+            <pre id="statusBox" class="status-box">等待连接...</pre>
+        </section>
+
+        <section class="panel requests-panel">
+            <div class="panel-title-row">
+                <h2>已捕获请求</h2>
+                <span id="requestCount" class="mini-stat">0 条</span>
+            </div>
+            <div id="requestList" class="request-list"></div>
+        </section>
+
+        <section class="panel code-panel">
+            <div class="panel-title-row">
+                <h2>生成代码</h2>
+                <label class="inline-toggle">
+                    <input id="includeSensitiveInput" type="checkbox">
+                    <span>包含敏感头</span>
+                </label>
+            </div>
+
+            <label class="field field-wide">
+                <span>输出路径</span>
+                <div class="save-row">
+                    <input id="outputPathInput" type="text" value="data/browser_monitor/latest_request.py">
+                    <button id="saveBtn" class="btn btn-primary">保存到项目</button>
+                </div>
+            </label>
+
+            <pre id="codeBox" class="code-box">选择一条请求后，这里会显示 Python requests 代码。</pre>
+        </section>
+    </main>
+</div>
+
+<script src="/static/js/edge-monitor.js"></script>
+</body>
+</html>

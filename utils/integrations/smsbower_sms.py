@@ -93,7 +93,7 @@ def _smsbower_wait_code_timeout_sec() -> int:
         value = int(getattr(cfg, 'SMSBOWER_WAIT_CODE_TIMEOUT_SEC', 60))
     except Exception:
         value = 60
-    return max(10, min(value, 60))
+    return max(10, min(value, 300))
 
 def _smsbower_country_timeout_limit() -> int: return 2
 
@@ -556,10 +556,26 @@ def _smsbower_pick_country_id(proxies: Any, *, service_code: str, preferred_coun
 
 
 def _smsbower_set_status(activation_id: str, status: int, proxies: Any) -> str:
-    if not activation_id: return ""
-    _, text, _ = _smsbower_request("setStatus", proxies=proxies, params={"id": activation_id, "status": int(status)},
-                                   timeout=20)
-    return str(text or "")
+    if not activation_id:
+        return ""
+    last_text = ""
+    for attempt in range(3):
+        ok, text, _ = _smsbower_request(
+            "setStatus",
+            proxies=proxies,
+            params={"id": activation_id, "status": int(status)},
+            timeout=20,
+        )
+        last_text = str(text or "")
+        if ok:
+            low = last_text.strip().upper()
+            if not last_text or low.startswith("ACCESS_") or low.startswith("STATUS_") or "OK" in low:
+                return last_text
+        if attempt < 2:
+            time.sleep(0.8)
+    if last_text:
+        _warn(f"SmsBower setStatus({status}) 未确认成功: {last_text}")
+    return last_text
 
 
 def _smsbower_get_number(proxies: Any, *, service_code: str, country_id: int) -> tuple[str, str, str, str]:
@@ -619,16 +635,27 @@ def _smsbower_poll_code(activation_id: str, proxies: Any, timeout_override: int 
     _info(f"⏳ 开始等待 SmsBower 短信验证码 (最大等待 {timeout_sec} 秒)...")
     last_print_time = time.time()
 
+    def _extract_ok_code(resp_ok: bool, resp_text: str) -> str:
+        """命中 STATUS_OK 时解析验证码，否则返回空串。"""
+        up = str(resp_text or "").strip().upper()
+        if resp_ok and up.startswith("STATUS_OK"):
+            return resp_text.split(":", 1)[1].strip() if ":" in resp_text else ""
+        return ""
+
+    # 单次 getStatus 超时不能接近总预算，否则代理一抖一次卡顿就吃光整轮，
+    # 导致验证码已到平台却来不及再轮询就被判超时。把单次超时限制在总预算的 1/3 内。
+    per_call_timeout = max(6, min(10, int(timeout_sec / 3) or 10))
+
     while time.time() - started_at < timeout_sec:
         _raise_if_stopped()
-        ok, text, data = _smsbower_request("getStatus", proxies=proxies, params={"id": activation_id}, timeout=20)
+        ok, text, data = _smsbower_request("getStatus", proxies=proxies, params={"id": activation_id}, timeout=per_call_timeout)
         upper = str(text or "").strip().upper()
         if time.time() - last_print_time > 8:
             _info(f"🔄 仍在等待短信中... (当前平台状态: {upper})")
             last_print_time = time.time()
 
-        if ok and upper.startswith("STATUS_OK"):
-            code = text.split(":", 1)[1].strip() if ":" in text else ""
+        code = _extract_ok_code(ok, text)
+        if code:
             _info(f"🎉 成功接收到短信验证码: {code}")
             return code
 
@@ -638,8 +665,21 @@ def _smsbower_poll_code(activation_id: str, proxies: Any, timeout_override: int 
 
         _sleep_interruptible(_smsbower_poll_interval_sec())
 
+    # 末次补抓：循环常因「最后一次 getStatus 正卡在代理超时、而此期间验证码恰好到达」而退出，
+    # 此时号其实已收到码。退出前用短超时再确认一次，避免把已到的码当成超时丢弃、浪费手机号。
+    try:
+        _raise_if_stopped()
+        ok, text, _ = _smsbower_request("getStatus", proxies=proxies, params={"id": activation_id}, timeout=8)
+        code = _extract_ok_code(ok, text)
+        if code:
+            _info(f"🎉 (末次补抓) 成功接收到短信验证码: {code}")
+            return code
+    except Exception:
+        pass
+
     _warn("⚠️ SmsBower 接码彻底超时！")
     return ""
+
 
 
 def try_verify_phone_via_smsbower(session: requests.Session, *, proxies: Any, hint_url: str = "", device_id: str = "", user_agent: str = "", run_ctx: dict = None, proxy: Optional[str] = None) -> tuple[bool, str]:

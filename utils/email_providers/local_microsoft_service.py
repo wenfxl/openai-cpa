@@ -120,7 +120,7 @@ class LocalMicrosoftService:
 
         if getattr(cfg, "LOCAL_MS_POOL_FISSION", False):
             with _fission_lock:
-                mailbox_data = db_manager.get_mailbox_for_pool_fission()
+                mailbox_data = db_manager.get_mailbox_for_pool_fission(getattr(cfg, "LOCAL_MS_MAX_FISSION_COUNT", 0))
                 if mailbox_data:
                     master_email = mailbox_data["email"]
                     is_raw = (mailbox_data.get("retry_master") == 1)

@@ -193,6 +193,8 @@ def _find_first_available_port(host: str, start_port: int, max_ports: int = WEB_
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from utils.integrations.hero_sms import hero_sms_start_scanner
+    hero_sms_start_scanner()
     yield
     print("\n" + "="*65, flush=True)
     print("🛑 接收到系统终止信号，正在强制结束引擎...", flush=True)

@@ -1765,6 +1765,11 @@
                                                 <input type="number" min="8" max="32" v-model.number="config.local_microsoft.suffix_len_max" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-sm font-mono text-sm">
                                             </div>
                                         </div>
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">Outlook 分裂上限</label>
+                                            <input type="number" min="0" v-model.number="config.local_microsoft.max_fission_count" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 shadow-sm font-mono text-sm" placeholder="0 表示不限制">
+                                            <p class="mt-1 text-[11px] text-slate-500 font-medium">每个本地微软邮箱最多被派发多少次，达到上限后会自动跳过。</p>
+                                        </div>
                                         <div v-if="config.local_microsoft.enable_fission">
                                             <div class="flex justify-between items-end mb-1.5">
                                                 <label class="block text-slate-700 text-xs font-extrabold uppercase tracking-wider">主邮箱 Refresh Token</label>
@@ -3130,6 +3135,65 @@
 
 
 
+                        <div v-show="currentTab === 'sms_scanner'" v-if="config && config.hero_sms_scanner" class="space-y-5 md:space-y-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:max-w-3xl border-t-4 border-t-orange-500 bg-gradient-to-b from-orange-50/30 to-white">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-orange-100 pb-5 gap-4">
+                                    <h3 class="text-xl md:text-2xl font-black text-orange-600 tracking-tight flex items-center flex-wrap gap-2">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> HeroSMS 超时接码清理
+                                    </h3>
+                                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                        <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors shadow-sm border border-orange-200 w-full sm:w-auto items-center justify-center group">
+                                            <input type="checkbox" v-model="config.hero_sms_scanner.enabled" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-orange-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="font-black text-orange-900 text-sm md:text-base ml-3 tracking-wide">独立开关：定时清理</span>
+                                        </label>
+                                        <button @click="cancelHeroSmsScannerCleanup" :disabled="isCancellingHeroSmsScanner"
+                                                class="w-full sm:w-auto px-4 py-2.5 md:px-5 md:py-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-black text-sm md:text-base hover:bg-rose-100 active:scale-95 transition-all shadow-sm disabled:opacity-60 disabled:cursor-wait inline-flex items-center justify-center gap-2">
+                                            <svg v-if="isCancellingHeroSmsScanner" class="w-4 h-4 animate-spin text-rose-600" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                            <span>{{ isCancellingHeroSmsScanner ? '正在取消...' : '取消当前轮次' }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-6 text-xs md:text-sm text-slate-500 bg-orange-50/60 border border-orange-200/60 rounded-xl px-4 py-3 leading-relaxed">
+                                    后台每隔 <span class="font-mono font-bold text-orange-700">{{ config.hero_sms_scanner.scan_interval_sec || 60 }}</span> 秒扫描一次 HeroSMS 全部活跃订单，对「尚未收到验证码」的号码尝试取消——能否取消由平台裁定（号码创建满约 2 分钟才允许取消），暂不可取消的会在下一轮自动重试，避免占号浪费余额。
+                                    <span class="block mt-1 text-orange-600/80 font-medium">该功能完全独立于上方「手机接码」注册主开关，开启后只要有可用 API Key 即会运行。</span>
+                                    <span class="block mt-1 text-rose-600/80 font-medium">点击“取消当前轮次”只会中断本轮扫描；如果当前正卡在平台请求上，需等本次请求超时后才会真正停下。</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.hero_sms_scanner.enabled}">
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs md:text-sm text-orange-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>API Key</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input :type="showPwd.hero_scanner_key ? 'text' : 'password'" v-model="config.hero_sms_scanner.api_key" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="留空则复用上方 HeroSMS 接码的 API Key">
+                                            <button @click="showPwd.hero_scanner_key = !showPwd.hero_scanner_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-orange-600 focus:outline-none">
+                                                <svg v-if="showPwd.hero_scanner_key" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs md:text-sm text-orange-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>扫描间隔 (秒)</span>
+                                        </label>
+                                        <input type="number" min="10" v-model.number="config.hero_sms_scanner.scan_interval_sec" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        <span class="block text-[11px] text-slate-400 mt-1 font-medium">每隔多少秒扫描一次活跃订单，最小 10 秒。是否取消由平台裁定（号码满约 2 分钟方可取消）。</span>
+                                    </div>
+                                    <label class="md:col-span-2 relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                        <input type="checkbox" v-model="config.hero_sms_scanner.use_proxy" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 HeroSMS，不经过代理)</span></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+
+
                         <div v-show="currentTab === 'proxy'" v-if="config" class="space-y-5 md:space-y-8">
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:max-w-3xl">
                                 <h3 class="text-lg md:text-xl font-black text-emerald-600 mb-5 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.8 2.4 4.5 5.6 4.5 9s-1.7 6.6-4.5 9c-2.8-2.4-4.5-5.6-4.5-9S9.2 5.4 12 3z"></path></svg></span> 基础代理设置</h3>
@@ -3159,6 +3223,12 @@
                                     </label>
                                 </div>
                                 <div class="space-y-4" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.raw_proxy_pool.enable}">
+                                    <label class="relative inline-flex w-full text-cyan-800 font-bold bg-cyan-50/80 p-4 rounded-xl border border-cyan-200/60 items-center cursor-pointer shadow-sm hover:bg-cyan-100 transition-colors group">
+                                        <input type="checkbox" v-model="config.raw_proxy_pool.share_mode" class="sr-only peer">
+                                        <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-cyan-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="ml-3 text-sm block tracking-wide">共享/轮询模式</span>
+                                        <span class="ml-auto text-[11px] font-medium text-cyan-600/80 leading-snug max-w-[60%] text-right">开启后多个注册线程并发复用同一批拨号地址（并发数 = 注册线程数）；关闭时每条地址绑定一个线程。</span>
+                                    </label>
                                     <div class="bg-cyan-50/70 border border-cyan-200 rounded-2xl p-5 shadow-sm">
                                         <label class="block text-cyan-800 text-xs font-black mb-2 flex items-center justify-between uppercase tracking-wider">
                                             代理列表

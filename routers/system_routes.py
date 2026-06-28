@@ -535,6 +535,7 @@ def _sanitize_local_microsoft_config(local_ms: Any) -> dict:
     data.setdefault("master_email", "")
     data.setdefault("client_id", "")
     data.setdefault("refresh_token", "")
+    data.setdefault("max_fission_count", 0)
 
     mode = str(data.get("suffix_mode", "fixed") or "fixed").strip().lower()
     if mode not in {"fixed", "range", "mystic"}:
@@ -553,6 +554,12 @@ def _sanitize_local_microsoft_config(local_ms: Any) -> dict:
     max_len = max(8, min(32, max_len))
     if max_len < min_len:
         max_len = min_len
+
+    try:
+        max_fission_count = int(data.get("max_fission_count", 0) or 0)
+    except Exception:
+        max_fission_count = 0
+    data["max_fission_count"] = max(0, max_fission_count)
 
     data["suffix_mode"] = mode
     data["suffix_len_min"] = min_len

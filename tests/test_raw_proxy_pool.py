@@ -13,6 +13,7 @@ class RawProxyPoolTests(unittest.TestCase):
         self._original_unfinished_tasks = cfg.PROXY_QUEUE.unfinished_tasks
         self._original_queue_generation = cfg.PROXY_QUEUE_GENERATION
         self._original_raw_enable = getattr(cfg, "_raw_proxy_enable", False)
+        self._original_raw_share_mode = getattr(cfg, "_raw_proxy_share_mode", False)
         self._original_raw_list = list(getattr(cfg, "RAW_PROXY_LIST", []))
         self._original_clash_enable = cfg._clash_enable
         self._original_clash_pool_mode = cfg._clash_pool_mode
@@ -24,6 +25,7 @@ class RawProxyPoolTests(unittest.TestCase):
 
     def tearDown(self):
         cfg._raw_proxy_enable = self._original_raw_enable
+        cfg._raw_proxy_share_mode = self._original_raw_share_mode
         cfg.RAW_PROXY_LIST = self._original_raw_list
         cfg._clash_enable = self._original_clash_enable
         cfg._clash_pool_mode = self._original_clash_pool_mode
@@ -206,6 +208,119 @@ class RawProxyPoolTests(unittest.TestCase):
             self._queue_values(),
         )
         self.assertEqual(1, cfg.PROXY_QUEUE.unfinished_tasks)
+
+
+    def test_share_mode_fills_queue_with_reg_threads_round_robin_copies(self):
+        fake_config = {
+            "default_proxy": "",
+            "enable_multi_thread_reg": True,
+            "reg_threads": 3,
+            "raw_proxy_pool": {
+                "enable": True,
+                "share_mode": True,
+                "proxy_list": [
+                    "127.0.0.1:1080:user:pass",
+                ],
+            },
+        }
+
+        with patch("utils.config.init_config", return_value=fake_config), patch(
+            "utils.config.reload_proxy_config"
+        ):
+            cfg.reload_all_configs()
+
+        self.assertTrue(cfg.is_raw_proxy_share_mode_enabled())
+        self.assertEqual(
+            [
+                "socks5h://user:pass@127.0.0.1:1080",
+                "socks5h://user:pass@127.0.0.1:1080",
+                "socks5h://user:pass@127.0.0.1:1080",
+            ],
+            self._queue_values(),
+        )
+        self.assertEqual(3, cfg.PROXY_QUEUE.unfinished_tasks)
+
+    def test_share_mode_round_robins_across_multiple_proxies(self):
+        fake_config = {
+            "default_proxy": "",
+            "enable_multi_thread_reg": True,
+            "reg_threads": 3,
+            "raw_proxy_pool": {
+                "enable": True,
+                "share_mode": True,
+                "proxy_list": [
+                    "127.0.0.1:1080:user:pass",
+                    "127.0.0.2:1081:user:pass",
+                ],
+            },
+        }
+
+        with patch("utils.config.init_config", return_value=fake_config), patch(
+            "utils.config.reload_proxy_config"
+        ):
+            cfg.reload_all_configs()
+
+        self.assertEqual(
+            [
+                "socks5h://user:pass@127.0.0.1:1080",
+                "socks5h://user:pass@127.0.0.2:1081",
+                "socks5h://user:pass@127.0.0.1:1080",
+            ],
+            self._queue_values(),
+        )
+
+    def test_share_mode_uses_single_slot_when_multi_thread_disabled(self):
+        fake_config = {
+            "default_proxy": "",
+            "enable_multi_thread_reg": False,
+            "reg_threads": 5,
+            "raw_proxy_pool": {
+                "enable": True,
+                "share_mode": True,
+                "proxy_list": [
+                    "127.0.0.1:1080:user:pass",
+                ],
+            },
+        }
+
+        with patch("utils.config.init_config", return_value=fake_config), patch(
+            "utils.config.reload_proxy_config"
+        ):
+            cfg.reload_all_configs()
+
+        self.assertEqual(
+            ["socks5h://user:pass@127.0.0.1:1080"],
+            self._queue_values(),
+        )
+
+    def test_share_mode_disabled_keeps_one_copy_per_entry(self):
+        fake_config = {
+            "default_proxy": "",
+            "enable_multi_thread_reg": True,
+            "reg_threads": 5,
+            "raw_proxy_pool": {
+                "enable": True,
+                "share_mode": False,
+                "proxy_list": [
+                    "127.0.0.1:1080:user:pass",
+                    "127.0.0.2:1081:user:pass",
+                ],
+            },
+        }
+
+        with patch("utils.config.init_config", return_value=fake_config), patch(
+            "utils.config.reload_proxy_config"
+        ):
+            cfg.reload_all_configs()
+
+        self.assertFalse(cfg.is_raw_proxy_share_mode_enabled())
+        self.assertEqual(
+            [
+                "socks5h://user:pass@127.0.0.1:1080",
+                "socks5h://user:pass@127.0.0.2:1081",
+            ],
+            self._queue_values(),
+        )
 
 
 if __name__ == "__main__":

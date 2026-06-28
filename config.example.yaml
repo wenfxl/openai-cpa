@@ -75,6 +75,7 @@ local_microsoft:
   suffix_mode: "fixed"
   suffix_len_min: 8
   suffix_len_max: 8
+  max_fission_count: 0
   pool_fission: false
 
 # [模式 "freemail" 专属]
@@ -196,6 +197,10 @@ raw_proxy_pool:
   # 独立于 Clash 的批量代理池；启用后优先使用这里的代理列表
   # 支持 HTTP / HTTPS / SOCKS5 显式协议；未写协议时默认按 socks5h 解析
   enable: false
+  # 共享/轮询模式：开启后多个注册线程会并发复用同一批代理地址（按注册线程数轮询），
+  # 适合“一条拨号地址、每次连接换 IP”的场景；关闭时维持“一条地址绑定一个线程”。
+  # 并发线程数由 enable_multi_thread_reg + reg_threads 决定。
+  share_mode: false
   proxy_list:
     # 支持以下格式：
     # - http://user:pass@host:8080
@@ -323,6 +328,13 @@ hero_sms:
   poll_interval_sec: 1.0
   wait_code_timeout_sec: 60
   reuse_max: 2
+  use_proxy: false
+
+# HeroSMS 超时接码自动清理（独立于上方注册接码主开关）
+hero_sms_scanner:
+  enabled: false
+  api_key: ""           # 留空则复用 hero_sms.api_key
+  scan_interval_sec: 60 # 扫描间隔（秒），最小 10
   use_proxy: false
 
 smsbower:

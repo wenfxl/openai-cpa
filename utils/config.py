@@ -97,6 +97,10 @@ def is_raw_proxy_pool_enabled() -> bool:
     return _raw_proxy_enable and bool(RAW_PROXY_LIST)
 
 
+def is_raw_proxy_share_mode_enabled() -> bool:
+    return is_raw_proxy_pool_enabled() and _raw_proxy_share_mode
+
+
 def is_clash_proxy_pool_enabled() -> bool:
     return (not is_raw_proxy_pool_enabled()) and _clash_enable and _clash_pool_mode and bool(WARP_PROXY_LIST)
 
@@ -213,6 +217,7 @@ LOCAL_MS_REFRESH_TOKEN: str = ""
 LOCAL_MS_SUFFIX_MODE: str = "fixed"
 LOCAL_MS_SUFFIX_LEN_MIN: int = 8
 LOCAL_MS_SUFFIX_LEN_MAX: int = 8
+LOCAL_MS_MAX_FISSION_COUNT: int = 0
 FREEMAIL_API_URL: str = ""
 FREEMAIL_API_TOKEN: str = ""
 FREEMAIL_LOCAL_WEBHOOK: bool = False
@@ -309,6 +314,12 @@ HERO_SMS_MAX_TRIES: int = 3
 HERO_SMS_POLL_TIMEOUT_SEC: int = 120
 HERO_SMS_USE_PROXY: bool = False
 
+# HeroSMS 超时接码自动清理（独立于注册主开关）
+HERO_SMS_SCANNER_ENABLED: bool = False
+HERO_SMS_SCANNER_API_KEY: str = ""
+HERO_SMS_SCAN_INTERVAL_SEC: int = 60
+HERO_SMS_SCANNER_USE_PROXY: bool = False
+
 # SmsBower
 SMSBOWER_ENABLED = False
 SMSBOWER_API_KEY = ""
@@ -354,6 +365,7 @@ CLASH_CLUSTER_COUNT: int = 5
 CLASH_SUB_URL: str = ""
 WARP_PROXY_LIST: list = []
 _raw_proxy_enable: bool = False
+_raw_proxy_share_mode: bool = False
 RAW_PROXY_LIST: list = []
 PROXY_QUEUE: queue.Queue = queue.Queue()
 PROXY_QUEUE_GENERATION: int = 0
@@ -451,7 +463,7 @@ def reload_all_configs(new_config_dict=None):
     global CPA_THREADS, CHECK_INTERVAL_MINUTES, ENABLE_TOKEN_REVIVE
     global NORMAL_SLEEP_MIN, NORMAL_SLEEP_MAX, NORMAL_TARGET_COUNT, NORMAL_SAVE_IMG_TO_LOCAL
     global _clash_enable, _clash_pool_mode, WARP_PROXY_LIST, PROXY_QUEUE, PROXY_QUEUE_GENERATION
-    global _raw_proxy_enable, RAW_PROXY_LIST
+    global _raw_proxy_enable, RAW_PROXY_LIST, _raw_proxy_share_mode
     global CLASH_CLUSTER_COUNT, CLASH_SUB_URL
     global ENABLE_SUB2API_MODE, SUB2API_URL, SUB2API_KEY
     global SUB2API_MIN_THRESHOLD, SUB2API_BATCH_COUNT, SUB2API_CHECK_INTERVAL, SUB2API_THREADS, SUB2API_TEST_MODEL
@@ -466,6 +478,8 @@ def reload_all_configs(new_config_dict=None):
     global HERO_SMS_ENABLED, HERO_SMS_API_KEY, HERO_SMS_BASE_URL, HERO_SMS_COUNTRY, HERO_SMS_SERVICE
     global HERO_SMS_AUTO_PICK_COUNTRY, HERO_SMS_REUSE_PHONE, HERO_SMS_MAX_PRICE, HERO_SMS_VERIFY_ON_REGISTER
     global HERO_SMS_MIN_BALANCE, HERO_SMS_MAX_TRIES, HERO_SMS_POLL_TIMEOUT_SEC, HERO_SMS_USE_PROXY
+    global HERO_SMS_SCANNER_ENABLED, HERO_SMS_SCANNER_API_KEY, HERO_SMS_SCAN_INTERVAL_SEC
+    global HERO_SMS_SCANNER_USE_PROXY
     global AI_API_BASE, AI_API_KEY, AI_MODEL, AI_ENABLE_PROFILE
     global CPA_AUTO_CHECK, SUB2API_AUTO_CHECK
     global TG_BOT
@@ -480,6 +494,7 @@ def reload_all_configs(new_config_dict=None):
     global CLUSTER_SYNC_STALE_FILE_MAX_AGE_HOURS, CLUSTER_SYNC_MAX_FILE_SIZE_MB, CLUSTER_SYNC_MAX_RECORDS, CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET
     global REG_MODE
     global LOCAL_MS_ENABLE_FISSION, LOCAL_MS_MASTER_EMAIL, LOCAL_MS_PASSWORD, LOCAL_MS_CLIENT_ID, LOCAL_MS_REFRESH_TOKEN, LOCAL_MS_POOL_FISSION
+    global LOCAL_MS_MAX_FISSION_COUNT
     global LOCAL_MS_SUFFIX_MODE, LOCAL_MS_SUFFIX_LEN_MIN, LOCAL_MS_SUFFIX_LEN_MAX
     global DB_TYPE, MYSQL_CFG
     global MAX_LOG_LINES
@@ -683,6 +698,11 @@ def reload_all_configs(new_config_dict=None):
     LOCAL_MS_SUFFIX_LEN_MAX = max(8, min(32, LOCAL_MS_SUFFIX_LEN_MAX))
     if LOCAL_MS_SUFFIX_LEN_MAX < LOCAL_MS_SUFFIX_LEN_MIN:
         LOCAL_MS_SUFFIX_LEN_MAX = LOCAL_MS_SUFFIX_LEN_MIN
+    try:
+        LOCAL_MS_MAX_FISSION_COUNT = int(_local_microsoft.get("max_fission_count", 0) or 0)
+    except Exception:
+        LOCAL_MS_MAX_FISSION_COUNT = 0
+    LOCAL_MS_MAX_FISSION_COUNT = max(0, LOCAL_MS_MAX_FISSION_COUNT)
 
     _free = _c.get("freemail", {})
     FREEMAIL_API_URL = str(_free.get("api_url", "")).strip().rstrip("/")
@@ -717,8 +737,8 @@ def reload_all_configs(new_config_dict=None):
     USE_PROXY_FOR_EMAIL = _c.get("use_proxy_for_email", False)
     ENABLE_EMAIL_MASKING = _c.get("enable_email_masking", True)
 
-    LOGIN_DELAY_MIN = _c.get("login_delay_min", 0)
-    LOGIN_DELAY_MAX = _c.get("login_delay_max", 1)
+    LOGIN_DELAY_MIN = _c.get("login_delay_min", 20)
+    LOGIN_DELAY_MAX = _c.get("login_delay_max", 45)
 
     _cpa = _c.get("cpa_mode", {})
     ENABLE_CPA_MODE = _cpa.get("enable", False)
@@ -793,6 +813,7 @@ def reload_all_configs(new_config_dict=None):
     WARP_PROXY_LIST = _c.get("warp_proxy_list", [])
     _raw_proxy_conf = _c.get("raw_proxy_pool", {})
     _raw_proxy_enable = safe_bool(_raw_proxy_conf.get("enable", False), default=False)
+    _raw_proxy_share_mode = safe_bool(_raw_proxy_conf.get("share_mode", False), default=False)
     RAW_PROXY_LIST = normalize_raw_proxy_list(_raw_proxy_conf.get("proxy_list", []))
     if is_raw_proxy_pool_enabled():
         _clash_enable = False
@@ -804,8 +825,20 @@ def reload_all_configs(new_config_dict=None):
         PROXY_QUEUE.all_tasks_done.notify_all()
         PROXY_QUEUE_GENERATION += 1
     if is_raw_proxy_pool_enabled():
-        for p in RAW_PROXY_LIST:
-            PROXY_QUEUE.put(make_proxy_queue_item(p))
+        if _raw_proxy_share_mode:
+            # 共享/轮询模式：按注册线程数放入轮询副本，让多个线程并发复用同一批拨号地址，
+            # 而不是“一条地址绑定一个线程”。并发上限由 REG_THREADS 决定。
+            try:
+                slot_count = max(1, int(REG_THREADS))
+            except (TypeError, ValueError):
+                slot_count = 1
+            if not ENABLE_MULTI_THREAD_REG:
+                slot_count = 1
+            for idx in range(slot_count):
+                PROXY_QUEUE.put(make_proxy_queue_item(RAW_PROXY_LIST[idx % len(RAW_PROXY_LIST)]))
+        else:
+            for p in RAW_PROXY_LIST:
+                PROXY_QUEUE.put(make_proxy_queue_item(p))
     elif is_clash_proxy_pool_enabled():
         for p in WARP_PROXY_LIST:
             PROXY_QUEUE.put(make_proxy_queue_item(p))
@@ -862,6 +895,12 @@ def reload_all_configs(new_config_dict=None):
         HERO_SMS_POLL_TIMEOUT_SEC = 120
     HERO_SMS_POLL_INTERVAL_SEC = safe_float(_hero_sms_conf.get("poll_interval_sec", 1.0), default=1.0, minimum=0.1)
     HERO_SMS_WAIT_CODE_TIMEOUT_SEC = safe_int(_hero_sms_conf.get("wait_code_timeout_sec", 60), default=60, minimum=10)
+
+    _hero_sms_scanner_conf = _c.get("hero_sms_scanner", {})
+    HERO_SMS_SCANNER_ENABLED = safe_bool(_hero_sms_scanner_conf.get("enabled", False), default=False)
+    HERO_SMS_SCANNER_API_KEY = str(_hero_sms_scanner_conf.get("api_key") or "").strip()
+    HERO_SMS_SCAN_INTERVAL_SEC = safe_int(_hero_sms_scanner_conf.get("scan_interval_sec", 60), default=60, minimum=10)
+    HERO_SMS_SCANNER_USE_PROXY = safe_bool(_hero_sms_scanner_conf.get("use_proxy", False), default=False)
 
     _smsbower = _c.get("smsbower", {})
     SMSBOWER_ENABLED = safe_bool(_smsbower.get("enabled", False), default=False)

@@ -28,6 +28,47 @@ def _sleep_interruptible(sec: float) -> bool:
         time.sleep(0.1)
     return False
 
+
+_HERO_SMS_SCANNER_CANCEL_EVENT = threading.Event()
+
+
+def _hero_sms_scanner_cancel_requested() -> bool:
+    return _HERO_SMS_SCANNER_CANCEL_EVENT.is_set()
+
+
+def hero_sms_request_scanner_cancel() -> None:
+    """请求 HeroSMS 扫描线程尽快中断当前清理轮次。"""
+    _HERO_SMS_SCANNER_CANCEL_EVENT.set()
+
+
+def hero_sms_get_scanner_state() -> dict[str, Any]:
+    return {
+        "enabled": _hero_sms_scanner_enabled(),
+        "running": bool(_HERO_SMS_SCANNER_THREAD and _HERO_SMS_SCANNER_THREAD.is_alive()),
+        "cancel_pending": _hero_sms_scanner_cancel_requested(),
+    }
+
+
+def _hero_sms_scanner_sleep_interruptible(sec: float) -> str:
+    """
+    扫描线程专用的可中断睡眠。
+    返回值:
+      - ""           : 正常睡满
+      - "global_stop": 收到全局停止信号
+      - "cancel"     : 收到 HeroSMS 清理取消信号
+      - "disabled"   : 清理开关已关闭
+    """
+    deadline = time.time() + max(0.0, float(sec or 0.0))
+    while time.time() < deadline:
+        if getattr(cfg, 'GLOBAL_STOP', False):
+            return "global_stop"
+        if _hero_sms_scanner_cancel_requested():
+            return "cancel"
+        if not _hero_sms_scanner_enabled():
+            return "disabled"
+        time.sleep(min(0.5, max(0.05, deadline - time.time())))
+    return ""
+
 def _post_with_retry(session, url: str, headers: dict = None, json_body: dict = None, proxies: Any = None,
                      timeout: int = 30, retries: int = 1):
     for attempt in range(retries + 1):
@@ -53,6 +94,14 @@ def _hero_sms_enabled() -> bool:
 
 def _hero_sms_api_key() -> str:
     return str(cfg.HERO_SMS_API_KEY).strip()
+
+def _hero_sms_scanner_api_key() -> str:
+    """扫描清理使用的 key：优先用独立 key，留空则回退注册主 key。"""
+    return str(getattr(cfg, 'HERO_SMS_SCANNER_API_KEY', '') or '').strip() or _hero_sms_api_key()
+
+def _hero_sms_scanner_enabled() -> bool:
+    """超时接码清理开关，独立于 HeroSMS 注册主开关。"""
+    return bool(getattr(cfg, 'HERO_SMS_SCANNER_ENABLED', False)) and bool(_hero_sms_scanner_api_key())
 
 def _hero_sms_base_url() -> str:
     url = str(cfg.HERO_SMS_BASE_URL).strip()
@@ -88,7 +137,7 @@ def _hero_sms_wait_code_timeout_sec() -> int:
         value = int(getattr(cfg, 'HERO_SMS_WAIT_CODE_TIMEOUT_SEC', 60))
     except Exception:
         value = 60
-    return max(10, min(value, 60))
+    return max(10, min(value, 300))
 
 def _hero_sms_country_timeout_limit() -> int: return 2
 
@@ -350,6 +399,11 @@ def _hero_sms_country_score(
             score += 2.0
 
     return float(score)
+
+_HERO_SMS_PENDING_LOCK = threading.Lock()
+_HERO_SMS_PENDING: Dict[str, Dict] = {}
+_HERO_SMS_SCANNER_THREAD: Optional[threading.Thread] = None
+_HERO_SMS_SCANNER_LOCK = threading.Lock()
 
 _HERO_SMS_COUNTRY_NAME_CACHE: Dict[int, str] = {}
 
@@ -623,10 +677,14 @@ def _hero_sms_request(
         proxies: Any,
         params: Optional[Dict[str, Any]] = None,
         timeout: int = 25,
+        api_key: Optional[str] = None,
+        use_proxy_override: Optional[bool] = None,
 ) -> tuple[bool, str, Any]:
-    if not getattr(cfg, "HERO_SMS_USE_PROXY", False):
+    use_proxy = bool(use_proxy_override) if use_proxy_override is not None \
+        else bool(getattr(cfg, "HERO_SMS_USE_PROXY", False))
+    if not use_proxy:
         proxies = None
-    key = _hero_sms_api_key()
+    key = str(api_key).strip() if api_key else _hero_sms_api_key()
     if not key:
         return False, "NO_KEY", None
 
@@ -767,16 +825,31 @@ def _hero_sms_resolve_country_id(proxies: Any) -> int:
     return matched
 
 
-def _hero_sms_set_status(activation_id: str, status: int, proxies: Any) -> str:
+def _hero_sms_set_status(activation_id: str, status: int, proxies: Any,
+                         *, api_key: Optional[str] = None,
+                         use_proxy_override: Optional[bool] = None) -> str:
     if not activation_id:
         return ""
-    _, text, _ = _hero_sms_request(
-        "setStatus",
-        proxies=proxies,
-        params={"id": activation_id, "status": int(status)},
-        timeout=20,
-    )
-    return str(text or "")
+    last_text = ""
+    for attempt in range(3):
+        ok, text, _ = _hero_sms_request(
+            "setStatus",
+            proxies=proxies,
+            params={"id": activation_id, "status": int(status)},
+            timeout=20,
+            api_key=api_key,
+            use_proxy_override=use_proxy_override,
+        )
+        last_text = str(text or "")
+        if ok:
+            low = last_text.strip().upper()
+            if not last_text or low.startswith("ACCESS_") or low.startswith("STATUS_") or "OK" in low:
+                return last_text
+        if attempt < 2:
+            time.sleep(0.8)
+    if last_text:
+        _warn(f"HeroSMS setStatus({status}) 未确认成功: {last_text}")
+    return last_text
 
 def _hero_sms_mark_ready(activation_id: str, proxies: Any) -> None:
     if not activation_id or not _hero_sms_mark_ready_enabled():
@@ -893,6 +966,8 @@ def _hero_sms_poll_code(activation_id: str, proxies: Any) -> str:
     interval_sec = _hero_sms_poll_interval_sec()
     progress_sec = 5
     resend_after_sec = 15
+    # 单次 getStatus 超时限制在总预算 1/3 内，避免一次代理卡顿吃光整轮预算导致漏接已到的码。
+    per_call_timeout = max(6, min(10, int(timeout_sec / 3) or 10))
 
     started_at = time.time()
     next_progress_at = float(progress_sec)
@@ -929,7 +1004,7 @@ def _hero_sms_poll_code(activation_id: str, proxies: Any) -> str:
             "getStatus",
             proxies=proxies,
             params={"id": activation_id},
-            timeout=20,
+            timeout=per_call_timeout,
         )
         line = str(text or "").strip()
         upper = line.upper()
@@ -974,6 +1049,24 @@ def _hero_sms_poll_code(activation_id: str, proxies: Any) -> str:
 
         if _sleep_interruptible(interval_sec):
             raise UserStoppedError("stopped")
+
+    # 末次补抓：避免最后一次 getStatus 卡在代理超时、其间验证码恰好到达却被判超时丢号。
+    try:
+        _raise_if_stopped()
+        ok, text, data = _hero_sms_request(
+            "getStatus", proxies=proxies, params={"id": activation_id}, timeout=8,
+        )
+        line = str(text or "").strip()
+        if ok and line.upper().startswith("STATUS_OK"):
+            code = line.split(":", 1)[1].strip() if ":" in line else ""
+            if not code and isinstance(data, dict):
+                sms_obj = data.get("sms") if isinstance(data.get("sms"), dict) else {}
+                code = str(sms_obj.get("code") or data.get("code") or "").strip()
+            if code:
+                _info(f"🎉 (末次补抓) 成功匹配验证码: {code}")
+                return code
+    except Exception:
+        pass
 
     _warn(f"HeroSMS 等码最终超时，共等待 {timeout_sec}s 未收到短信")
     return ""
@@ -1186,7 +1279,7 @@ def _try_verify_phone_via_hero_sms(
                     reuse_phone,
                     source="复用号码",
                     close_on_success=False,
-                    cancel_on_fail=False,
+                    cancel_on_fail=True,
                 )
                 if ok_reuse:
                     _hero_sms_country_mark_success(country_id)
@@ -1197,9 +1290,8 @@ def _try_verify_phone_via_hero_sms(
                 _hero_sms_country_record_result(country_id, False, last_reason)
                 if _is_hero_sms_timeout_issue(last_reason):
                     switched = _hero_sms_country_mark_timeout(country_id)
+                    _hero_sms_reuse_clear()
                     if switched:
-                        _hero_sms_set_status(reuse_id, 8, proxies)
-                        _hero_sms_reuse_clear()
                         next_country = _hero_sms_pick_country_id(
                             proxies,
                             service_code=service_code,
@@ -1212,17 +1304,11 @@ def _try_verify_phone_via_hero_sms(
                             )
                             country_id = next_country
                         else:
-                            _hero_sms_reuse_touch(increase=True)
-                            _hero_sms_set_status(reuse_id, 3, proxies)
-                            _warn(f"复用手机号未收到短信，保留号码待下次继续: {last_reason}")
-                            return False, "接码超时，已保留复用号码"
+                            _warn(f"复用手机号未收到短信，已取消并清空复用池: {last_reason}")
                     else:
-                        _hero_sms_reuse_touch(increase=True)
-                        _hero_sms_set_status(reuse_id, 3, proxies)
-                        _warn(f"复用手机号未收到短信，保留号码待下次继续: {last_reason}")
-                        return False, "接码超时，已保留复用号码"
-                _warn(f"复用手机号失败，改为新购号码: {last_reason}")
-                _hero_sms_set_status(reuse_id, 8, proxies)
+                        _warn(f"复用手机号未收到短信，已取消并清空复用池: {last_reason}")
+                else:
+                    _warn(f"复用手机号失败，已取消并清空复用池: {last_reason}")
                 _hero_sms_reuse_clear()
 
         for attempt in range(1, max_tries + 1):
@@ -1271,7 +1357,7 @@ def _try_verify_phone_via_hero_sms(
                 phone_number,
                 source=f"新购号码#{attempt}",
                 close_on_success=(not reuse_on),
-                cancel_on_fail=(not reuse_on),
+                cancel_on_fail=True,
             )
             if ok_new:
                 _hero_sms_country_mark_success(country_id)
@@ -1285,8 +1371,6 @@ def _try_verify_phone_via_hero_sms(
             if reuse_on and _is_hero_sms_timeout_issue(last_reason):
                 switched = _hero_sms_country_mark_timeout(country_id)
                 if switched:
-                    _hero_sms_set_status(activation_id, 8, proxies)
-                    _hero_sms_reuse_clear()
                     next_country = _hero_sms_pick_country_id(
                         proxies,
                         service_code=service_code,
@@ -1299,13 +1383,10 @@ def _try_verify_phone_via_hero_sms(
                         )
                         country_id = next_country
                         continue
-                _hero_sms_reuse_set(activation_id, phone_number, service_code, country_id)
-                _hero_sms_reuse_touch(increase=True)
-                _hero_sms_set_status(activation_id, 3, proxies)
-                _warn("新购号码接码超时，已保留号码供后续复用，停止继续购号")
-                return False, "接码超时，已保留复用号码"
+                _warn("新购号码接码超时，已取消并继续尝试新号码")
+                continue
             if reuse_on:
-                _hero_sms_set_status(activation_id, 8, proxies)
+                _hero_sms_reuse_clear()
 
         return False, last_reason
     finally:
@@ -1387,3 +1468,300 @@ def report_signup_result(activation_id: str, country_id: int, success: bool, rea
         if _is_hero_sms_timeout_issue(reason) or "fraud_guard" in str(reason).lower():
             _hero_sms_country_mark_timeout(country_id)
         _hero_sms_set_status(activation_id, 8, proxies)
+
+
+# ---------------------------------------------------------------------------
+# 后台扫描：定时取消「未接到码且平台允许取消」的号码
+# 取消时机由平台裁定：号码创建未满约 2 分钟时取消按钮置灰，setStatus(8) 会被拒，
+# 此时本轮跳过、下轮再试，直到平台允许取消为止。
+# ---------------------------------------------------------------------------
+_HERO_SMS_SCAN_INTERVAL_SEC = 60    # 扫描间隔
+
+
+def _slog(msg: str) -> None:
+    """写扫描日志到原始 stdout（绕过 web_print 拦截，后台线程安全）。"""
+    try:
+        import sys as _sys
+        _sys.__stdout__.write(msg + "\n")
+        _sys.__stdout__.flush()
+    except Exception:
+        pass
+
+
+def _hero_sms_get_active_activations(proxies: Any) -> list[dict]:
+    """
+    HeroSMS 的 getActiveActivations 默认只会返回一页数据，未带分页参数时通常只有 10 条。
+    这里按 page + limit 逐页拉取并去重，避免活跃订单超过 10 条时漏扫。
+    """
+    page = 1
+    page_limit = 100
+    merged: list[dict] = []
+    seen_ids: set[str] = set()
+
+    while True:
+        ok, text, data = _hero_sms_request(
+            "getActiveActivations",
+            proxies=proxies,
+            timeout=25,
+            api_key=_hero_sms_scanner_api_key(),
+            use_proxy_override=bool(getattr(cfg, 'HERO_SMS_SCANNER_USE_PROXY', False)),
+            params={"page": page, "limit": page_limit},
+        )
+        if not ok:
+            if page == 1:
+                _slog(f"[自动清理] getActiveActivations 失败: {text}")
+            break
+
+        page_items: list[dict] = []
+        if isinstance(data, dict):
+            candidates: list[Any] = []
+            for key in ("activeActivations", "activations", "data", "rows", "items"):
+                value = data.get(key)
+                if value is not None:
+                    candidates.append(value)
+                if isinstance(value, dict):
+                    for nested_key in ("rows", "items", "data", "activations", "activeActivations"):
+                        nested_value = value.get(nested_key)
+                        if nested_value is not None:
+                            candidates.append(nested_value)
+                    row = value.get("row")
+                    if isinstance(row, dict):
+                        candidates.append([row])
+            for items in candidates:
+                if isinstance(items, list):
+                    page_items = [x for x in items if isinstance(x, dict)]
+                    break
+            if not page_items:
+                row = data.get("row")
+                if isinstance(row, dict):
+                    page_items = [row]
+        elif isinstance(data, list):
+            page_items = [x for x in data if isinstance(x, dict)]
+
+        if not page_items:
+            break
+
+        added = 0
+        for item in page_items:
+            aid = str(item.get("id") or item.get("activationId") or "").strip()
+            dedupe_key = aid or str(item)
+            if dedupe_key in seen_ids:
+                continue
+            seen_ids.add(dedupe_key)
+            merged.append(item)
+            added += 1
+
+        if len(page_items) < page_limit or added == 0:
+            break
+
+        page += 1
+
+    return merged
+
+
+def _hero_activation_has_code(item: dict) -> bool:
+    """判断该激活是否已经收到验证码（收到则不应取消）。"""
+    for k in ("smsCode", "sms_code", "code"):
+        v = item.get(k)
+        if v not in (None, "", "null", "None"):
+            return True
+    for k in ("smsText", "sms_text", "text"):
+        v = item.get(k)
+        if v not in (None, "", "null", "None"):
+            return True
+    # 平台明确的"收到短信时间"字段：非空即代表已收到码
+    for k in ("receiveSmsDate", "receive_sms_date"):
+        v = item.get(k)
+        if v not in (None, "", "null", "None"):
+            return True
+    sms = item.get("sms")
+    if isinstance(sms, dict) and (sms.get("code") or sms.get("text")):
+        return True
+    if isinstance(sms, list) and len(sms) > 0:
+        return True
+    return False
+
+
+def _hero_activation_time_key(item: dict, idx: int) -> tuple:
+    """
+    号码的时间先后排序键（越早创建越小）。
+    优先用平台创建时间，其次用激活ID（通常随时间递增），最后用返回顺序兜底。
+    仅用于排序，不参与"能否取消"判定。
+    """
+    raw = ""
+    for k in ("activationTime", "activation_time", "createDate", "time", "date"):
+        v = item.get(k)
+        if v not in (None, "", "null", "None"):
+            raw = str(v).strip()
+            break
+    if raw:
+        if raw.isdigit():
+            ts = float(raw)
+            if ts > 1e12:
+                ts /= 1000.0
+            return (0, ts, idx)
+        import datetime as _dt
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y/%m/%d %H:%M:%S"):
+            try:
+                return (0, _dt.datetime.strptime(raw, fmt).timestamp(), idx)
+            except Exception:
+                continue
+    aid = str(item.get("id") or item.get("activationId") or "").strip()
+    if aid.isdigit():
+        return (1, float(aid), idx)
+    return (2, float(idx), idx)
+
+
+def _hero_scanner_cancel_once(aid: str, proxies: Any, scanner_key: str, use_proxy: bool) -> str:
+    """
+    扫描专用：单次调用 cancelActivation 取消购买（返还资金），不做内部重试。
+    官网约定：取消成功返回 HTTP 204（无 body）；其它任何状态码均视为失败——
+    最常见是倒计时未到、尚不可取消。
+    返回 'ok' 取消成功 / 'denied' 不可取消 / 'error' 网络异常。
+    """
+    if not aid:
+        return "error"
+    key = str(scanner_key or "").strip()
+    if not key:
+        return "error"
+    req_proxies = proxies if use_proxy else None
+    try:
+        resp = requests.get(
+            _hero_sms_base_url(),
+            params={"action": "cancelActivation", "id": str(aid), "api_key": key},
+            proxies=req_proxies,
+            verify=_ssl_verify(),
+            timeout=20,
+            impersonate="chrome131",
+        )
+    except Exception as e:
+        _slog(f"[自动清理] 取消 {aid} 请求异常: {e}")
+        return "error"
+
+    code = int(getattr(resp, "status_code", 0) or 0)
+    # 成功：HTTP 204（无 body）
+    if code == 204:
+        return "ok"
+    # 其它状态码（含倒计时未到不可取消）：按不可取消处理，停止本轮
+    body = str(getattr(resp, "text", "") or "").strip()
+    _slog(f"[自动清理] 取消 {aid} 未成功: HTTP {code} {body[:120]}")
+    return "denied"
+
+
+def _hero_sms_scan_and_cancel(proxies: Any) -> None:
+    """
+    扫描全部活跃激活，取消「未收到验证码」的号码。
+    利用号码按时间先后创建的特性：越早的号码倒计时越少、越可能允许取消。
+    因此把未接码的号码按创建时间从早到晚排序，从最早的开始依次取消，
+    一旦遇到「未接码但平台不允许取消」的号码即停止本轮——它之后的号码更新、
+    更不可能允许取消。已收到码的号码一律不动。
+    """
+    activations = _hero_sms_get_active_activations(proxies)
+    scanner_key = _hero_sms_scanner_api_key()
+    use_proxy = bool(getattr(cfg, 'HERO_SMS_SCANNER_USE_PROXY', False))
+    cancelled = 0
+
+    if getattr(cfg, 'GLOBAL_STOP', False) or _hero_sms_scanner_cancel_requested() or not _hero_sms_scanner_enabled():
+        return
+
+    # 收集仍在等码且未收到验证码的号码
+    pending: list[tuple] = []  # (排序键, aid)
+    for idx, item in enumerate(activations):
+        if getattr(cfg, 'GLOBAL_STOP', False) or _hero_sms_scanner_cancel_requested() or not _hero_sms_scanner_enabled():
+            break
+        if not isinstance(item, dict):
+            continue
+        aid = str(item.get("id") or item.get("activationId") or "").strip()
+        if not aid:
+            continue
+        # 不按状态码白名单过滤：活跃列表里的号码，只要尚未收到验证码即为取消候选。
+        # （平台对"等码中"返回 activationStatus="4" 等多种值，枚举不可靠，
+        #  以"是否收到码"为准更稳妥。）
+        if _hero_activation_has_code(item):
+            continue
+        pending.append((_hero_activation_time_key(item, idx), aid))
+
+    waiting = len(pending)
+    pending.sort(key=lambda x: x[0])
+
+    # 从最早的号码开始依次取消，遇到第一个"未接码但不可取消"即停止本轮
+    for _key, aid in pending:
+        if getattr(cfg, 'GLOBAL_STOP', False) or _hero_sms_scanner_cancel_requested() or not _hero_sms_scanner_enabled():
+            _slog("[自动清理] 收到取消/停用信号，本轮扫描提前结束")
+            break
+        try:
+            result = _hero_scanner_cancel_once(aid, proxies, scanner_key, use_proxy)
+        except Exception as e:
+            _slog(f"[自动清理] 取消 {aid} 异常: {e}")
+            break
+
+        if result == "ok":
+            cancelled += 1
+            _slog(f"[自动清理] 激活 {aid} 未接到码且可取消，已取消")
+            continue
+        if result == "denied":
+            _slog(f"[自动清理] 激活 {aid} 暂不可取消（倒计时未到），本轮停止，后续号码下轮再试")
+            break
+        # error：本次平台/网络异常，停止本轮，下轮重试
+        _slog(f"[自动清理] 取消 {aid} 失败，本轮停止")
+        break
+
+    if activations:
+        _slog(
+            f"[自动清理] 本轮扫描: 共 {len(activations)} 个激活，"
+            f"等码未接 {waiting} 个，本轮取消 {cancelled} 个"
+        )
+
+
+def _hero_sms_scanner_loop() -> None:
+    _slog("[自动清理] HeroSMS 超时扫描线程已就绪（是否扫描由清理开关在循环内决定）")
+    last_logged_interval = -1
+    while True:
+        try:
+            try:
+                interval = float(getattr(cfg, 'HERO_SMS_SCAN_INTERVAL_SEC', _HERO_SMS_SCAN_INTERVAL_SEC))
+            except Exception:
+                interval = float(_HERO_SMS_SCAN_INTERVAL_SEC)
+            interval = max(10.0, interval)
+            sleep_reason = _hero_sms_scanner_sleep_interruptible(interval)
+            if sleep_reason == "global_stop":
+                break
+            if sleep_reason == "cancel":
+                _HERO_SMS_SCANNER_CANCEL_EVENT.clear()
+                _slog("[自动清理] 已取消当前 HeroSMS 超时清理轮次")
+                continue
+            if sleep_reason == "disabled":
+                time.sleep(1.0)
+                continue
+            if getattr(cfg, 'GLOBAL_STOP', False):
+                break
+            if not _hero_sms_scanner_enabled():
+                continue
+            if int(interval) != last_logged_interval:
+                last_logged_interval = int(interval)
+                _slog(f"[自动清理] HeroSMS 超时扫描运行中（每 {int(interval)}s 扫描一次）")
+            use_proxy = bool(getattr(cfg, 'HERO_SMS_SCANNER_USE_PROXY', False))
+            proxy_url = str(getattr(cfg, 'DEFAULT_PROXY', '') or '').strip() if use_proxy else ''
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+            _hero_sms_scan_and_cancel(proxies)
+            if _hero_sms_scanner_cancel_requested():
+                _HERO_SMS_SCANNER_CANCEL_EVENT.clear()
+                _slog("[自动清理] 已取消当前 HeroSMS 超时清理轮次")
+        except Exception as e:
+            _slog(f"[自动清理] 扫描线程异常: {e}")
+
+
+def hero_sms_start_scanner() -> None:
+    """启动后台超时取消扫描线程（幂等，重复调用无副作用）。"""
+    global _HERO_SMS_SCANNER_THREAD
+    with _HERO_SMS_SCANNER_LOCK:
+        if _HERO_SMS_SCANNER_THREAD is not None and _HERO_SMS_SCANNER_THREAD.is_alive():
+            return
+        _HERO_SMS_SCANNER_CANCEL_EVENT.clear()
+        t = threading.Thread(
+            target=_hero_sms_scanner_loop,
+            name="hero-sms-scanner",
+            daemon=True,
+        )
+        t.start()
+        _HERO_SMS_SCANNER_THREAD = t

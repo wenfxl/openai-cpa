@@ -58,3 +58,21 @@ def api_get_fivesim_prices(req: SMSPriceReq, token: str = Depends(verify_token))
     if rows:
         return {"status": "success", "prices": rows}
     return {"status": "error", "message": "无法获取价格或当前服务无库存"}
+
+
+@router.get('/api/hero_sms_scanner/status')
+def api_get_hero_sms_scanner_status(token: str = Depends(verify_token)):
+    from utils.integrations.hero_sms import hero_sms_get_scanner_state
+    return {"status": "success", "data": hero_sms_get_scanner_state()}
+
+
+@router.post('/api/hero_sms_scanner/cancel')
+def api_cancel_hero_sms_scanner(token: str = Depends(verify_token)):
+    from utils.integrations.hero_sms import hero_sms_request_scanner_cancel, hero_sms_get_scanner_state
+    hero_sms_request_scanner_cancel()
+    state = hero_sms_get_scanner_state()
+    return {
+        "status": "success",
+        "message": "已请求取消当前 HeroSMS 超时清理轮次",
+        "data": state,
+    }
