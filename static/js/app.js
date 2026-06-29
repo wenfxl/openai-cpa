@@ -326,6 +326,7 @@ createApp({
                     { id: 'email', name: '邮箱配置', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>' },
                     { id: 'mailboxes', name: '微软邮箱库', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>' },
                     { id: 'team_accounts', name: 'Team 账号库', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>' },
+                    { id: 'cdk_activation', name: 'CDK 激活', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>' },
                     { id: 'accounts', name: '账号库存', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>' },
                     { id: 'image_accounts', name: '半成品库存', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>' },
                     { id: 'cloud', name: '云端库存', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h11a5 5 0 00-.1-9.995A5.002 5.002 0 1010.5 6H9.75a4 4 0 00-6.75 9z"></path></svg>' },
@@ -419,6 +420,21 @@ createApp({
                 cloud: { total: 0, cpa: 0, sub2api: 0, enabled: 0 }
             },
             statsTimer: null,
+
+            // CDK Team 激活
+            cdkPoolText: '',
+            cdkTargetCount: 10,
+            cdkConcurrency: 1,
+            cdkIsRunning: false,
+            cdkStats: { success: 0, failed: 0, total_attempts: 0, target: 0, elapsed: 0, pool: { total: 0, unused: 0, used: 0, failed: 0, in_use: 0 } },
+            cdkLogs: [],
+            cdkLogBuffer: [],
+            cdkLogFlushTimer: null,
+            cdkEvtSource: null,
+            cdkPoolItems: [],
+            cdkPoolStats: { total: 0, unused: 0, used: 0, failed: 0, in_use: 0 },
+            cdkStatusTimer: null,
+            isImportingCdk: false,
 
             showPwd: {
                 login: false, web: false, cf: false, imap: false,
@@ -1979,6 +1995,15 @@ createApp({
             if (tabId === 'image_accounts') {
                 this.fetchImageAccounts();
             }
+            if (tabId === 'cdk_activation') {
+                this.fetchCdkPool();
+                this.fetchCdkStatus();
+                this.initCdkSSE();
+                this.startCdkStatusPolling();
+            } else {
+                this.closeCdkSSE();
+                this.stopCdkStatusPolling();
+            }
         },
         async exportSelectedAccounts() {
             if (this.selectedAccounts.length === 0) {
@@ -2499,6 +2524,193 @@ createApp({
                 }
             };
         },
+
+        // ─────────── CDK Team 激活 ───────────
+        async startCdkActivation() {
+            if (this.cdkIsRunning) return;
+            try {
+                const res = await this.authFetch('/api/cdk/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_count: this.cdkTargetCount, concurrency: this.cdkConcurrency })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.cdkIsRunning = true;
+                    this.showToast(data.message, 'success');
+                    this.initCdkSSE();
+                    this.startCdkStatusPolling();
+                } else {
+                    this.showToast(data.message, 'error');
+                }
+            } catch (e) {
+                this.showToast('启动 CDK 激活失败: ' + e.message, 'error');
+            }
+        },
+        async stopCdkActivation() {
+            try {
+                const res = await this.authFetch('/api/cdk/stop', { method: 'POST' });
+                const data = await res.json();
+                this.cdkIsRunning = false;
+                this.showToast(data.message, data.status === 'success' ? 'success' : 'warning');
+            } catch (e) {
+                this.showToast('停止 CDK 激活失败: ' + e.message, 'error');
+            }
+        },
+        async fetchCdkStatus() {
+            try {
+                const res = await this.authFetch('/api/cdk/status');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.cdkIsRunning = data.is_running;
+                    this.cdkStats = {
+                        success: data.success || 0,
+                        failed: data.failed || 0,
+                        total_attempts: data.total_attempts || 0,
+                        target: data.target || 0,
+                        elapsed: data.elapsed || 0,
+                        pool: data.pool || this.cdkStats.pool,
+                    };
+                }
+            } catch (e) {}
+        },
+        startCdkStatusPolling() {
+            this.stopCdkStatusPolling();
+            this.cdkStatusTimer = setInterval(() => this.fetchCdkStatus(), 3000);
+        },
+        stopCdkStatusPolling() {
+            if (this.cdkStatusTimer) {
+                clearInterval(this.cdkStatusTimer);
+                this.cdkStatusTimer = null;
+            }
+        },
+        async importCdkPool() {
+            if (!this.cdkPoolText.trim()) return this.showToast('请输入 CDK', 'warning');
+            this.isImportingCdk = true;
+            try {
+                const res = await this.authFetch('/api/cdk/pool/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ raw_text: this.cdkPoolText })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.showToast(data.message, 'success');
+                    this.cdkPoolText = '';
+                    this.fetchCdkPool();
+                } else {
+                    this.showToast(data.message, 'error');
+                }
+            } catch (e) {
+                this.showToast('导入 CDK 失败: ' + e.message, 'error');
+            } finally {
+                this.isImportingCdk = false;
+            }
+        },
+        async fetchCdkPool() {
+            try {
+                const res = await this.authFetch('/api/cdk/pool');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.cdkPoolItems = data.items || [];
+                    this.cdkPoolStats = data.stats || this.cdkPoolStats;
+                }
+            } catch (e) {}
+        },
+        async deleteCdkCodes(ids) {
+            try {
+                const res = await this.authFetch('/api/cdk/pool/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                const data = await res.json();
+                this.showToast(data.message, data.status === 'success' ? 'success' : 'error');
+                this.fetchCdkPool();
+            } catch (e) {
+                this.showToast('删除 CDK 失败', 'error');
+            }
+        },
+        async clearCdkPool() {
+            if (!confirm('确定要清空全部 CDK 吗？')) return;
+            try {
+                const res = await this.authFetch('/api/cdk/pool/clear', { method: 'POST' });
+                const data = await res.json();
+                this.showToast(data.message, data.status === 'success' ? 'success' : 'error');
+                this.fetchCdkPool();
+            } catch (e) {
+                this.showToast('清空 CDK 池失败', 'error');
+            }
+        },
+        initCdkSSE() {
+            this.closeCdkSSE();
+            const token = localStorage.getItem('auth_token');
+            if (!token) return;
+            const timestamp = new Date().getTime();
+            const url = `/api/cdk/logs/stream?token=${token}&_t=${timestamp}`;
+
+            this.cdkEvtSource = new EventSource(url);
+            this.cdkLogFlushTimer = setInterval(() => {
+                if (this.cdkLogBuffer.length > 0) {
+                    const container = document.getElementById('cdk-terminal-container');
+                    let isScrolledToBottom = true;
+                    if (container) {
+                        isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 100;
+                    }
+                    this.cdkLogs.push(...this.cdkLogBuffer);
+                    this.cdkLogBuffer = [];
+                    if (this.cdkLogs.length > 500) {
+                        this.cdkLogs.splice(0, this.cdkLogs.length - 500);
+                    }
+                    this.$nextTick(() => {
+                        if (container && (isScrolledToBottom || this.cdkLogs.length < 20)) {
+                            container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+                        }
+                    });
+                }
+            }, 300);
+
+            this.cdkEvtSource.onmessage = (event) => {
+                let rawText = event.data.trim();
+                if (!rawText) return;
+                let logObj = { id: Date.now() + Math.random(), parsed: false, raw: rawText };
+                const regex = /^\[(.*?)\]\s*\[(.*?)\]\s+(.*)$/;
+                const match = rawText.match(regex);
+                if (match) {
+                    logObj = { parsed: true, time: match[1], level: match[2].toUpperCase(), text: match[3], raw: rawText };
+                }
+                this.cdkLogBuffer.push(logObj);
+            };
+            this.cdkEvtSource.onerror = () => {
+                this.closeCdkSSE();
+                if (this.isLoggedIn && this.currentTab === 'cdk_activation') {
+                    setTimeout(() => this.initCdkSSE(), 3000);
+                }
+            };
+        },
+        closeCdkSSE() {
+            if (this.cdkEvtSource) {
+                this.cdkEvtSource.close();
+                this.cdkEvtSource = null;
+            }
+            if (this.cdkLogFlushTimer) {
+                clearInterval(this.cdkLogFlushTimer);
+                this.cdkLogFlushTimer = null;
+            }
+        },
+        async clearCdkLogs() {
+            this.cdkLogs = [];
+            try { await this.authFetch('/api/cdk/logs/clear', { method: 'POST' }); } catch (e) {}
+        },
+        cdkStatusLabel(status) {
+            const labels = { 0: '待用', 1: '使用中', 2: '已用', 3: '失败' };
+            return labels[status] || '未知';
+        },
+        cdkStatusColor(status) {
+            const colors = { 0: 'bg-gray-500', 1: 'bg-yellow-500', 2: 'bg-green-500', 3: 'bg-red-500' };
+            return colors[status] || 'bg-gray-500';
+        },
+
 		handleSubDomainToggle() {
 			if (this.config.enable_sub_domains) {
 				this.subDomainModal.email = this.config.cf_api_email || '';

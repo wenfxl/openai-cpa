@@ -158,6 +158,21 @@ def init_db():
             execute_sql(c, 'ALTER TABLE team_accounts ADD COLUMN access_token TEXT;')
         except Exception:
             pass
+
+        execute_sql(c, '''
+            CREATE TABLE IF NOT EXISTS cdk_pool (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                status INTEGER DEFAULT 0,
+                used_by_email TEXT DEFAULT NULL,
+                used_at TIMESTAMP DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        try:
+            execute_sql(c, 'ALTER TABLE team_accounts ADD COLUMN cdk_code TEXT DEFAULT NULL;')
+        except Exception:
+            pass
     print(f"[{cfg.ts()}] [系统] 数据库模块初始化完成 (引擎: {DB_TYPE.upper()})")
 
 
@@ -1176,4 +1191,162 @@ def delete_sys_kvs(keys: list) -> bool:
             return True
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 批量删除系统 KV 异常: {e}")
+        return False
+
+
+# ─────────────── CDK Pool CRUD ───────────────
+
+def import_cdk_codes(codes: list) -> int:
+    """批量导入 CDK，忽略已存在的。返回成功导入数量。"""
+    count = 0
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            for code in codes:
+                code = code.strip()
+                if not code:
+                    continue
+                try:
+                    execute_sql(c, 'INSERT OR IGNORE INTO cdk_pool (code) VALUES (?)', (code,))
+                    if c.rowcount > 0:
+                        count += 1
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 导入 CDK 失败: {e}")
+    return count
+
+
+def claim_next_cdk() -> Optional[dict]:
+    """原子获取下一个可用 CDK（status=0 → 1）。"""
+    try:
+        with get_db_conn(is_write=True, as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            if DB_TYPE == "mysql":
+                execute_sql(c, 'SELECT id, code FROM cdk_pool WHERE status = 0 ORDER BY id LIMIT 1 FOR UPDATE')
+                row = c.fetchone()
+                if row:
+                    row = dict(row)
+                    execute_sql(c, 'UPDATE cdk_pool SET status = 1 WHERE id = ?', (row['id'],))
+                    return row
+            else:
+                execute_sql(c, 'SELECT id, code FROM cdk_pool WHERE status = 0 ORDER BY id LIMIT 1')
+                row = c.fetchone()
+                if row:
+                    row = dict(row)
+                    execute_sql(c, 'UPDATE cdk_pool SET status = 1 WHERE id = ?', (row['id'],))
+                    return row
+            return None
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取 CDK 失败: {e}")
+        return None
+
+
+def mark_cdk_used(cdk_id: int, email: str):
+    """标记 CDK 为已使用。"""
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, 'UPDATE cdk_pool SET status = 2, used_by_email = ?, used_at = CURRENT_TIMESTAMP WHERE id = ?', (email, cdk_id))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 标记 CDK 已用失败: {e}")
+
+
+def mark_cdk_failed(cdk_id: int):
+    """标记 CDK 为失败。"""
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, 'UPDATE cdk_pool SET status = 3 WHERE id = ?', (cdk_id,))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 标记 CDK 失败: {e}")
+
+
+def release_cdk(cdk_id: int):
+    """释放 CDK（1→0），用于中断恢复。"""
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, 'UPDATE cdk_pool SET status = 0 WHERE id = ? AND status = 1', (cdk_id,))
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 释放 CDK 失败: {e}")
+
+
+def get_cdk_pool_stats() -> dict:
+    """获取 CDK 池统计。"""
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            execute_sql(c, 'SELECT status, COUNT(1) AS cnt FROM cdk_pool GROUP BY status')
+            rows = c.fetchall()
+            stats = {"total": 0, "unused": 0, "in_use": 0, "used": 0, "failed": 0}
+            for row in rows:
+                s, cnt = row[0], row[1]
+                stats["total"] += cnt
+                if s == 0:
+                    stats["unused"] = cnt
+                elif s == 1:
+                    stats["in_use"] = cnt
+                elif s == 2:
+                    stats["used"] = cnt
+                elif s == 3:
+                    stats["failed"] = cnt
+            return stats
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取 CDK 统计失败: {e}")
+        return {"total": 0, "unused": 0, "in_use": 0, "used": 0, "failed": 0}
+
+
+def get_cdk_pool_list() -> list:
+    """获取全部 CDK 条目。"""
+    try:
+        with get_db_conn(as_dict=True) as conn:
+            c = get_cursor(conn, as_dict=True)
+            execute_sql(c, 'SELECT id, code, status, used_by_email, used_at, created_at FROM cdk_pool ORDER BY id')
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取 CDK 列表失败: {e}")
+        return []
+
+
+def delete_cdk_codes(ids: list) -> bool:
+    """删除指定 CDK。"""
+    if not ids:
+        return True
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            placeholders = ','.join(['?'] * len(ids))
+            execute_sql(c, f"DELETE FROM cdk_pool WHERE id IN ({placeholders})", tuple(ids))
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 删除 CDK 失败: {e}")
+        return False
+
+
+def clear_cdk_pool() -> bool:
+    """清空 CDK 池。"""
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, "DELETE FROM cdk_pool")
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 清空 CDK 池失败: {e}")
+        return False
+
+
+def save_team_account_with_cdk(email: str, token_data: str, cookies: str, cdk_code: str) -> bool:
+    """保存 CDK 激活的 team 账号。"""
+    try:
+        with get_db_conn(is_write=True) as conn:
+            c = get_cursor(conn)
+            execute_sql(c, '''
+                INSERT OR REPLACE INTO team_accounts (email, access_token, cookies, status, cdk_code)
+                VALUES (?, ?, ?, 1, ?)
+            ''', (email, token_data, cookies, cdk_code))
+            return True
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 保存 CDK Team 账号失败: {e}")
         return False
