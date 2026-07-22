@@ -402,6 +402,6 @@ cluster_upload_timeout_sec: "15"
 cluster_node_name: "NODE-1"
 cluster_master_url: ""
 cluster_secret: "wenfxl666"
-
 # 是否放弃强行变道走无密码OTP
 disable_forced_takeover: true
+enable_codex_agent_identity: false

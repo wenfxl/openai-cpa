@@ -13,7 +13,7 @@ from utils.integrations.smsbower_sms import handle_smsbower_verification
 from utils.integrations.smsbower_sms import get_phone_for_signup as sb_get_phone, wait_code_for_signup as sb_wait_code, report_signup_result as sb_report
 from utils.integrations.fivesim_sms import try_verify_phone_via_fivesim
 from utils.integrations.fivesim_sms import get_phone_for_signup as fs_get_phone, wait_code_for_signup as fs_wait_code, report_signup_result as fs_report
-from utils.auth_core import generate_payload, init_auth, image2api_data, sys_node_allocate, sys_node_release, code_pool,sys_team_domain_verify
+from utils.auth_core import generate_payload, init_auth, image2api_data, sys_node_allocate, sys_node_release, code_pool,sys_team_domain_verify, _generate_codex_auth
 from utils.integrations.image2api_client import Image2APIClient
 from .http_utils import _ssl_verify, _skip_net_check, _post_with_retry, _oai_headers, _follow_redirect_chain_local
 from .common import _extract_next_url, _parse_workspace_from_auth_cookie, _otp_verify_loop, _create_account_about_you
@@ -727,6 +727,18 @@ def run(
                         pass
                 data = image2api_data(s_reg, target_continue_url, proxies)
 
+                codex_auth_data = None
+                is_codex_enabled = getattr(cfg, 'ENABLE_CODEX_AGENT_IDENTITY', False)
+                if is_codex_enabled and data:
+                    try:
+                        print(f"[{cfg.ts()}] [INFO] 正在为该账号静默生成 Codex Agent Identity...")
+                        codex_auth_data = _generate_codex_auth(access_token=data, proxies=proxies)
+                        print(f"[{cfg.ts()}] [SUCCESS] （{masked_login}）Codex 身份升级成功！")
+                        if isinstance(codex_auth_data, dict):
+                            codex_auth_data["email"] = login_username
+                        return json.dumps(codex_auth_data, ensure_ascii=False), password
+                    except Exception as e:
+                        return None, None
 
                 if mode_label == "常规模式":
                     if getattr(cfg, "ENABLE_IMAGE2API_MODE", False):

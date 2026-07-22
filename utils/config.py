@@ -178,7 +178,7 @@ def init_config():
                 print(f"[{ts()}] [WARNING] 自动补全配置文件写入失败: {e}")
 
     return user_config
-APP_VERSION = "v17.0.3"
+APP_VERSION = "v17.1.0"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False
@@ -396,6 +396,9 @@ CF_API_EMAIL: str = ""
 CF_API_KEY: str = ""
 TEAM_MODE_ENABLE: bool = False
 TEAM_MODE_OVERSPEED: bool = False
+ENABLE_CODEX_AGENT_IDENTITY: bool = False
+
+
 def reset_sub2api_proxy_rotation():
     global _sub2api_proxy_rotation_index
     with _sub2api_proxy_rotation_lock:
@@ -499,6 +502,7 @@ def reload_all_configs(new_config_dict=None):
     global FIVESIM_REUSE_PHONE, FIVESIM_REUSE_MAX
     global OPENAI_CPA_WEBHOOK_SECRET, USE_ORIGINAL_PASSWORD_FLOW
     global TEAM_MODE_ENABLE, TEAM_MODE_OVERSPEED
+    global ENABLE_CODEX_AGENT_IDENTITY
     base_yaml_config = init_config()
 
     _db_conf = base_yaml_config.get("database", {})
@@ -616,6 +620,7 @@ def reload_all_configs(new_config_dict=None):
 
     WEB_PASSWORD = str(_c.get("web_password", "admin")).strip()
     RETAIN_REG_ONLY = safe_bool(_c.get("retain_reg_only", False))
+    ENABLE_CODEX_AGENT_IDENTITY = safe_bool(_c.get("enable_codex_agent_identity", False))
 
     EMAIL_API_MODE = _c.get("email_api_mode", "cloudflare_temp_email")
     MAIL_DOMAINS = _c.get("mail_domains", "")

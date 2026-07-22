@@ -30,6 +30,8 @@ def get_sub2api_push_settings() -> Dict[str, Any]:
     else:
         group_ids = [int(item.strip()) for item in str(raw_group_ids or "").split(",") if item.strip().isdigit()]
 
+    use_codex = getattr(cfg, "SUB2API_USE_CODEX_IMPORT", False) or getattr(cfg, "SUB2API_AUTH_FORMAT",
+                                                                           "") == "agent_identity"
     return {
         "concurrency": as_int(getattr(cfg, "SUB2API_ACCOUNT_CONCURRENCY", 10), 10, 1),
         "load_factor": as_int(getattr(cfg, "SUB2API_ACCOUNT_LOAD_FACTOR", 10), 10, 1),
@@ -60,8 +62,11 @@ def _build_account_item(token_data: Dict[str, Any], settings: Dict[str, Any], pr
             "expires_at": int(time.time() + 864000),
             "expires_in": 863999,
             "model_mapping": {
+                "gpt-5.4": "gpt-5.4",
                 "gpt-5.4-mini": "gpt-5.4-mini",
                 "gpt-5.5": "gpt-5.5",
+                "gpt-5.6-luna": "gpt-5.6-luna",
+                "gpt-5.6-terra": "gpt-5.6-terra"
             },
             "organization_id": token_data.get("workspace_id", ""),
             "refresh_token": token_data.get("refresh_token", ""),
@@ -358,6 +363,11 @@ class Sub2APIClient:
         account_name = working_token_data.get("email", "unknown")[:64]
         group_ids = settings.get("group_ids") or []
 
+        if getattr(cfg, "ENABLE_CODEX_AGENT_IDENTITY", False):
+            ok, msg = self._import_codex_session(working_token_data, settings)
+            if ok:
+                self._force_bind_groups(account_name, group_ids)
+            return ok, msg
 
         if not refresh_token or proxy_obj:
             ok, msg = self._import_account(working_token_data, settings)
@@ -373,8 +383,11 @@ class Sub2APIClient:
             "credentials": {
                 "refresh_token": refresh_token,
                 "model_mapping": {
+                    "gpt-5.4": "gpt-5.4",
                     "gpt-5.4-mini": "gpt-5.4-mini",
                     "gpt-5.5": "gpt-5.5",
+                    "gpt-5.6-luna": "gpt-5.6-luna",
+                    "gpt-5.6-terra": "gpt-5.6-terra"
                 }
             },
             "concurrency": settings["concurrency"],
@@ -541,6 +554,68 @@ class Sub2APIClient:
             return False, "连接超时，请检查网络配置或服务器状态"
         except Exception as exc:
             return False, f"连接测试失败: {str(exc)}"
+
+    def _import_codex_session(self, token_data: Dict[str, Any], settings: Dict[str, Any]) -> Tuple[bool, str]:
+        url = f"{self.api_url}/api/v1/admin/accounts/import/codex-session"
+        codex_agent = token_data.get("codex_agent") or token_data.get("codex_data")
+        if not codex_agent and ("agent_identity" in token_data or token_data.get("auth_mode") == "agent_identity"):
+            codex_agent = token_data
+        if not codex_agent:
+            return False, "启用 Codex 模式但 token_data 中未找到对应凭据数据"
+
+        email = (
+                token_data.get("email") or
+                codex_agent.get("email") or
+                codex_agent.get("agent_identity", {}).get("email") or
+                "unknown"
+        )
+
+        payload = {
+            "content": json.dumps(codex_agent),
+            "name": str(email)[:64],
+            "notes": None,
+            "proxy_id": None,
+            "concurrency": settings["concurrency"],
+            "priority": settings["priority"],
+            "rate_multiplier": settings["rate_multiplier"],
+            "group_ids": settings["group_ids"],
+            "expires_at": None,
+            "auto_pause_on_expired": True,
+            "credential_extras": {
+                "model_mapping": {
+                    "gpt-5.4": "gpt-5.4",
+                    "gpt-5.4-mini": "gpt-5.4-mini",
+                    "gpt-5.5": "gpt-5.5",
+                    "gpt-5.6-luna": "gpt-5.6-luna",
+                    "gpt-5.6-terra": "gpt-5.6-terra"
+                }
+            },
+            "extra": self._build_account_extra(settings),
+            "update_existing": True
+        }
+
+        proxy_obj = token_data.get("sub2api_proxy")
+        if proxy_obj and proxy_obj.get("proxy_key"):
+            payload["proxy_key"] = proxy_obj["proxy_key"]
+
+        try:
+            headers = self.headers.copy()
+            headers["Idempotency-Key"] = f"codex-{int(time.time())}"
+
+            response = cffi_requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=30,
+                impersonate="chrome110",
+                proxies=None,
+            )
+            ok, result = self._handle_response(response, success_codes=(200, 201))
+            if ok:
+                return True, "Sub2API Codex 账号上传成功！"
+            return False, f"Codex 推送反馈异常: {str(result)}"
+        except Exception as exc:
+            return False, f"Codex 网络上传请求失败: {exc}"
 
 def _classify_sse_error(err_text: str) -> Tuple[str, str]:
     text = err_text.lower()

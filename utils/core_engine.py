@@ -686,12 +686,20 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
         with _stats_lock: run_stats["success"] += 1
         token_data    = json.loads(token_json_str)
         account_email = token_data.get("email", "unknown")
+
+        if "agentIdentity" in token_data or token_data.get("auth_mode") == "agentIdentity":
+            account_email = token_data.get("agentIdentity", {}).get("email", account_email)
+            token_data = {
+                "email": account_email,
+                "status": "Codex_Identity",
+                "codex_agent": token_data.copy()
+            }
+            token_json_str = json.dumps(token_data, ensure_ascii=False)
+
         if run_ctx and run_ctx.get('device_id') and run_ctx.get('user_agent'):
             token_data['device_id'] = run_ctx['device_id']
             token_data['user_agent'] = run_ctx['user_agent']
             token_json_str = json.dumps(token_data, ensure_ascii=False)
-
-
 
         domain_result = mail_service.record_domain_success(account_email if account_email and "@" in account_email else cur_dom)
         if domain_result:

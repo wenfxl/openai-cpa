@@ -4753,7 +4753,18 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> 设置过大(>1000)可能导致浏览器严重卡顿
                                         </p>
                                     </div>
-
+                                    <div class="bg-indigo-50/40 p-5 md:p-6 rounded-2xl border border-indigo-100 shadow-inner mt-6">
+                                        <label class="block text-indigo-800 text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                            Codex 身份全局获取 (Agent Identity)
+                                        </label>
+                                        <label class="relative inline-flex items-center cursor-pointer group">
+                                            <input type="checkbox" v-model="config.enable_codex_agent_identity" @change="saveConfig" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner group-hover:shadow-md"></div>
+                                            <span class="ml-3 text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">自动注册并使用 Agent Identity 格式</span>
+                                        </label>
+                                        <p class="text-[11px] text-slate-500 mt-2 font-medium">开启后，将使用新Agent Identity注册。</p>
+                                    </div>
                                     <div class="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner">
                                         <label class="block text-slate-600 text-xs font-black uppercase tracking-wider mb-3 flex items-center">
                                             <span>集群账号上传超时（秒）</span>
