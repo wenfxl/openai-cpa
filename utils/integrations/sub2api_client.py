@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 import time
 from urllib.parse import urlparse
 from datetime import datetime, timezone
@@ -120,6 +121,8 @@ class Sub2APIClient:
             "timeout": 15,
             "impersonate": "chrome110",
         }
+        self._sub2api_proxy_ids: Dict[str, int] = {}
+        self._sub2api_proxy_ids_lock = threading.Lock()
 
     def _build_network_error(self, exc: Exception) -> str:
         msg = str(exc)
@@ -555,6 +558,100 @@ class Sub2APIClient:
         except Exception as exc:
             return False, f"连接测试失败: {str(exc)}"
 
+    @staticmethod
+    def _proxy_signature(proxy_obj: Dict[str, Any]) -> Tuple[str, str, int, str, str]:
+        return (
+            str(proxy_obj.get("protocol", "")).strip().lower(),
+            str(proxy_obj.get("host", "")).strip().lower(),
+            int(proxy_obj.get("port", 0)),
+            str(proxy_obj.get("username", "")),
+            str(proxy_obj.get("password", "")),
+        )
+
+    def _ensure_sub2api_proxy(self, proxy_obj: Optional[Dict[str, Any]]) -> Optional[int]:
+        """Resolve a local proxy definition to the numeric ID required by Codex import."""
+        if not proxy_obj or not proxy_obj.get("proxy_key"):
+            return None
+
+        proxy_key = str(proxy_obj["proxy_key"])
+        with self._sub2api_proxy_ids_lock:
+            cached_id = self._sub2api_proxy_ids.get(proxy_key)
+        if cached_id is not None:
+            return cached_id
+
+        try:
+            signature = self._proxy_signature(proxy_obj)
+        except (TypeError, ValueError):
+            logger.warning("Invalid Sub2API proxy definition: %s", proxy_key)
+            return None
+
+        list_url = f"{self.api_url}/api/v1/admin/proxies/all"
+        try:
+            response = cffi_requests.get(
+                list_url,
+                headers=self.headers,
+                **self.request_kwargs,
+            )
+            ok, result = self._handle_response(response)
+            if ok and isinstance(result, dict):
+                proxy_items = result.get("data", [])
+                if isinstance(proxy_items, list):
+                    for item in proxy_items:
+                        if not isinstance(item, dict):
+                            continue
+                        try:
+                            item_signature = self._proxy_signature(item)
+                            item_id = int(item.get("id", 0))
+                        except (TypeError, ValueError):
+                            continue
+                        if item_id > 0 and item_signature == signature:
+                            with self._sub2api_proxy_ids_lock:
+                                self._sub2api_proxy_ids[proxy_key] = item_id
+                            return item_id
+            elif not ok:
+                logger.warning("Failed to list Sub2API proxies: %s", result)
+        except Exception as exc:
+            logger.warning("Failed to resolve Sub2API proxy %s: %s", proxy_key, exc)
+            return None
+
+        create_url = f"{self.api_url}/api/v1/admin/proxies"
+        create_payload = {
+            "name": proxy_obj.get("name") or "openai-cpa",
+            "protocol": proxy_obj.get("protocol"),
+            "host": proxy_obj.get("host"),
+            "port": proxy_obj.get("port"),
+            "username": proxy_obj.get("username", ""),
+            "password": proxy_obj.get("password", ""),
+        }
+        try:
+            response = cffi_requests.post(
+                create_url,
+                json=create_payload,
+                headers=self.headers,
+                timeout=30,
+                impersonate="chrome110",
+            )
+            ok, result = self._handle_response(response, success_codes=(200, 201))
+            if not ok:
+                logger.warning("Failed to create Sub2API proxy %s: %s", proxy_key, result)
+                return None
+
+            created = result.get("data", {}) if isinstance(result, dict) else {}
+            proxy_id = int(created.get("id", 0)) if isinstance(created, dict) else 0
+            if proxy_id <= 0:
+                logger.warning("Sub2API proxy creation returned no usable ID: %s", proxy_key)
+                return None
+
+            with self._sub2api_proxy_ids_lock:
+                self._sub2api_proxy_ids[proxy_key] = proxy_id
+            return proxy_id
+        except (TypeError, ValueError):
+            logger.warning("Sub2API proxy creation returned an invalid ID: %s", proxy_key)
+            return None
+        except Exception as exc:
+            logger.warning("Failed to create Sub2API proxy %s: %s", proxy_key, exc)
+            return None
+
     def _import_codex_session(self, token_data: Dict[str, Any], settings: Dict[str, Any]) -> Tuple[bool, str]:
         url = f"{self.api_url}/api/v1/admin/accounts/import/codex-session"
         codex_agent = token_data.get("codex_agent") or token_data.get("codex_data")
@@ -570,11 +667,16 @@ class Sub2APIClient:
                 "unknown"
         )
 
+        proxy_obj = token_data.get("sub2api_proxy")
+        proxy_id = self._ensure_sub2api_proxy(proxy_obj)
+        if proxy_obj and proxy_id is None:
+            return False, "Codex 账号代理同步失败：无法获取 Sub2API proxy_id"
+
         payload = {
             "content": json.dumps(codex_agent),
             "name": str(email)[:64],
             "notes": None,
-            "proxy_id": None,
+            "proxy_id": proxy_id,
             "concurrency": settings["concurrency"],
             "priority": settings["priority"],
             "rate_multiplier": settings["rate_multiplier"],
@@ -593,10 +695,6 @@ class Sub2APIClient:
             "extra": self._build_account_extra(settings),
             "update_existing": True
         }
-
-        proxy_obj = token_data.get("sub2api_proxy")
-        if proxy_obj and proxy_obj.get("proxy_key"):
-            payload["proxy_key"] = proxy_obj["proxy_key"]
 
         try:
             headers = self.headers.copy()
