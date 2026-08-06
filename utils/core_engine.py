@@ -249,6 +249,329 @@ def upload_to_cpa_integrated(
         return False, str(e)
 
 
+def _grok2api_import_expires_at(token_data: dict) -> str:
+    """Return Grok2API import expires_at.
+
+    Grok2API schedules OAuth refresh from this value. Build tokens imported with a
+    future access-token expiry may sit unrefreshed and miss Build model discovery
+    (for example grok-imagine-video-1.5). If a refresh_token exists, deliberately
+    mark the imported access token as already expired so Grok2API refreshes it
+    immediately and discovers capabilities from the fresh token/session.
+    """
+    if token_data.get("refresh_token"):
+        return datetime.fromtimestamp(int(time.time()) - 60, timezone.utc).isoformat().replace("+00:00", "Z")
+
+    exp = token_data.get("expires_at")
+    expires_str = ""
+    if exp is not None:
+        try:
+            if isinstance(exp, (int, float)):
+                expires_str = datetime.fromtimestamp(int(exp), timezone.utc).isoformat().replace("+00:00", "Z")
+            elif str(exp).isdigit():
+                expires_str = datetime.fromtimestamp(int(str(exp)), timezone.utc).isoformat().replace("+00:00", "Z")
+            else:
+                expires_str = str(exp)
+        except Exception:
+            expires_str = str(exp) if exp else ""
+    return expires_str
+
+
+def _grok2api_import_payload(token_data: dict) -> dict:
+    expires_str = _grok2api_import_expires_at(token_data)
+    return {
+        "provider": "grok_build",
+        "name": token_data.get("email", "Grok Build account"),
+        "client_id": token_data.get("client_id", ""),
+        "access_token": token_data.get("access_token", ""),
+        "refresh_token": token_data.get("refresh_token", ""),
+        "id_token": token_data.get("id_token", ""),
+        "token_type": token_data.get("token_type", "Bearer"),
+        "email": token_data.get("email", ""),
+        "user_id": token_data.get("user_id") or token_data.get("principal_id", ""),
+        "team_id": token_data.get("team_id", ""),
+        "expires_at": expires_str,
+    }
+
+
+
+def _grok2api_import_web_sso(sso: str, token_value: str) -> Tuple[bool, str]:
+    """Import one SSO cookie through Grok2API's dedicated Grok Web endpoint."""
+    sso = str(sso or "").strip()
+    if not sso:
+        return False, "缺少 sso"
+    grok_url = (getattr(cfg, "GROK2API_URL", "") or "http://host.docker.internal:8000").rstrip("/")
+    mime = CurlMime()
+    mime.addpart(
+        name="files",
+        data=(sso + "\n").encode("utf-8"),
+        filename="grok-web-sso-token.txt",
+        content_type="text/plain",
+    )
+    try:
+        resp = requests.post(
+            f"{grok_url}/api/admin/v1/accounts/web/import",
+            multipart=mime,
+            headers={"Authorization": f"Bearer {token_value}"},
+            timeout=180,
+            impersonate="chrome",
+        )
+        if resp.status_code in (200, 201):
+            return True, "Grok Web SSO 导入成功"
+        return False, f"Grok Web SSO 导入失败 HTTP {resp.status_code}"
+    except Exception as exc:
+        return False, f"Grok Web SSO 导入异常: {exc}"
+
+
+def import_to_grok2api(token_data: dict) -> Tuple[bool, str]:
+    """Import one freshly registered xAI/Grok account into Grok2API.
+
+    Keep logs secret-safe: callers should only print email masks/status codes, never token payloads.
+    """
+    grok_url = (getattr(cfg, "GROK2API_URL", "") or "http://host.docker.internal:8000").rstrip("/")
+    grok_pass = getattr(cfg, "GROK2API_ADMIN_PASSWORD", "") or ""
+    if not grok_pass:
+        return False, "Grok2API admin_password 未配置"
+    if not _is_xai_like_token(token_data) and str(getattr(cfg, "REG_PROVIDER", "openai")).lower() != "grok":
+        return False, "非 Grok/xAI 账号"
+    if not (token_data.get("access_token") or token_data.get("refresh_token")):
+        return False, "缺少 access_token/refresh_token"
+    try:
+        login_resp = requests.post(
+            f"{grok_url}/api/admin/v1/auth/login",
+            json={"username": "admin", "password": grok_pass},
+            timeout=20,
+            impersonate="chrome",
+        )
+        if login_resp.status_code != 200:
+            return False, f"Grok2API 登录失败 HTTP {login_resp.status_code}"
+        grok_token = login_resp.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+        if not grok_token:
+            return False, "Grok2API 登录未返回 accessToken"
+
+        payload = _grok2api_import_payload(token_data)
+        file_content = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        mime = CurlMime()
+        mime.addpart(name="file", data=file_content, filename="auth.json", content_type="application/json")
+        import_resp = requests.post(
+            f"{grok_url}/api/admin/v1/accounts/import",
+            multipart=mime,
+            headers={"Authorization": f"Bearer {grok_token}"},
+            timeout=180,
+            impersonate="chrome",
+        )
+        if import_resp.status_code in (200, 201):
+            if getattr(cfg, "GROK2API_IMPORT_SSO_AS_GROK_WEB", False):
+                sso = token_data.get("sso") or token_data.get("sso-rw")
+                if sso:
+                    web_ok, web_msg = _grok2api_import_web_sso(sso, grok_token)
+                    if not web_ok:
+                        return False, f"Grok Build 已导入；{web_msg}"
+                    return True, "Grok Build 与 Grok Web SSO 均导入成功"
+            return True, "导入成功"
+        return False, f"导入失败 HTTP {import_resp.status_code}"
+    except Exception as e:
+        return False, str(e)
+
+
+def grok2api_admin_login() -> Tuple[bool, str, str]:
+    """登录 Grok2API 管理端，供独立仓管巡检/补货使用。"""
+    grok_url = (getattr(cfg, "GROK2API_URL", "") or "").rstrip("/")
+    grok_pass = getattr(cfg, "GROK2API_ADMIN_PASSWORD", "") or ""
+    if not grok_url:
+        return False, "", "Grok2API api_url 未配置"
+    if not grok_pass:
+        return False, "", "Grok2API admin_password 未配置"
+    try:
+        resp = requests.post(
+            f"{grok_url}/api/admin/v1/auth/login",
+            json={"username": "admin", "password": grok_pass},
+            timeout=30,
+            impersonate="chrome",
+        )
+        if resp.status_code != 200:
+            return False, "", f"Grok2API 登录失败 HTTP {resp.status_code}"
+        token_value = resp.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+        if not token_value:
+            return False, "", "Grok2API 登录未返回 accessToken"
+        return True, token_value, "OK"
+    except Exception as exc:
+        return False, "", f"Grok2API 登录异常: {exc}"
+
+
+def grok2api_admin_request(method: str, path: str, token_value: str, **kwargs):
+    grok_url = (getattr(cfg, "GROK2API_URL", "") or "").rstrip("/")
+    headers = kwargs.pop("headers", {}) or {}
+    headers["Authorization"] = f"Bearer {token_value}"
+    return requests.request(
+        method,
+        f"{grok_url}/api/admin/v1{path}",
+        headers=headers,
+        timeout=kwargs.pop("timeout", 60),
+        impersonate="chrome",
+        **kwargs,
+    )
+
+
+def grok2api_list_accounts(token_value: str, provider: str = None, page_size: int = 500) -> Tuple[bool, list, str]:
+    items = []
+    page = 1
+    total = None
+    try:
+        while True:
+            params = {"page": page, "pageSize": page_size}
+            if provider:
+                params["provider"] = provider
+            resp = grok2api_admin_request("GET", "/accounts", token_value, params=params, timeout=30)
+            if resp.status_code != 200:
+                return False, items, f"Grok2API 账号列表 HTTP {resp.status_code}"
+            data = resp.json().get("data", {})
+            batch = data.get("items", []) or []
+            items.extend(batch)
+            total = data.get("total", total)
+            if not batch or len(items) >= int(total or 0) or len(batch) < page_size:
+                break
+            page += 1
+            if page > 50:
+                break
+        return True, items, "OK"
+    except Exception as exc:
+        return False, items, f"Grok2API 拉取账号异常: {exc}"
+
+
+def _grok2api_provider(item: dict) -> str:
+    return str((item or {}).get("provider") or "").strip().lower()
+
+
+def _is_grok2api_inventory_item(item: dict) -> bool:
+    provider = _grok2api_provider(item)
+    if not provider:
+        return True
+    return provider.startswith("grok") or "xai" in provider
+
+
+def _grok2api_account_label(item: dict) -> str:
+    return str((item or {}).get("email") or (item or {}).get("name") or (item or {}).get("id") or "unknown")
+
+
+def _grok2api_quota_remaining_percent(item: dict) -> Optional[float]:
+    quota = (item or {}).get("quota") or {}
+    if not isinstance(quota, dict):
+        return None
+    usage = quota.get("usagePercent")
+    if isinstance(usage, (int, float)):
+        return max(0.0, min(100.0, 100.0 - float(usage)))
+    remaining = quota.get("remaining")
+    limit = quota.get("limit")
+    try:
+        if remaining is not None and limit:
+            return max(0.0, min(100.0, float(remaining) * 100.0 / float(limit)))
+    except Exception:
+        return None
+    return None
+
+
+def _grok2api_quota_exhausted(item: dict) -> bool:
+    quota = (item or {}).get("quota") or {}
+    if isinstance(quota, dict):
+        status = str(quota.get("status") or "").lower()
+        if status in {"exhausted", "limit_reached", "limited", "disabled"}:
+            return True
+        remaining = quota.get("remaining")
+        try:
+            if remaining is not None and float(remaining) <= 0:
+                return True
+        except Exception:
+            pass
+    pct = _grok2api_quota_remaining_percent(item)
+    threshold = int(getattr(cfg, "GROK2API_MIN_REMAINING_WEEKLY_PERCENT", 0) or 0)
+    return threshold > 0 and pct is not None and pct < threshold
+
+
+def _set_grok2api_account_enabled(token_value: str, account_id: str, enabled: bool) -> Tuple[bool, str]:
+    try:
+        resp = grok2api_admin_request(
+            "PATCH", f"/accounts/{account_id}", token_value,
+            json={"enabled": enabled}, timeout=30,
+        )
+        return resp.status_code == 200, f"HTTP {resp.status_code}"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _delete_grok2api_account(token_value: str, item: dict) -> Tuple[bool, str]:
+    account_id = str((item or {}).get("id") or "")
+    if not account_id:
+        return False, "缺少账号 ID"
+    provider = _grok2api_provider(item)
+    body = {"provider": provider} if provider else {}
+    try:
+        resp = grok2api_admin_request("DELETE", f"/accounts/{account_id}", token_value, json=body, timeout=40)
+        return resp.status_code in (200, 204), f"HTTP {resp.status_code}"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def process_grok2api_worker(i: int, total: int, item: dict, token_value: str, args: Any) -> bool:
+    """Grok2API 仓管测活 Worker：Grok Web 刷额度，Build/Console 刷 token。"""
+    if hasattr(args, 'check_stop') and args.check_stop():
+        return False
+    if not _is_grok2api_inventory_item(item):
+        return True
+    account_id = str((item or {}).get("id") or "")
+    name = _grok2api_account_label(item)
+    provider = _grok2api_provider(item)
+    if not account_id:
+        print(f"[{ts()}] [ERROR] Grok2API测活: {mask_email(name)} 缺少账号 ID")
+        return False
+    if item.get("enabled") is False:
+        print(f"[{ts()}] [WARNING] Grok2API测活: {mask_email(name)} 当前已禁用，不计入有效库存")
+        return False
+    if _grok2api_quota_exhausted(item):
+        if getattr(cfg, "GROK2API_REMOVE_ON_LIMIT_REACHED", True):
+            ok, msg = _delete_grok2api_account(token_value, item)
+            print(f"[{ts()}] [WARNING] Grok2API测活: {mask_email(name)} 额度不足，执行删除: {msg}")
+        else:
+            ok, msg = _set_grok2api_account_enabled(token_value, account_id, False)
+            print(f"[{ts()}] [WARNING] Grok2API测活: {mask_email(name)} 额度不足，执行禁用: {msg}")
+        return False
+
+    check_path = f"/accounts/{account_id}/refresh-quota" if provider == "grok_web" else f"/accounts/{account_id}/refresh-token"
+    try:
+        resp = grok2api_admin_request("POST", check_path, token_value, timeout=180)
+        if resp.status_code == 200:
+            fresh_item = resp.json().get("data", {}) or item
+            if _grok2api_quota_exhausted(fresh_item):
+                if getattr(cfg, "GROK2API_REMOVE_ON_LIMIT_REACHED", True):
+                    ok, msg = _delete_grok2api_account(token_value, fresh_item or item)
+                    print(f"[{ts()}] [WARNING] Grok2API测活: {mask_email(name)} 刷新后额度不足，执行删除: {msg}")
+                else:
+                    ok, msg = _set_grok2api_account_enabled(token_value, account_id, False)
+                    print(f"[{ts()}] [WARNING] Grok2API测活: {mask_email(name)} 刷新后额度不足，执行禁用: {msg}")
+                return False
+            try:
+                db_manager.update_account_status_by_fuzzy_name(name, 1)
+            except Exception:
+                pass
+            print(f"[{ts()}] [SUCCESS] Grok2API测活: {mask_email(name)} 状态健康")
+            return True
+
+        print(f"[{ts()}] [ERROR] Grok2API测活: {mask_email(name)} 失败 HTTP {resp.status_code}")
+        try:
+            db_manager.update_account_status_by_fuzzy_name(name, 0)
+        except Exception:
+            pass
+        if getattr(cfg, "GROK2API_REMOVE_DEAD_ACCOUNTS", True):
+            ok, msg = _delete_grok2api_account(token_value, item)
+            print(f"[{ts()}] [ERROR] Grok2API测活: {mask_email(name)} 死号删除: {msg}")
+        else:
+            ok, msg = _set_grok2api_account_enabled(token_value, account_id, False)
+            print(f"[{ts()}] [ERROR] Grok2API测活: {mask_email(name)} 死号禁用: {msg}")
+        return False
+    except Exception as exc:
+        print(f"[{ts()}] [ERROR] Grok2API测活: {mask_email(name)} 异常: {exc}")
+        return False
+
+
 def _decode_possible_json_payload(payload: Any) -> Any:
     if isinstance(payload, str):
         text = payload.strip()
@@ -730,7 +1053,7 @@ def _handle_dead_account(name: str, is_disabled: bool) -> None:
     else:
         print(f"[{ts()}] [WARNING] 凭证 {mask_email(name)} 已死亡，当前已是禁用状态，根据配置保留不删除。")
 
-def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: dict = None) -> str:
+def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: dict = None, grok2api_upload: bool = False) -> str:
     def _format_cooldown_time(cooldown_until: float) -> str:
         if not cooldown_until:
             return ""
@@ -849,6 +1172,9 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
         if cpa_upload:
             should_sync = cfg.SAVE_TO_LOCAL_IN_CPA_MODE
             mode_label = "CPA模式"
+        elif grok2api_upload:
+            should_sync = getattr(cfg, "SAVE_TO_LOCAL_IN_GROK2API_MODE", True)
+            mode_label = "Grok2API模式"
         elif cfg.ENABLE_SUB2API_MODE:
             should_sync = cfg.SUB2API_SAVE_TO_LOCAL
             mode_label = "Sub2API模式"
@@ -880,6 +1206,20 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
                         pass
                 else:
                     print(f"[{ts()}] [ERROR] CPA 云端上传失败: {up_msg}")
+
+        # Grok/xAI 注册完成后导入 Grok2API。仓管补货模式下，导入失败不计作本轮补货成功。
+        if is_grok_token and (grok2api_upload or getattr(cfg, "GROK2API_AUTO_IMPORT_AFTER_REGISTER", False)):
+            ok, grok_msg = import_to_grok2api(token_data)
+            if ok:
+                print(f"[{ts()}] [SUCCESS] [Grok2API] 注册账号 {mask_email(account_email)} 已自动导入 Grok2API！")
+                try:
+                    db_manager.update_account_push_info([account_email], "GROK2API", mode="sync")
+                except Exception:
+                    pass
+            else:
+                print(f"[{ts()}] [ERROR] [Grok2API] 注册账号 {mask_email(account_email)} 自动导入失败: {grok_msg}")
+                if grok2api_upload:
+                    ret_status = "failed"
 
         if getattr(cfg, "LOCAL_MS_POOL_FISSION", False) and cfg.EMAIL_API_MODE == "local_microsoft":
             db_manager.update_pool_fission_result(master_email, is_blocked=False, is_raw=is_raw)
@@ -928,7 +1268,7 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
     )
 
 
-def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False, assigned_domain=None, batch_id=None, worker_index=None):
+def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False, assigned_domain=None, batch_id=None, worker_index=None, grok2api_upload=False):
     proxy = format_docker_url(proxy)
     """切节点 → 注册 → 处理结果。"""
     if not skip_switch:
@@ -950,7 +1290,7 @@ def run_and_refresh(proxy, args, cpa_upload=False, skip_switch=False, assigned_d
         import traceback
         traceback.print_exc()
 
-    return handle_registration_result(result, cpa_upload=cpa_upload, run_ctx=run_ctx)
+    return handle_registration_result(result, cpa_upload=cpa_upload, run_ctx=run_ctx, grok2api_upload=grok2api_upload)
 
 # def auto_heal_subdomain(failed_domain: str):
     # print(f"[{ts()}] [自愈] 域名 {failed_domain} 达到失败阈值，触发更替程序...")
@@ -1472,8 +1812,14 @@ async def manual_check_main_loop(args, async_stop_event: asyncio.Event, executor
     elif cfg.ENABLE_SUB2API_MODE:
         client = Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY)
         check_task = asyncio.create_task(perform_sub2api_check(args, async_stop_event, loop, client, executor=executor))
+    elif getattr(cfg, "ENABLE_GROK2API_MODE", False):
+        ok_login, grok_token, login_msg = grok2api_admin_login()
+        if ok_login:
+            check_task = asyncio.create_task(perform_grok2api_check(args, async_stop_event, loop, grok_token, executor=executor))
+        else:
+            print(f"[{ts()}] [WARNING] Grok2API 登录失败，无法执行仓管测活: {login_msg}")
     else:
-        print(f"[{ts()}] [WARNING] 当前未开启 CPA 或 Sub2API 模式，无法执行仓管测活。")
+        print(f"[{ts()}] [WARNING] 当前未开启 CPA、Sub2API 或 Grok2API 模式，无法执行仓管测活。")
 
     if check_task:
         stop_task = asyncio.create_task(async_stop_event.wait())
@@ -1960,6 +2306,239 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
             async_stop_event.set()
             break
 
+
+async def perform_grok2api_check(args, async_stop_event, loop, token_value: str, executor=None):
+    print(f"[{ts()}] [INFO] 开始执行 Grok2API 仓库全量测活巡检...")
+    ok, account_list, msg = grok2api_list_accounts(token_value)
+    if not ok:
+        print(f"[{ts()}] [ERROR] 获取 Grok2API 全量库存失败: {msg}")
+        return 0, 0
+
+    filtered_list = [item for item in account_list if _is_grok2api_inventory_item(item)]
+    total_files = len(filtered_list)
+    if not filtered_list:
+        print(f"[{ts()}] [INFO] Grok2API 当前无可管理账号")
+        return 0, 0
+
+    if executor is not None:
+        futures = [
+            loop.run_in_executor(executor, process_grok2api_worker, i, total_files, item, token_value, args)
+            for i, item in enumerate(filtered_list, 1)
+        ]
+        results = await asyncio.gather(*futures)
+    else:
+        with ThreadPoolExecutor(max_workers=cfg.GROK2API_THREADS) as _ex:
+            futures = [
+                loop.run_in_executor(_ex, process_grok2api_worker, i, total_files, item, token_value, args)
+                for i, item in enumerate(filtered_list, 1)
+            ]
+            results = await asyncio.gather(*futures)
+
+    valid_count = sum(1 for r in results if r)
+    print(f"[{ts()}] [INFO] Grok2API 测活结束，当前有效数: {valid_count} / {total_files}")
+    return valid_count, total_files
+
+
+async def grok2api_main_loop(args, async_stop_event: asyncio.Event, executor=None):
+    """Grok2API 智能仓管模式：独立库存巡检、补货、导入。"""
+    print("=" * 60)
+    print(f"\n[{ts()}] [系统] Grok2API 目标库存阈值: {cfg.GROK2API_MIN_THRESHOLD} | 单次补发量: {cfg.GROK2API_BATCH_COUNT}")
+    print(f"\n[{ts()}] [系统] Grok2API 限额处理: {'删除' if cfg.GROK2API_REMOVE_ON_LIMIT_REACHED else '禁用保留'}")
+    print("=" * 60)
+
+    loop = asyncio.get_running_loop()
+
+    while not async_stop_event.is_set() and not cfg.POOL_EXHAUSTED:
+        try:
+            ok_login, grok_token, login_msg = grok2api_admin_login()
+            if not ok_login:
+                print(f"[{ts()}] [ERROR] Grok2API 登录失败，仓管暂停: {login_msg}")
+                try:
+                    await asyncio.wait_for(async_stop_event.wait(), timeout=60)
+                except asyncio.TimeoutError:
+                    pass
+                continue
+
+            if cfg.GROK2API_MIN_THRESHOLD <= 0:
+                total_files = 0
+                valid_count = 0
+                print(f"\n[{ts()}] [INFO] Grok2API 库存报警阈值为 0，跳过云端库存获取，直接按单次补发量执行补货。")
+            elif cfg.GROK2API_AUTO_CHECK:
+                valid_count, total_files = await perform_grok2api_check(args, async_stop_event, loop, grok_token, executor=executor)
+            else:
+                print(f"\n[{ts()}] [INFO] Grok2API 自动测活已关闭，直接读取云端列表进行补发判断...")
+                ok_list, account_list, list_msg = grok2api_list_accounts(grok_token)
+                if not ok_list:
+                    print(f"[{ts()}] [ERROR] 获取 Grok2API 全量库存失败: {list_msg}")
+                    try:
+                        await asyncio.wait_for(async_stop_event.wait(), timeout=60)
+                    except asyncio.TimeoutError:
+                        pass
+                    continue
+                filtered_list = [
+                    item for item in account_list
+                    if _is_grok2api_inventory_item(item) and item.get("enabled", True) and not _grok2api_quota_exhausted(item)
+                ]
+                total_files = len(filtered_list)
+                valid_count = total_files
+                print(f"[{ts()}] [INFO] 当前 Grok2API 有效库存: {valid_count} (未开启自动巡检，按列表状态估算)")
+
+            if cfg.GROK2API_MIN_THRESHOLD <= 0 or valid_count < cfg.GROK2API_MIN_THRESHOLD:
+                need_to_reg = cfg.GROK2API_BATCH_COUNT
+                global run_stats
+                run_stats["target"] += need_to_reg
+                success_in_this_cycle = 0
+                if cfg.GROK2API_MIN_THRESHOLD <= 0:
+                    print(f"[{ts()}] [INFO] 已禁用库存判断，直接启动 Grok2API 补货 {need_to_reg} 个...")
+                else:
+                    print(f"[{ts()}] [INFO] Grok2API 库存不足 ({valid_count} < {cfg.GROK2API_MIN_THRESHOLD})，启动补货...")
+                await asyncio.sleep(1)
+
+                def _grok2api_run_wrapper(p, skip_switch, assigned_domain=None, batch_id=None, worker_index=None):
+                    p = format_docker_url(p)
+                    if not skip_switch:
+                        if not smart_switch_node(p):
+                            print(f"[{ts()}] [WARNING] [Grok2API补货] 全局节点切换失败...")
+                    run_ctx = {}
+                    result = dispatch_register(
+                        p,
+                        run_ctx=run_ctx,
+                        assigned_domain=assigned_domain,
+                        batch_id=batch_id,
+                        worker_index=worker_index,
+                    )
+                    return handle_registration_result(result, cpa_upload=False, run_ctx=run_ctx, grok2api_upload=True)
+
+                def _grok2api_worker(worker_index=0, assigned_domain=None, batch_id=None):
+                    if async_stop_event.is_set():
+                        return "stopped"
+                    if cfg.is_raw_proxy_pool_enabled():
+                        borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                        try:
+                            return _grok2api_run_wrapper(p, True, assigned_domain=assigned_domain, batch_id=batch_id, worker_index=worker_index)
+                        finally:
+                            if cfg.should_return_pooled_proxy(borrowed_generation):
+                                cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                cfg.PROXY_QUEUE.task_done()
+                    if cfg._clash_enable and cfg._clash_pool_mode:
+                        p = cfg.PROXY_QUEUE.get()
+                        proxy_url = p[-1] if isinstance(p, tuple) else p
+                        try:
+                            return _grok2api_run_wrapper(proxy_url, False, assigned_domain=assigned_domain, batch_id=batch_id, worker_index=worker_index)
+                        finally:
+                            cfg.PROXY_QUEUE.put(p)
+                            cfg.PROXY_QUEUE.task_done()
+                    return _grok2api_run_wrapper(args.proxy, True, assigned_domain=assigned_domain, batch_id=batch_id, worker_index=worker_index)
+
+                while success_in_this_cycle < need_to_reg and not async_stop_event.is_set() and not cfg.POOL_EXHAUSTED:
+                    remaining = need_to_reg - success_in_this_cycle
+                    batch_size = min(cfg.REG_THREADS, remaining)
+                    preallocated_domains = []
+                    batch_id = None
+
+                    if cfg._clash_enable and not cfg._clash_pool_mode:
+                        print(f"[{ts()}] [INFO] [Grok2API补货] 切换全局节点...")
+                        if not smart_switch_node(args.proxy):
+                            print(f"[{ts()}] [WARNING] [Grok2API补货] 全局节点切换失败，使用当前 IP 继续...")
+
+                    if (
+                        cfg.ENABLE_MULTI_THREAD_REG
+                        and batch_size > 1
+                        and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                    ):
+                        batch_id = int(time.time() * 1000)
+                        domain_pool = mail_service.get_configured_main_domains_snapshot()
+                        preallocated_domains = mail_service.preallocate_main_domains_for_batch(domain_pool, batch_size)
+
+                    if cfg.ENABLE_MULTI_THREAD_REG:
+                        print(f"[{ts()}] [INFO] Grok2API 多线程补货: {success_in_this_cycle}/{need_to_reg} ({batch_size} 线程)")
+                        if executor is not None:
+                            reg_futures = [
+                                loop.run_in_executor(
+                                    executor,
+                                    _grok2api_worker,
+                                    idx,
+                                    preallocated_domains[idx] if idx < len(preallocated_domains) else None,
+                                    batch_id,
+                                )
+                                for idx in range(batch_size)
+                            ]
+                            reg_results = await asyncio.gather(*reg_futures)
+                        else:
+                            with ThreadPoolExecutor(max_workers=batch_size) as ex:
+                                reg_futures = [
+                                    loop.run_in_executor(
+                                        ex,
+                                        _grok2api_worker,
+                                        idx,
+                                        preallocated_domains[idx] if idx < len(preallocated_domains) else None,
+                                        batch_id,
+                                    )
+                                    for idx in range(batch_size)
+                                ]
+                                reg_results = await asyncio.gather(*reg_futures)
+                        for status in reg_results:
+                            if status == "success":
+                                success_in_this_cycle += 1
+                            elif status == "retry_403":
+                                print(f"[{ts()}] [WARNING] 遇到 403 频率限制，给服务器 15 秒冷却时间...")
+                                try:
+                                    await asyncio.wait_for(async_stop_event.wait(), timeout=15)
+                                except asyncio.TimeoutError:
+                                    pass
+                    else:
+                        print(f"[{ts()}] [INFO] Grok2API 单线程补货: {success_in_this_cycle}/{need_to_reg}")
+                        if cfg.is_raw_proxy_pool_enabled():
+                            borrowed_generation, p = cfg.unpack_proxy_queue_item(cfg.PROXY_QUEUE.get())
+                            try:
+                                status = await loop.run_in_executor(None, _grok2api_run_wrapper, p, True)
+                            finally:
+                                if cfg.should_return_pooled_proxy(borrowed_generation):
+                                    cfg.PROXY_QUEUE.put(cfg.make_proxy_queue_item(p, borrowed_generation))
+                                    cfg.PROXY_QUEUE.task_done()
+                        elif cfg._clash_enable and cfg._clash_pool_mode:
+                            p = cfg.PROXY_QUEUE.get()
+                            proxy_url = p[-1] if isinstance(p, tuple) else p
+                            try:
+                                status = await loop.run_in_executor(None, _grok2api_run_wrapper, proxy_url, False)
+                            finally:
+                                cfg.PROXY_QUEUE.put(p)
+                                cfg.PROXY_QUEUE.task_done()
+                        else:
+                            status = await loop.run_in_executor(None, _grok2api_run_wrapper, args.proxy, True)
+
+                        if status == "success":
+                            success_in_this_cycle += 1
+                        elif status == "retry_403":
+                            try:
+                                await asyncio.wait_for(async_stop_event.wait(), timeout=10)
+                            except asyncio.TimeoutError:
+                                pass
+                        try:
+                            await asyncio.wait_for(async_stop_event.wait(), timeout=5)
+                        except asyncio.TimeoutError:
+                            pass
+
+                    if cfg.EMAIL_API_MODE in ["local_microsoft", "gmail_fission"]:
+                        global_postman_fleet.clear_fleet()
+                print(f"[{ts()}] [SUCCESS] 本轮补货完成！累计入库 Grok2API: {success_in_this_cycle} 个。")
+            else:
+                print(f"[{ts()}] [INFO] Grok2API 仓库存量充足，无需补发。")
+
+            if async_stop_event.is_set() or getattr(cfg, 'GLOBAL_STOP', False):
+                print(f"[{ts()}] [系统] Grok2API 主调度循环已彻底退出。")
+                break
+            print(f"[{ts()}] [INFO] 维护周期结束，{cfg.GROK2API_CHECK_INTERVAL} 分钟后进行下一次巡检...")
+            try:
+                await asyncio.wait_for(async_stop_event.wait(), timeout=cfg.GROK2API_CHECK_INTERVAL * 60)
+            except asyncio.TimeoutError:
+                pass
+
+        except Exception as e:
+            print(f"[{ts()}] [ERROR] Grok2API 循环发生致命异常: {e}")
+            async_stop_event.set()
+            break
+
 # 独立OAuth
 def handle_oauth_upgrade_result(email: str, result: Any, run_ctx: dict = None) -> str:
 
@@ -2158,6 +2737,10 @@ def main() -> None:
 
     if cfg.ENABLE_CPA_MODE:
         print("   当前状态: [ CPA 智能仓管模式 ] 已开启")
+    elif getattr(cfg, "ENABLE_GROK2API_MODE", False):
+        print("   当前状态: [ Grok2API 智能仓管模式 ] 已开启")
+    elif cfg.ENABLE_SUB2API_MODE:
+        print("   当前状态: [ Sub2API 智能仓管模式 ] 已开启")
     else:
         print("   当前状态: [ 常规量产模式 ] 已开启")
     print("=" * 65)
@@ -2165,6 +2748,11 @@ def main() -> None:
     if cfg.ENABLE_CPA_MODE:
         try:
             asyncio.run(cpa_main_loop(args, asyncio.Event()))
+        except KeyboardInterrupt:
+            print(f"\n[{ts()}] [INFO] 用户终止了系统运行。")
+    elif getattr(cfg, "ENABLE_GROK2API_MODE", False):
+        try:
+            asyncio.run(grok2api_main_loop(args, asyncio.Event()))
         except KeyboardInterrupt:
             print(f"\n[{ts()}] [INFO] 用户终止了系统运行。")
     else:
@@ -2187,7 +2775,7 @@ class RegEngine:
 
     def _ensure_executor(self, max_workers=None):
         if self._executor is None:
-            workers = max_workers or max(cfg.REG_THREADS, getattr(cfg, 'CPA_THREADS', 4), getattr(cfg, 'SUB2API_THREADS', 4))
+            workers = max_workers or max(cfg.REG_THREADS, getattr(cfg, 'CPA_THREADS', 4), getattr(cfg, 'SUB2API_THREADS', 4), getattr(cfg, 'GROK2API_THREADS', 4))
             self._executor = ThreadPoolExecutor(max_workers=workers)
         return self._executor
 
@@ -2249,6 +2837,19 @@ class RegEngine:
         )
         self.current_thread.start()
 
+    def start_grok2api(self, args):
+        if self.is_running():
+            return
+        self._force_stopped = False
+        cfg.GLOBAL_STOP = False
+        cfg.POOL_EXHAUSTED = False
+        self.thread_stop_event = threading.Event()
+        self._ensure_executor()
+        self.current_thread = threading.Thread(
+            target=self._run_grok2api_in_thread, args=(args,), daemon=True
+        )
+        self.current_thread.start()
+
     def _run_cpa_in_thread(self, args):
         self._perform_initial_cleanup()
         self.loop = asyncio.new_event_loop()
@@ -2276,6 +2877,16 @@ class RegEngine:
         try:
             self.async_stop_event = asyncio.Event()
             self.loop.run_until_complete(sub2api_main_loop(args, self.async_stop_event, executor=self._executor))
+        finally:
+            self._finalize_thread_run()
+
+    def _run_grok2api_in_thread(self, args):
+        self._perform_initial_cleanup()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        try:
+            self.async_stop_event = asyncio.Event()
+            self.loop.run_until_complete(grok2api_main_loop(args, self.async_stop_event, executor=self._executor))
         finally:
             self._finalize_thread_run()
 
