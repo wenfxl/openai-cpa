@@ -1016,14 +1016,6 @@ def grok2api_import(req: Grok2APIImportReq, token: str = Depends(verify_token)):
                 timeout=180, impersonate="chrome110"
             )
             if import_resp.status_code in (200, 201):
-                if getattr(cfg, "GROK2API_IMPORT_SSO_AS_GROK_WEB", False):
-                    sso = item_data.get("sso") or item_data.get("sso-rw")
-                    if sso:
-                        web_ok, web_msg = core_engine._grok2api_import_web_sso(sso, grok_token)
-                        if not web_ok:
-                            failed += 1
-                            errors.append(f"{name}: Grok Build 已导入；{web_msg}")
-                            continue
                 created += 1
             else:
                 failed += 1

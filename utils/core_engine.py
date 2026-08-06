@@ -360,13 +360,6 @@ def import_to_grok2api(token_data: dict) -> Tuple[bool, str]:
             impersonate="chrome",
         )
         if import_resp.status_code in (200, 201):
-            if getattr(cfg, "GROK2API_IMPORT_SSO_AS_GROK_WEB", False):
-                sso = token_data.get("sso") or token_data.get("sso-rw")
-                if sso:
-                    web_ok, web_msg = _grok2api_import_web_sso(sso, grok_token)
-                    if not web_ok:
-                        return False, f"Grok Build 已导入；{web_msg}"
-                    return True, "Grok Build 与 Grok Web SSO 均导入成功"
             return True, "导入成功"
         return False, f"导入失败 HTTP {import_resp.status_code}"
     except Exception as e:
