@@ -303,6 +303,48 @@ sub2api_mode:
   retain_reg_only: false
   auto_re_oauth: false
 
+grok2api:
+  # 【开关】true 开启 Grok2API 独立仓管；false 不拉取/不巡检远端 Grok2API
+  enable: false
+  auto_check: true
+  # 补货导入 Grok2API 时，是否同时将账号 Token 备份到本地
+  save_to_local: true
+  # Grok2API 管理端地址，例如 http://host.docker.internal:8000
+  api_url: "http://host.docker.internal:8000"
+  # Grok2API 管理员密码
+  admin_password: ""
+  # 仓库存量低于此值时触发补货；设为 0 表示跳过库存判断，按批次数直接补货
+  min_accounts_threshold: 20
+  # 每次触发补货注册的数量
+  batch_reg_count: 1
+  # 额度剩余阈值 (0-100)。0 表示仅真实耗尽时处理；大于 0 时低于该百分比即视为不足
+  min_remaining_weekly_percent: 0
+  # 额度耗尽/不足时是否删除；false 则禁用保留
+  remove_on_limit_reached: true
+  # 账号彻底死亡时是否删除；false 则禁用保留
+  remove_dead_accounts: true
+  # 预留：Grok2API token 复活开关
+  enable_token_revive: false
+  # Grok2API 仓库巡检间隔，默认每 60 分钟
+  check_interval_minutes: 60
+  # Grok2API 测活并发线程数
+  threads: 5
+  account_concurrency: 10
+  account_load_factor: 10
+  account_priority: 1
+  account_rate_multiplier: 1.0
+  account_group_ids: ""
+  enable_ws_mode: true
+  test_model: "grok-4.5"
+  default_proxy: ""
+  # 是否保存仅注册账号，用于后续手动登录或者其他作用
+  retain_reg_only: false
+  auto_re_oauth: false
+  # 注册到 Grok/xAI 后是否自动导入 Grok2API；开启 grok2api.enable 后默认按仓管链路导入
+  auto_import_after_register: false
+  # 导入 Grok2API 时，若账号含 sso，同时导入为 Grok Web 账号
+  import_sso_as_grok_web: false
+
 image2api_mode:
   enable: false
   api_url: ""

@@ -613,6 +613,9 @@ async def start_task(token: str = Depends(verify_token)):
     if getattr(core_engine.cfg, 'ENABLE_CPA_MODE', False):
         engine.start_cpa(args)
         return {"status": "success", "message": "启动成功：已自动识别并开启 [CPA 智能仓管模式]"}
+    elif getattr(core_engine.cfg, 'ENABLE_GROK2API_MODE', False):
+        engine.start_grok2api(args)
+        return {"status": "success", "message": "启动成功：已自动识别并开启 [Grok2API 仓管模式]"}
     elif getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False):
         engine.start_sub2api(args)
         return {"status": "success", "message": "启动成功：已自动识别并开启 [Sub2API 仓管模式]"}
@@ -678,7 +681,8 @@ async def get_stats(token: str = Depends(verify_token)):
         current_mode = "插件托管 (古法)"
     else:
         current_mode = "CPA 仓管" if getattr(core_engine.cfg, 'ENABLE_CPA_MODE', False) else (
-            "Sub2Api 仓管" if getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False) else "常规量产")
+            "Grok2API 仓管" if getattr(core_engine.cfg, 'ENABLE_GROK2API_MODE', False) else (
+            "Sub2Api 仓管" if getattr(core_engine.cfg, 'ENABLE_SUB2API_MODE', False) else "常规量产"))
 
     domain_summary = mail_service.get_mail_domain_runtime_summary()
     memory_report = build_memory_report(getattr(core_engine.cfg, '_c', {}))

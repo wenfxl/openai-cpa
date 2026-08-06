@@ -97,6 +97,30 @@ def _short_err(text: str) -> str:
     return short
 
 
+def _import_grok_web_before_oauth(sso: str, email: str, run_ctx: dict) -> None:
+    """Best-effort Grok Web import; it must never block Build OAuth."""
+    if not getattr(cfg, "GROK2API_IMPORT_SSO_AS_GROK_WEB", False):
+        return
+
+    # Import lazily to avoid a module cycle while core_engine dispatches Grok registration.
+    from utils import core_engine
+
+    ok_login, grok_token, login_msg = core_engine.grok2api_admin_login()
+    if not ok_login:
+        run_ctx["grok_web_import_ok"] = False
+        run_ctx["grok_web_import_message"] = login_msg
+        _log(f"Grok Web SSO 导入跳过: {_short_err(login_msg)}；继续获取 Build OAuth", email)
+        return
+
+    web_ok, web_msg = core_engine._grok2api_import_web_sso(sso, grok_token)
+    run_ctx["grok_web_import_ok"] = web_ok
+    run_ctx["grok_web_import_message"] = web_msg
+    if web_ok:
+        _log_success("Grok Web SSO 已先行导入", email)
+    else:
+        _log(f"{_short_err(web_msg)}；继续获取 Build OAuth", email)
+
+
 def run(
     proxy: Optional[str] = None,
     run_ctx: Optional[dict] = None,
@@ -185,6 +209,10 @@ def run(
         session_cookies.setdefault("sso", sso)
         session_cookies.setdefault("sso-rw", sso)
         _log("SSO 提取成功", email)
+
+        # Grok Web is an optional attachment of the Grok2API warehouse. Whether
+        # this succeeds or fails, Build OAuth and the normal Build import continue.
+        _import_grok_web_before_oauth(sso, email, run_ctx)
 
         try:
             oauth = complete_build_oauth(

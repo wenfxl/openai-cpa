@@ -1,5 +1,6 @@
 import json
 import time
+import datetime
 import urllib.parse
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -38,6 +39,121 @@ class UpgradeOAuthReq(BaseModel):emails: Union[List[str], str]
 
 
 _last_cloud_sync_time = 0
+
+
+def _grok2api_base_url() -> str:
+    return (getattr(cfg, "GROK2API_URL", None) or "http://host.docker.internal:8000").rstrip("/")
+
+
+def _grok2api_login() -> tuple[bool, str, str]:
+    """Login to Grok2API admin API. Returns (ok, token, message)."""
+    grok_pass = getattr(cfg, "GROK2API_ADMIN_PASSWORD", None) or ""
+    if not grok_pass:
+        return False, "", "Grok2API 未配置 admin_password（config.yaml → grok2api.admin_password）"
+    try:
+        resp = cffi_requests.post(
+            f"{_grok2api_base_url()}/api/admin/v1/auth/login",
+            json={"username": "admin", "password": grok_pass},
+            timeout=30,
+            impersonate="chrome110",
+        )
+        if resp.status_code != 200:
+            return False, "", f"Grok2API 登录失败 HTTP {resp.status_code}"
+        token_value = resp.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+        if not token_value:
+            return False, "", "Grok2API 登录后未获取到 accessToken"
+        return True, token_value, "OK"
+    except Exception as exc:
+        return False, "", f"Grok2API 登录异常: {exc}"
+
+
+def _grok2api_request(method: str, path: str, token_value: str, **kwargs):
+    url = f"{_grok2api_base_url()}/api/admin/v1{path}"
+    headers = kwargs.pop("headers", {}) or {}
+    headers["Authorization"] = f"Bearer {token_value}"
+    return cffi_requests.request(method, url, headers=headers, timeout=kwargs.pop("timeout", 60), impersonate="chrome110", **kwargs)
+
+
+def _grok2api_list_accounts(token_value: str, provider: str | None = None, page_size: int = 500) -> tuple[bool, list[dict], str]:
+    items: list[dict] = []
+    page = 1
+    total = None
+    try:
+        while True:
+            params = {"page": page, "pageSize": page_size}
+            if provider:
+                params["provider"] = provider
+            resp = _grok2api_request("GET", "/accounts", token_value, params=params, timeout=30)
+            if resp.status_code != 200:
+                return False, items, f"Grok2API 账号列表 HTTP {resp.status_code}"
+            data = resp.json().get("data", {})
+            batch = data.get("items", []) or []
+            items.extend(batch)
+            total = data.get("total", total)
+            if not batch or len(items) >= int(total or 0) or len(batch) < page_size:
+                break
+            page += 1
+            if page > 50:
+                break
+        return True, items, "OK"
+    except Exception as exc:
+        return False, items, f"Grok2API 拉取账号异常: {exc}"
+
+
+def _grok2api_quota_details(item: dict) -> dict:
+    details = {
+        "platform": item.get("provider") or "grok2api",
+        "type": item.get("provider") or "grok2api",
+        "auth_status": item.get("authStatus", ""),
+        "egress_node_id": item.get("egressNodeId", ""),
+        "refreshable": item.get("refreshable", False),
+    }
+    quota = item.get("quota") or {}
+    if quota:
+        used = quota.get("used") or 0
+        limit = quota.get("limit") or 0
+        remaining = quota.get("remaining") if quota.get("remaining") is not None else max(0, limit - used)
+        usage = quota.get("usagePercent")
+        try:
+            usage = round(float(usage), 1) if usage is not None else (round(float(used) * 100 / float(limit), 1) if limit else 0)
+        except Exception:
+            usage = 0
+        details.update({
+            "quota_type": quota.get("type") or "unknown",
+            "quota_source": quota.get("source") or "",
+            "quota_status": quota.get("status") or "",
+            "quota_used": used,
+            "quota_limit": limit,
+            "quota_remaining": remaining,
+            "quota_usage_percent": usage,
+            "quota_window_hours": quota.get("windowHours"),
+        })
+    billing = item.get("billing") or {}
+    if billing:
+        details.update({
+            "billing_used": billing.get("used"),
+            "billing_remaining": billing.get("remaining"),
+            "billing_synced_at": billing.get("syncedAt"),
+        })
+    windows = item.get("quotaWindows") or []
+    if windows:
+        details["quota_windows"] = windows
+    return details
+
+
+def _grok2api_to_cloud_item(item: dict) -> dict:
+    status = "active" if item.get("enabled", True) else "disabled"
+    if item.get("enabled", True) and str(item.get("authStatus", "active")).lower() not in {"active", "ok", "valid", ""}:
+        status = "dead"
+    last_check = item.get("quota", {}).get("syncedAt") or item.get("billing", {}).get("syncedAt") or item.get("updatedAt") or item.get("createdAt") or "-"
+    return {
+        "id": str(item.get("id", "")),
+        "account_type": "grok2api",
+        "credential": item.get("email") or item.get("name") or str(item.get("id", "")),
+        "status": status,
+        "last_check": str(last_check).split(".")[0].replace("T", " ") if last_check else "-",
+        "details": _grok2api_quota_details(item),
+    }
 
 def parse_cpa_usage_to_details(raw_usage: dict) -> dict:
     details = {"is_cpa": True}
@@ -194,6 +310,25 @@ def account_action(data: dict, token: str = Depends(verify_token)):
                 return {"status": "error", "message": "🚫 推送失败：未开启 Image2API 模式！"}
             img_client = Image2APIClient()
             print(f"[{cfg.ts()}] [系统] 🖼️ 收到指令，准备将 {len(target_emails)} 个账号推送至 Image2API...")
+        elif action == "grok2api-import":
+            grok_url = getattr(cfg, "GROK2API_URL", None) or "http://host.docker.internal:8000"
+            grok_pass = getattr(cfg, "GROK2API_ADMIN_PASSWORD", None) or ""
+            if not grok_pass:
+                return {"status": "error", "message": "请在设置页配置 Grok2API 管理员密码"}
+            # Attempt to get or reuse grok token
+            try:
+                from curl_cffi import requests as cffi_req
+                lr = cffi_req.post(f"{grok_url}/api/admin/v1/auth/login",
+                    json={"username": "admin", "password": grok_pass},
+                    timeout=15, impersonate="chrome110")
+                if lr.status_code != 200:
+                    return {"status": "error", "message": f"Grok2API 登录失败 HTTP {lr.status_code}"}
+                grok_token = lr.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+                if not grok_token:
+                    return {"status": "error", "message": "Grok2API 登录未获取到 accessToken"}
+            except Exception as e:
+                return {"status": "error", "message": f"Grok2API 登录异常: {e}"}
+            print(f"[{cfg.ts()}] [系统] 🔮 收到指令，准备将 {len(target_emails)} 个账号导入至 Grok2API...")
 
         total_accounts = len(target_emails)
         for idx, email in enumerate(target_emails):
@@ -228,6 +363,71 @@ def account_action(data: dict, token: str = Depends(verify_token)):
                         last_error = resp
                     else:
                         print(f"[{cfg.ts()}] [成功] ✅ 账号 {mask_email(email)} 成功推送至 Image2API！")
+                elif action == "grok2api-import":
+                    if not core_engine._is_xai_like_token(token_data):
+                        fail_count += 1
+                        last_error = f"账号并非 Grok/xAI 类型，跳过"
+                        print(f"[{cfg.ts()}] [跳过] ⚠️ 账号 {mask_email(email)} 非 Grok/xAI 类型，跳过导入")
+                        continue
+                    try:
+                        from curl_cffi import requests as cffi_req2
+                        import json as _json2
+                        if token_data.get("refresh_token"):
+                            # Force Grok2API to refresh immediately after import. This mirrors the
+                            # previously successful manual expires_at backdate and lets Grok2API
+                            # discover Build capabilities such as grok-imagine-video-1.5.
+                            expires_str = datetime.datetime.fromtimestamp(int(time.time()) - 60, datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+                        else:
+                            exp = token_data.get("expires_at")
+                            expires_str = ""
+                            if exp is not None:
+                                try:
+                                    if isinstance(exp, (int, float)):
+                                        expires_str = datetime.datetime.fromtimestamp(int(exp), datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+                                    else:
+                                        expires_str = str(exp)
+                                except Exception:
+                                    expires_str = str(exp) if exp else ""
+                        grok_import_data = {
+                            "provider": "grok_build",
+                            "name": token_data.get("email", email),
+                            "client_id": token_data.get("client_id", ""),
+                            "access_token": token_data.get("access_token", ""),
+                            "refresh_token": token_data.get("refresh_token", ""),
+                            "id_token": token_data.get("id_token", ""),
+                            "token_type": token_data.get("token_type", "Bearer"),
+                            "email": token_data.get("email", email),
+                            "user_id": token_data.get("user_id") or token_data.get("principal_id", ""),
+                            "team_id": token_data.get("team_id", ""),
+                            "expires_at": expires_str,
+                        }
+                        boundary = "----ocgrokimp"
+                        body_parts = [
+                            f"--{boundary}\r\n".encode(),
+                            b'Content-Disposition: form-data; name="file"; filename="auth.json"\r\n',
+                            b'Content-Type: application/json\r\n\r\n',
+                            _json2.dumps(grok_import_data, ensure_ascii=False).encode(),
+                            f"\r\n--{boundary}--\r\n".encode(),
+                        ]
+                        body = b"".join(body_parts)
+                        import_resp = cffi_req2.post(
+                            f"{grok_url}/api/admin/v1/accounts/import",
+                            data=body,
+                            headers={
+                                "Authorization": f"Bearer {grok_token}",
+                                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                            },
+                            timeout=180, impersonate="chrome110"
+                        )
+                        if import_resp.status_code in (200, 201):
+                            success = True
+                            print(f"[{cfg.ts()}] [成功] ✅ 账号 {mask_email(email)} 已导入 Grok2API！")
+                        else:
+                            last_error = f"HTTP {import_resp.status_code}: {import_resp.text[:200]}"
+                            print(f"[{cfg.ts()}] [错误] ❌ Grok2API 导入失败 {mask_email(email)}: HTTP {import_resp.status_code}")
+                    except Exception as imp_err:
+                        last_error = str(imp_err)
+                        print(f"[{cfg.ts()}] [错误] ❌ Grok2API 导入异常 {mask_email(email)}: {imp_err}")
                 if success:
                     success_emails.append(email)
                 else:
@@ -243,7 +443,8 @@ def account_action(data: dict, token: str = Depends(verify_token)):
             platform_map = {
                 "push": "CPA",
                 "push_sub2api": "SUB2API",
-                "push_image2api": "IMAGE2API"
+                "push_image2api": "IMAGE2API",
+                "grok2api-import": "GROK2API"
             }
             platform_marker = platform_map.get(action, "UNKNOWN")
             db_manager.update_account_push_info(success_emails, platform_marker)
@@ -300,6 +501,7 @@ def _background_sync_cloud_data(combined_data):
         cpa_emails = [x["credential"] for x in combined_data if x["account_type"] == "cpa"]
         sub_emails = [x["credential"] for x in combined_data if x["account_type"] == "sub2api"]
         img2_emails = [x["credential"] for x in combined_data if x["account_type"] == "image2api"]
+        grok_emails = [x["credential"] for x in combined_data if x["account_type"] == "grok2api"]
 
         if cpa_emails:
             db_manager.update_account_push_info(cpa_emails, "CPA", mode="sync")
@@ -307,6 +509,8 @@ def _background_sync_cloud_data(combined_data):
             db_manager.update_account_push_info(sub_emails, "SUB2API", mode="sync")
         if img2_emails:
             db_manager.update_account_push_info(img2_emails, "IMAGE2API", mode="sync")
+        if grok_emails:
+            db_manager.update_account_push_info(grok_emails, "GROK2API", mode="sync")
 
         active_emails = [x["credential"] for x in combined_data if x["status"] == "active"]
         inactive_emails = [x["credential"] for x in combined_data if x["status"] in ["disabled", "dead"]]
@@ -331,47 +535,52 @@ def get_cloud_accounts(background_tasks: BackgroundTasks, types: str = "sub2api,
     type_list = types.split(",")
     combined_data = []
     if "sub2api" in type_list and getattr(cfg, 'SUB2API_URL', None) and getattr(cfg, 'SUB2API_KEY', None):
-        try:
-            client = Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY)
-            success, raw_sub2_data = client.get_all_accounts()
-            if success:
-                def process_single_account(item):
-                    raw_time = item.get("updated_at", "-")
-                    if raw_time != "-":
-                        try:
-                            raw_time = raw_time.split(".")[0].replace("T", " ")
-                        except:
-                            pass
+        if not getattr(cfg, 'ENABLE_SUB2API_MODE', False):
+            # Sub2API mode is disabled. Do not spend ~15-20s probing a stale endpoint
+            # just because old URL/key values still exist in config.yaml.
+            pass
+        else:
+            try:
+                client = Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY)
+                success, raw_sub2_data = client.get_all_accounts()
+                if success:
+                    def process_single_account(item):
+                        raw_time = item.get("updated_at", "-")
+                        if raw_time != "-":
+                            try:
+                                raw_time = raw_time.split(".")[0].replace("T", " ")
+                            except:
+                                pass
 
-                    extra = item.get("extra", {})
-                    account_id = str(item.get("id", ""))
-                    window_stats = {}
-                    # if account_id:
-                    #     usage_ok, usage_data = client.get_account_usage(account_id)
-                    #     if usage_ok and isinstance(usage_data, dict):
-                    #         window_stats = usage_data.get("data", {}).get("five_hour", {}).get("window_stats", {})
-                    return {
-                        "id": account_id,
-                        "account_type": "sub2api",
-                        "credential": item.get("name", "未知账号"),
-                        "status": "disabled" if item.get("status") == "inactive" else (
-                            "active" if item.get("status") == "active" else "dead"),
-                        "last_check": raw_time,
-                        "details": {
-                            "plan_type": item.get("credentials", {}).get("plan_type", "未知"),
-                            "platform": item.get("platform") or item.get("type") or item.get("provider") or "",
-                            "type": item.get("type") or item.get("platform") or "",
-                            "codex_5h_used_percent": extra.get("codex_5h_used_percent", 0),
-                            "codex_7d_used_percent": extra.get("codex_7d_used_percent", 0),
-                            "window_stats": window_stats
+                        extra = item.get("extra", {})
+                        account_id = str(item.get("id", ""))
+                        window_stats = {}
+                        # if account_id:
+                        #     usage_ok, usage_data = client.get_account_usage(account_id)
+                        #     if usage_ok and isinstance(usage_data, dict):
+                        #         window_stats = usage_data.get("data", {}).get("five_hour", {}).get("window_stats", {})
+                        return {
+                            "id": account_id,
+                            "account_type": "sub2api",
+                            "credential": item.get("name", "未知账号"),
+                            "status": "disabled" if item.get("status") == "inactive" else (
+                                "active" if item.get("status") == "active" else "dead"),
+                            "last_check": raw_time,
+                            "details": {
+                                "plan_type": item.get("credentials", {}).get("plan_type", "未知"),
+                                "platform": item.get("platform") or item.get("type") or item.get("provider") or "",
+                                "type": item.get("type") or item.get("platform") or "",
+                                "codex_5h_used_percent": extra.get("codex_5h_used_percent", 0),
+                                "codex_7d_used_percent": extra.get("codex_7d_used_percent", 0),
+                                "window_stats": window_stats
+                            }
                         }
-                    }
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    results = list(executor.map(process_single_account, raw_sub2_data))
-                combined_data.extend(results)
+                    with ThreadPoolExecutor(max_workers=10) as executor:
+                        results = list(executor.map(process_single_account, raw_sub2_data))
+                    combined_data.extend(results)
 
-        except Exception as e:
-            print(f"[{cfg.ts()}] [SUB2API] 拉取 Sub2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
+            except Exception as e:
+                print(f"[{cfg.ts()}] [SUB2API] 拉取 Sub2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
 
     if "cpa" in type_list and getattr(cfg, 'CPA_API_URL', None) and getattr(cfg, 'CPA_API_TOKEN', None):
         try:
@@ -423,10 +632,27 @@ def get_cloud_accounts(background_tasks: BackgroundTasks, types: str = "sub2api,
         except Exception as e:
             print(f"[{cfg.ts()}] [IMAGE2API] 拉取 Image2API 数据异常，如果未填写相关数据可忽略该提示，将跳过: {e}")
 
+    if (
+        "grok2api" in type_list
+        and getattr(cfg, "ENABLE_GROK2API_MODE", False)
+        and getattr(cfg, "GROK2API_URL", None)
+        and getattr(cfg, "GROK2API_ADMIN_PASSWORD", None)
+    ):
+        ok_login, grok_token, msg = _grok2api_login()
+        if ok_login:
+            ok_list, raw_grok_accounts, list_msg = _grok2api_list_accounts(grok_token)
+            if ok_list:
+                combined_data.extend(_grok2api_to_cloud_item(item) for item in raw_grok_accounts)
+            else:
+                print(f"[{cfg.ts()}] [GROK2API] 拉取 Grok2API 数据异常: {list_msg}")
+        else:
+            print(f"[{cfg.ts()}] [GROK2API] 登录失败，将跳过云端库存: {msg}")
+
     try:
         cpa_list = [x for x in combined_data if x["account_type"] == "cpa"]
         sub2api_list = [x for x in combined_data if x["account_type"] == "sub2api"]
         image2api_list = [x for x in combined_data if x["account_type"] == "image2api"]
+        grok2api_list = [x for x in combined_data if x["account_type"] == "grok2api"]
 
         cloud_stats = {
             "total": len(combined_data),
@@ -439,7 +665,10 @@ def get_cloud_accounts(background_tasks: BackgroundTasks, types: str = "sub2api,
             "sub2api_disabled": sum(1 for x in sub2api_list if x["status"] != "active"),
             "image2api": len(image2api_list),
             "image2api_active": sum(1 for x in image2api_list if x["status"] == "active"),
-            "image2api_disabled": sum(1 for x in image2api_list if x["status"] != "active")
+            "image2api_disabled": sum(1 for x in image2api_list if x["status"] != "active"),
+            "grok2api": len(grok2api_list),
+            "grok2api_active": sum(1 for x in grok2api_list if x["status"] == "active"),
+            "grok2api_disabled": sum(1 for x in grok2api_list if x["status"] != "active")
         }
         if combined_data:
             background_tasks.add_task(_background_sync_cloud_data, combined_data)
@@ -499,7 +728,11 @@ def process_cloud_action(req: CloudActionReq, token: str = Depends(verify_token)
     from concurrent.futures import ThreadPoolExecutor
 
     success_count, fail_count, updated_details_map = 0, 0, {}
-    sub2api_client = Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY) if getattr(cfg, 'SUB2API_URL',None) and getattr(cfg,'SUB2API_KEY',None) else None
+    sub2api_client = (
+        Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY)
+        if getattr(cfg, 'ENABLE_SUB2API_MODE', False) and getattr(cfg, 'SUB2API_URL', None) and getattr(cfg, 'SUB2API_KEY', None)
+        else None
+    )
 
     cpa_files_map = {}
     if any(a.type == "cpa" for a in req.accounts) and req.action == "check" and getattr(cfg, 'CPA_API_URL', None):
@@ -520,6 +753,16 @@ def process_cloud_action(req: CloudActionReq, token: str = Depends(verify_token)
                     sub2_item_map[str(it.get("id", ""))] = it
         except Exception:
             pass
+
+    grok2api_token = None
+    if any(a.type == "grok2api" for a in req.accounts):
+        if not getattr(cfg, "ENABLE_GROK2API_MODE", False):
+            return {"status": "error", "message": "Grok2API 仓管中心未开启，已跳过远端操作"}
+        ok_login, token_value, login_msg = _grok2api_login()
+        if ok_login:
+            grok2api_token = token_value
+        else:
+            return {"status": "error", "message": login_msg}
 
     def _resolve_sub2_test_model(acc: CloudAccountItem):
         platform = str(getattr(acc, "platform", None) or "").lower()
@@ -591,9 +834,48 @@ def process_cloud_action(req: CloudActionReq, token: str = Depends(verify_token)
 
                 elif req.action == "delete":
                     pass
-        except:
-            pass
-        return (is_success, acc.id, details)
+
+            elif acc.type == "grok2api" and grok2api_token:
+                provider = str(getattr(acc, "platform", "") or "").strip().lower()
+                if req.action in ["enable", "disable"]:
+                    resp = _grok2api_request(
+                        "PATCH", f"/accounts/{acc.id}", grok2api_token,
+                        json={"enabled": req.action == "enable"}, timeout=30,
+                    )
+                    is_success = resp.status_code == 200
+                    if is_success:
+                        details = _grok2api_quota_details(resp.json().get("data", {}))
+                    else:
+                        details = {"check_msg": f"启停失败 HTTP {resp.status_code}"}
+                elif req.action == "delete":
+                    body = {"provider": provider} if provider else {}
+                    resp = _grok2api_request("DELETE", f"/accounts/{acc.id}", grok2api_token, json=body, timeout=40)
+                    is_success = resp.status_code in (200, 204)
+                    if not is_success:
+                        details = {"check_msg": f"删除失败 HTTP {resp.status_code}"}
+                elif req.action == "refresh":
+                    refresh_path = f"/accounts/{acc.id}/refresh-quota" if provider == "grok_web" else f"/accounts/{acc.id}/refresh-token"
+                    resp = _grok2api_request("POST", refresh_path, grok2api_token, timeout=180)
+                    is_success = resp.status_code == 200
+                    if is_success:
+                        details = _grok2api_quota_details(resp.json().get("data", {}))
+                        details["refresh_msg"] = "刷新成功"
+                    else:
+                        details = {"refresh_msg": f"刷新失败 HTTP {resp.status_code}"}
+                elif req.action == "check":
+                    # Grok Web: refresh quota is the most meaningful health check.
+                    # Grok Build/Console: token refresh checks credential validity without sending user traffic.
+                    check_path = f"/accounts/{acc.id}/refresh-quota" if provider == "grok_web" else f"/accounts/{acc.id}/refresh-token"
+                    resp = _grok2api_request("POST", check_path, grok2api_token, timeout=180)
+                    is_success = resp.status_code == 200
+                    if is_success:
+                        details = _grok2api_quota_details(resp.json().get("data", {}))
+                        details["check_msg"] = "测活成功"
+                    else:
+                        details = {"check_msg": f"测活失败 HTTP {resp.status_code}"}
+        except Exception as exc:
+            details = {"check_msg": f"操作异常: {exc}", "refresh_msg": f"操作异常: {exc}"}
+        return (is_success, acc.id, acc.type, details)
 
     target_threads = 5
     if any(a.type == "cpa" for a in req.accounts): target_threads = max(target_threads, int(
@@ -602,6 +884,8 @@ def process_cloud_action(req: CloudActionReq, token: str = Depends(verify_token)
         getattr(cfg, '_c', {}).get('sub2api_mode', {}).get('threads', 10)))
     if any(a.type == "image2api" for a in req.accounts):
         target_threads = max(target_threads, 10)
+    if any(a.type == "grok2api" for a in req.accounts):
+        target_threads = min(target_threads, 5)
 
     with ThreadPoolExecutor(max_workers=max(1, min(target_threads, 50))) as executor:
         futures = []
@@ -611,18 +895,142 @@ def process_cloud_action(req: CloudActionReq, token: str = Depends(verify_token)
                 time.sleep(0.5)
 
         for future in futures:
-            is_success, acc_id, details = future.result()
+            is_success, acc_id, acc_type, details = future.result()
             if is_success:
                 success_count += 1
             else:
                 fail_count += 1
             if details:
                 updated_details_map[acc_id] = details
+                updated_details_map[f"{acc_type}|{acc_id}"] = details
 
     msg = f"测活完毕 | 存活: {success_count} 个 | 失效并已自动禁用: {fail_count} 个" if req.action == "check" else f"指令已下发 | 成功: {success_count} 个 | 失败: {fail_count} 个"
 
     return {"status": "success" if fail_count == 0 else "warning", "message": msg,
             "updated_details": updated_details_map}
+
+
+class Grok2APIImportReq(BaseModel):
+    accounts: list[dict]
+
+@router.post("/api/cloud/grok2api-import")
+def grok2api_import(req: Grok2APIImportReq, token: str = Depends(verify_token)):
+    grok_url = getattr(cfg, "GROK2API_URL", None) or "http://host.docker.internal:8000"
+    grok_pass = getattr(cfg, "GROK2API_ADMIN_PASSWORD", None) or ""
+    if not grok_pass:
+        return {"status": "error", "message": "Grok2API 未配置 admin_password（config.yaml → grok2api.admin_password）"}
+    if not req.accounts:
+        return {"status": "error", "message": "请选择至少一个账号"}
+    if not getattr(cfg, "CPA_API_URL", None) or not getattr(cfg, "CPA_API_TOKEN", None):
+        return {"status": "error", "message": "CPA 未配置"}
+
+    # login to Grok2API
+    try:
+        from curl_cffi import requests as cffi_requests
+        lr = cffi_requests.post(
+            f"{grok_url}/api/admin/v1/auth/login",
+            json={"username": "admin", "password": grok_pass},
+            timeout=30, impersonate="chrome110"
+        )
+        if lr.status_code != 200:
+            return {"status": "error", "message": f"Grok2API 登录失败 HTTP {lr.status_code}"}
+        grok_token = lr.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+        if not grok_token:
+            return {"status": "error", "message": "Grok2API 登录后未获取到 accessToken"}
+    except Exception as e:
+        return {"status": "error", "message": f"Grok2API 登录异常: {e}"}
+
+    created, skipped, failed = 0, 0, 0
+    errors = []
+    for acc in req.accounts:
+        name = acc.get("id", "")
+        if not name:
+            skipped += 1
+            continue
+        try:
+            # download CPA file
+            dl_url = f"{core_engine._normalize_cpa_auth_files_url(cfg.CPA_API_URL)}/download"
+            content_resp = cffi_requests.get(
+                dl_url, params={"name": name},
+                headers={"Authorization": f"Bearer {cfg.CPA_API_TOKEN}"},
+                timeout=25, impersonate="chrome110"
+            )
+            if content_resp.status_code != 200:
+                failed += 1
+                errors.append(f"{name}: CPA 下载失败 HTTP {content_resp.status_code}")
+                continue
+            item_data = content_resp.json()
+            is_grok = core_engine._is_xai_like_token(item_data)
+            if not is_grok:
+                skipped += 1
+                continue
+
+            # transform to Grok2API format
+            import_data = {
+                "provider": "grok_build",
+                "name": item_data.get("email", name.replace(".json", "")),
+                "client_id": item_data.get("client_id", "b1a00492-073a-47ea-816f-4c329264a828"),
+                "access_token": item_data.get("access_token", ""),
+                "refresh_token": item_data.get("refresh_token", ""),
+                "id_token": item_data.get("id_token", ""),
+                "token_type": item_data.get("token_type", "Bearer"),
+                "email": item_data.get("email", ""),
+                "user_id": item_data.get("user_id") or item_data.get("principal_id", ""),
+                "team_id": item_data.get("team_id", ""),
+            }
+            # Convert expires_at. If refresh_token exists, backdate it to force
+            # Grok2API's OAuth refresh/discovery path immediately after import.
+            if item_data.get("refresh_token"):
+                import_data["expires_at"] = datetime.datetime.fromtimestamp(int(time.time()) - 60, datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+            else:
+                exp = item_data.get("expires_at")
+                if exp is not None:
+                    try:
+                        if isinstance(exp, (int, float)):
+                            import_data["expires_at"] = datetime.datetime.fromtimestamp(int(exp), datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+                        elif str(exp).isdigit():
+                            import_data["expires_at"] = datetime.datetime.fromtimestamp(int(str(exp)), datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+                        else:
+                            import_data["expires_at"] = str(exp)
+                    except Exception:
+                        import_data["expires_at"] = str(exp) if exp else ""
+
+            # upload to Grok2API
+            import json as _json
+            boundary = "----ocgrok2apiimport"
+            body_parts = []
+            body_parts.append(f"--{boundary}\r\n".encode())
+            body_parts.append(b'Content-Disposition: form-data; name="file"; filename="auth.json"\r\n')
+            body_parts.append(b'Content-Type: application/json\r\n\r\n')
+            body_parts.append(_json.dumps(import_data, ensure_ascii=False).encode())
+            body_parts.append(f"\r\n--{boundary}--\r\n".encode())
+            body = b"".join(body_parts)
+
+            import_resp = cffi_requests.post(
+                f"{grok_url}/api/admin/v1/accounts/import",
+                data=body,
+                headers={
+                    "Authorization": f"Bearer {grok_token}",
+                    "Content-Type": f"multipart/form-data; boundary={boundary}",
+                },
+                timeout=180, impersonate="chrome110"
+            )
+            if import_resp.status_code in (200, 201):
+                created += 1
+            else:
+                failed += 1
+                errors.append(f"{name}: HTTP {import_resp.status_code}")
+        except Exception as e:
+            failed += 1
+            errors.append(f"{name}: {e}")
+
+    result_msg = f"导入完成 | 成功: {created} | 非Grok跳过: {skipped} | 失败: {failed}"
+    return {
+        "status": "success" if failed == 0 else "warning",
+        "message": result_msg,
+        "detail": {"created": created, "skipped": skipped, "failed": failed},
+        "errors": errors[:10] if errors else None
+    }
 
 
 @router.get("/api/mailboxes")
@@ -767,7 +1175,7 @@ def bulk_refresh_api(req: BulkRefreshReq, token: str = Depends(verify_token)):
         return {"status": "error", "message": "未收到任何要刷新的账号"}
 
     sub2api_map = {}
-    if getattr(cfg, 'SUB2API_URL', None) and getattr(cfg, 'SUB2API_KEY', None):
+    if getattr(cfg, 'ENABLE_SUB2API_MODE', False) and getattr(cfg, 'SUB2API_URL', None) and getattr(cfg, 'SUB2API_KEY', None):
         try:
             client = Sub2APIClient(api_url=cfg.SUB2API_URL, api_key=cfg.SUB2API_KEY)
             ok, raw_data = client.get_all_accounts()

@@ -434,7 +434,7 @@ createApp({
                     reg_only: 0,
                     imgsub2api: 0
                 },
-                cloud: { total: 0, cpa: 0, sub2api: 0, enabled: 0 }
+                cloud: { total: 0, cpa: 0, sub2api: 0, image2api: 0, grok2api: 0, enabled: 0 }
             },
             statsTimer: null,
 
@@ -458,7 +458,9 @@ createApp({
                 db_pass: false,
                 master_rt: false,
                 image2api_url: true,
-                image2api_key: false
+                image2api_key: false,
+                grok2api_url: true,
+                grok2api_pass: false
             },
 
             toasts: [],
@@ -485,7 +487,7 @@ createApp({
             cloudAccounts: [],
             rawCloudAccounts: [],
             selectedCloud: [],
-            cloudFilters: ['sub2api', 'cpa', "image2api"],
+            cloudFilters: ['sub2api', 'cpa', "image2api", "grok2api"],
             showCloudPlaintext: false,
             cloudPage: 1,
             cloudPageSize: 10,
@@ -681,7 +683,8 @@ createApp({
             const labels = {
                 sub2api: 'Sub2API',
                 cpa: 'CPA',
-                image2api: 'Image2API'
+                image2api: 'Image2API',
+                grok2api: 'Grok2API'
             };
             return labels[this.cloudFetchState.currentType] || this.cloudFetchState.currentType;
         },
@@ -1655,6 +1658,43 @@ createApp({
                         this.config.image2api_mode.img_only_mode = false;
                     }
                 }
+                if (!this.config.grok2api || typeof this.config.grok2api !== 'object') {
+                    this.config.grok2api = {};
+                }
+                const grokDefaults = {
+                    enable: false,
+                    auto_check: true,
+                    save_to_local: true,
+                    api_url: '',
+                    admin_password: '',
+                    min_accounts_threshold: 20,
+                    batch_reg_count: 1,
+                    min_remaining_weekly_percent: 0,
+                    remove_on_limit_reached: true,
+                    remove_dead_accounts: true,
+                    enable_token_revive: false,
+                    check_interval_minutes: 60,
+                    threads: 5,
+                    retain_reg_only: false,
+                    auto_re_oauth: false,
+                    account_concurrency: 10,
+                    account_load_factor: 10,
+                    account_priority: 1,
+                    account_rate_multiplier: 1.0,
+                    account_group_ids: '',
+                    enable_ws_mode: true,
+                    test_model: 'grok-4.5',
+                    default_proxy: '',
+                    auto_import_after_register: false,
+                    import_sso_as_grok_web: false
+                };
+                Object.entries(grokDefaults).forEach(([key, value]) => {
+                    if (this.config.grok2api[key] === undefined) this.config.grok2api[key] = value;
+                });
+                if (Array.isArray(this.config.grok2api.default_proxy)) {
+                    this.config.grok2api.default_proxy = this.config.grok2api.default_proxy.join('\n');
+                }
+
                 if (!this.config.team_mode) {
                     this.config.team_mode = { enable: false, overspeed: false };
                 } else {
@@ -2462,6 +2502,7 @@ createApp({
                         this.showToast("已启动【协议】模式", "success");
                         let mode = 'normal';
                         if (this.config?.cpa_mode?.enable) mode = 'cpa';
+                        if (this.config?.grok2api?.enable) mode = 'grok2api';
                         if (this.config?.sub2api_mode?.enable) mode = 'sub2api';
                         await this.startTask(mode);
                     }
@@ -2646,6 +2687,11 @@ createApp({
                 //     this.showToast("⚠️ 该账号已在 Image2API 平台，无需重复推送！", "warning"); return;
                 // }
             }
+            if (action === 'grok2api-import') {
+                if (!this.config.grok2api || !this.config.grok2api.admin_password) {
+                    this.showToast("🚫 无法导入：请在设置页配置 Grok2API 地址和密码", "warning"); return;
+                }
+            }
             this.currentTab = 'console';
             try {
                 const res = await this.authFetch('/api/account/action', {
@@ -2653,7 +2699,7 @@ createApp({
                 });
                 const result = await res.json();
                 this.showToast(result.message, result.status);
-                if (action === 'push' || action === 'push_sub2api' || action === 'push_image2api') {
+                if (action === 'push' || action === 'push_sub2api' || action === 'push_image2api' || action === 'grok2api-import') {
                     if (typeof this.fetchAccounts === 'function') this.fetchAccounts();
                     if (typeof this.fetchInventoryStats === 'function') this.fetchInventoryStats();
                 }
@@ -3413,7 +3459,7 @@ async exportSub2Api() {
                 this.cloudAccounts = [];
                 this.cloudTotal = 0;
                 this.inventoryStats.cloud = {
-                    total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
+                    total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0, grok2api: 0, grok2api_active: 0, grok2api_disabled: 0
                 };
                 this.cloudFetchState = { loading: false, currentType: '', completed: 0, total: 0, message: '未选择平台' };
                 return;
@@ -3443,8 +3489,8 @@ async exportSub2Api() {
                 }
                 this.rawCloudAccounts = combined.map(acc => ({
                     ...acc,
-                    last_check: this.localCheckTimes[acc.id] || acc.last_check || '-',
-                    details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[acc.id] || acc.details || {}),
+                    last_check: this.localCheckTimes[`${acc.account_type}|${acc.id}`] || this.localCheckTimes[acc.id] || acc.last_check || '-',
+                    details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[`${acc.account_type}|${acc.id}`] || this.localCloudDetails[acc.id] || acc.details || {}),
                     _loading: null
                 }));
                 this.inventoryStats.cloud = this.computeCloudStats(this.rawCloudAccounts);
@@ -3458,7 +3504,7 @@ async exportSub2Api() {
                 if (this.isLoggedIn && e.message !== "Unauthorized") {
                     this.showToast("获取云端数据失败", "error");
                     this.inventoryStats.cloud = {
-                        total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0
+                        total: 0, enabled: 0, cpa: 0, cpa_active: 0, cpa_disabled: 0, sub2api: 0, sub2api_active: 0, sub2api_disabled: 0, image2api: 0, image2api_active: 0, image2api_disabled: 0, grok2api: 0, grok2api_active: 0, grok2api_disabled: 0
                     };
                     this.rawCloudAccounts = [];
                     this.cloudAccounts = [];
@@ -3484,7 +3530,10 @@ async exportSub2Api() {
                 sub2api_disabled: rows.filter(item => isType(item, 'sub2api') && !isActive(item)).length,
                 image2api: rows.filter(item => isType(item, 'image2api')).length,
                 image2api_active: rows.filter(item => isType(item, 'image2api') && isActive(item)).length,
-                image2api_disabled: rows.filter(item => isType(item, 'image2api') && !isActive(item)).length
+                image2api_disabled: rows.filter(item => isType(item, 'image2api') && !isActive(item)).length,
+                grok2api: rows.filter(item => isType(item, 'grok2api')).length,
+                grok2api_active: rows.filter(item => isType(item, 'grok2api') && isActive(item)).length,
+                grok2api_disabled: rows.filter(item => isType(item, 'grok2api') && !isActive(item)).length
             };
         },
         applyCloudAccountView() {
@@ -3523,8 +3572,11 @@ async exportSub2Api() {
                     body: JSON.stringify({ accounts: [{id: String(acc.id), type: acc.account_type, platform: (acc.details && (acc.details.platform || acc.details.type)) || ''}], action: action })
                 });
                 const result = await res.json();
-                if (result.updated_details && result.updated_details[acc.id]) {
-                    acc.details = Object.assign({}, acc.details, result.updated_details[acc.id]);
+                const detailKey = `${acc.account_type}|${acc.id}`;
+                const updatedDetail = result.updated_details && (result.updated_details[detailKey] || result.updated_details[acc.id]);
+                if (updatedDetail) {
+                    acc.details = Object.assign({}, acc.details, updatedDetail);
+                    this.localCloudDetails[detailKey] = acc.details;
                     this.localCloudDetails[acc.id] = acc.details;
                 }
                 if (action === 'enable' && result.status !== 'error') acc.status = 'active';
@@ -3533,6 +3585,7 @@ async exportSub2Api() {
                 if (action === 'check') {
                     this.currentTab = 'console';
             const now = formatMainlandDateTime(new Date());
+                    this.localCheckTimes[`${acc.account_type}|${acc.id}`] = now;
                     this.localCheckTimes[acc.id] = now;
                     acc.last_check = now;
 
@@ -3558,18 +3611,20 @@ async exportSub2Api() {
         },
         filterByCard(platformType, status) {
             if (platformType === 'all') {
-                this.cloudFilters = ['sub2api', 'cpa', 'image2api'];
+                this.cloudFilters = ['sub2api', 'cpa', 'image2api', 'grok2api'];
             } else if (platformType === 'cpa') {
                 this.cloudFilters = ['cpa'];
             } else if (platformType === 'sub2api') {
                 this.cloudFilters = ['sub2api'];
             }else if (platformType === 'image2api') {
                 this.cloudFilters = ['image2api']
+            }else if (platformType === 'grok2api') {
+                this.cloudFilters = ['grok2api']
             }
             this.cloudStatusFilter = status || 'all';
             this.cloudPage = 1;
             this.fetchCloudAccounts();
-            const typeName = platformType === 'all' ? '全部平台' : (platformType === 'cpa' ? 'CPA' : (platformType === 'sub2api' ? 'Sub2API' : 'Image2API'));
+            const typeName = platformType === 'all' ? '全部平台' : (platformType === 'cpa' ? 'CPA' : (platformType === 'sub2api' ? 'Sub2API' : (platformType === 'grok2api' ? 'Grok2API' : 'Image2API')));
             const statusName = status === 'active' ? '存活' : (status === 'disabled' ? '失效' : '全部');
             this.showToast(`已筛选: ${typeName} - ${statusName}账号`, 'info');
         },
@@ -3597,15 +3652,21 @@ async exportSub2Api() {
                 if (result.updated_details) {
                     actionAccounts.forEach(selected => {
                         const targetAcc = this.cloudAccounts.find(a => String(a.id) === String(selected.id) && a.account_type === selected.type);
-                        if (targetAcc && result.updated_details[selected.id]) {
-                            targetAcc.details = Object.assign({}, targetAcc.details, result.updated_details[selected.id]);
+                        const detailKey = `${selected.type}|${selected.id}`;
+                        const updatedDetail = result.updated_details[detailKey] || result.updated_details[selected.id];
+                        if (targetAcc && updatedDetail) {
+                            targetAcc.details = Object.assign({}, targetAcc.details, updatedDetail);
+                            this.localCloudDetails[detailKey] = targetAcc.details;
                             this.localCloudDetails[selected.id] = targetAcc.details;
                         }
                     });
                 }
                 if (action === 'check') {
                     const now = formatMainlandDateTime(new Date());
-                    actionAccounts.forEach(c => { this.localCheckTimes[c.id] = now; });
+                    actionAccounts.forEach(c => {
+                        this.localCheckTimes[`${c.type}|${c.id}`] = now;
+                        this.localCheckTimes[c.id] = now;
+                    });
                 }
 
                 this.showToast(result.message, result.status);
