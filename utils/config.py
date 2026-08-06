@@ -1,4 +1,4 @@
-import os
+﻿import os
 import queue
 import threading
 import yaml
@@ -424,6 +424,8 @@ OPENAI_CPA_WEBHOOK_SECRET = ""
 USE_ORIGINAL_PASSWORD_FLOW: bool = False
 CF_API_EMAIL: str = ""
 CF_API_KEY: str = ""
+DOMAIN_REGISTER: dict = {}
+DIGITALPLAT: dict = {}  # compat alias
 TEAM_MODE_ENABLE: bool = False
 TEAM_MODE_OVERSPEED: bool = False
 ENABLE_CODEX_AGENT_IDENTITY: bool = False
@@ -503,7 +505,7 @@ def reload_all_configs(new_config_dict=None):
     global GROK2API_ACCOUNT_CONCURRENCY, GROK2API_ACCOUNT_LOAD_FACTOR, GROK2API_ACCOUNT_PRIORITY
     global GROK2API_ACCOUNT_RATE_MULTIPLIER, GROK2API_ACCOUNT_GROUP_IDS, GROK2API_ENABLE_WS_MODE
     global GROK2API_TEST_MODEL, GROK2API_DEFAULT_PROXY, GROK2API_DEFAULT_PROXY_POOL
-    global CF_API_EMAIL, CF_API_KEY
+    global CF_API_EMAIL, CF_API_KEY, DOMAIN_REGISTER, DIGITALPLAT
     global LUCKMAIL_API_KEY, LUCKMAIL_PREFERRED_DOMAIN, LUCKMAIL_EMAIL_TYPE, LUCKMAIL_VARIANT_MODE, LUCKMAIL_REUSE_PURCHASED, LUCKMAIL_TAG_ID
     global HERO_SMS_ENABLED, HERO_SMS_API_KEY, HERO_SMS_BASE_URL, HERO_SMS_COUNTRY, HERO_SMS_SERVICE
     global HERO_SMS_AUTO_PICK_COUNTRY, HERO_SMS_REUSE_PHONE, HERO_SMS_MAX_PRICE, HERO_SMS_VERIFY_ON_REGISTER
@@ -750,6 +752,10 @@ def reload_all_configs(new_config_dict=None):
 
     CF_API_EMAIL = _c.get("cf_api_email", "")
     CF_API_KEY = _c.get("cf_api_key", "")
+    DOMAIN_REGISTER = _c.get("domain_register") if isinstance(_c.get("domain_register"), dict) else (
+        _c.get("digitalplat") if isinstance(_c.get("digitalplat"), dict) else {}
+    )
+    DIGITALPLAT = DOMAIN_REGISTER  # backward compatible alias
 
     _ocpa = _c.get("openai_cpa", {})
     OPENAI_CPA_WEBHOOK_SECRET = str(_ocpa.get("webhook_secret", "")).strip()
@@ -1072,3 +1078,4 @@ def reload_all_configs(new_config_dict=None):
     print(f"[{ts()}] [系统] 核心配置已完成同步。")
 
 reload_all_configs()
+

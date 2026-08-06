@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import os
 import time
 import secrets
@@ -1458,3 +1458,14 @@ def execute_native_update():
 
     except Exception as e:
         return {"status": "error", "message": f"本地更新异常: {str(e)}"}
+
+
+@router.get("/api/plugins")
+async def list_plugins(token: str = Depends(verify_token)):
+    try:
+        from utils.plugin_loader import discover_plugins
+        items = discover_plugins()
+    except Exception as exc:
+        return {"status": "error", "message": str(exc), "items": []}
+    return {"status": "success", "items": items}
+

@@ -1546,12 +1546,29 @@ def _is_grok_registration_mode() -> bool:
     return str(getattr(cfg, "REG_PROVIDER", "openai") or "openai").strip().lower() == "grok"
 
 
-def _mail_matches_otp_sender(*parts: Any) -> bool:
-    """判断邮件是否为目标注册平台验证信。"""
+def _mail_matches_otp_sender(*parts: Any, platform: str = "") -> bool:
     blob = " ".join(str(p or "") for p in parts).lower()
     if not blob.strip():
         return False
-    if _is_grok_registration_mode():
+    plat = str(platform or _get_otp_platform_ctx() or "").strip().lower()
+    if plat in {"domain_register", "dpdns", "domain"}:
+        keys = (
+            "domain_register",
+            "dpdns",
+            "domain.digitalplat",
+            "dash.domain",
+            "noreply",
+            "no-reply",
+            "verification",
+            "verify",
+            "registry",
+        )
+        if any(k in blob for k in keys):
+            return True
+        if re.search(r"(?<!\d)\d{6}(?!\d)", blob):
+            return True
+        return False
+    if _is_grok_registration_mode() and plat not in {"openai", "chatgpt"}:
         keys = (
             "x.ai",
             "xai",
@@ -1566,11 +1583,36 @@ def _mail_matches_otp_sender(*parts: Any) -> bool:
 
 OTP_CODE_PATTERN = r"(?<!\d)(\d{6})(?!\d)"
 
+# get_oai_code 临时平台上下文（避免改遍所有调用点）
+import threading as _otp_threading
+_OTP_PLATFORM_LOCAL = _otp_threading.local()
 
-def _extract_otp_code(content: str) -> str:
+
+def _get_otp_platform_ctx() -> str:
+    return str(getattr(_OTP_PLATFORM_LOCAL, "platform", "") or "")
+
+
+def _set_otp_platform_ctx(value: str) -> None:
+    _OTP_PLATFORM_LOCAL.platform = str(value or "")
+
+
+def _extract_otp_code(content: str, platform: str = "") -> str:
     if not content:
         return ""
-    # Grok/xAI: alphanumeric codes like "LSQ-OPU" / "XAI0X1" (not pure digits)
+    plat = str(platform or _get_otp_platform_ctx() or "").strip().lower()
+    if plat in {"domain_register", "dpdns", "domain", "generic"}:
+        patterns = [
+            r"(?i)(?:verification|verify|security|login|sign[- ]?up)?\s*code[:\s-]+(\d{6})",
+            r"(?i)(?:your code is|code is|enter captcha|enter this code)[:\s]+(\d{6})",
+            r"(?i)digitalplat[^\d]{0,40}(\d{6})",
+            r"(?i)subject:.*?(\d{6})",
+            r"(?<!\d)(\d{6})(?!\d)",
+        ]
+        for p in patterns:
+            m = re.search(p, content)
+            if m:
+                return m.group(1)
+        return ""
     if _is_grok_registration_mode():
         try:
             from utils.grok_auth.otp import extract_xai_code
@@ -1611,8 +1653,9 @@ def get_oai_code(
         pattern: str = OTP_CODE_PATTERN,
         max_attempts: int = 20,
         ignore_code=None,
+        platform: str = "",
 ) -> str:
-    """轮询各邮箱服务商收取验证码。OpenAI 为 6 位数字；Grok/xAI 为字母数字码(如 LSQ-OPU)。"""
+    """轮询各邮箱服务商收取验证码。"""
     max_attempts = getattr(cfg, 'OTP_POLL_MAX_ATTEMPTS', 20)
     mailbox_id = jwt
     mail_proxies = proxies if cfg.USE_PROXY_FOR_EMAIL else None
@@ -1624,8 +1667,10 @@ def get_oai_code(
             proxy_str = str(mail_proxies)
     base_url = cfg.GPTMAIL_BASE.rstrip("/")
     mode = cfg.EMAIL_API_MODE
+    otp_platform = str(platform or "").strip().lower()
+    _set_otp_platform_ctx(otp_platform)
 
-    print(f"\n[{cfg.ts()}] [INFO] 等待接收验证码 ({mask_email(email)})...")
+    print(f"\n[{cfg.ts()}] [INFO] 等待接收验证码 ({mask_email(email)})" + (f" platform={otp_platform}" if otp_platform else "") + "...")
 
     if processed_mail_ids is None:
         processed_mail_ids = set()

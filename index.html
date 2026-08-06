@@ -218,7 +218,7 @@
                     </span>
                 </div>
                 <nav class="flex flex-col overflow-y-auto px-3 py-3 md:px-4 md:py-6 gap-2 md:gap-1.5 md:space-y-1 hide-scrollbar flex-1 min-h-0">
-                    <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
+                    <button v-for="tab in visibleTabs" :key="tab.id" @click="switchTab(tab.id)"
                             :class="['whitespace-nowrap shrink-0 w-full flex items-center gap-2.5 md:gap-3 px-4 py-3 md:py-3.5 text-sm font-bold rounded-xl transition-all duration-300',
                                      currentTab === tab.id ? 'bg-white text-indigo-600 shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-200/60' : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent']">
                         <span class="text-base" :class="currentTab === tab.id ? 'scale-110 transition-transform drop-shadow-sm' : ''" v-html="tab.icon"></span>
@@ -4530,7 +4530,70 @@
                                 </div>
                             </div>
                         </div>
-                        <div v-show="currentTab === 'concurrency'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
+                        
+                                <div v-show="currentTab === 'domain_register' && domainRegisterEnabled" class="h-full flex flex-col space-y-5 md:space-y-6">
+                    <div class="bg-white/80 border border-slate-200/70 rounded-2xl p-5 md:p-6 shadow-sm">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                            <div>
+                                <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">域名注册</h2>
+                                <p class="text-xs text-slate-500 mt-1 font-medium">注册域名 + NS 回写；遇 CF 自动过盾；名额用尽时用邀请码给主账号加额度。</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="inviteDomainRegisterSignup" class="px-4 py-2 rounded-xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 shadow-sm">邀请注册</button>
+                                <button @click="startDomainRegisterBatch" class="px-4 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm">启动批量域名</button>
+                                <button @click="stopDomainRegisterBatch" class="px-4 py-2 rounded-xl text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200">停止</button>
+                                <button @click="saveDomainRegisterConfig" class="px-4 py-2 rounded-xl text-xs font-black text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100">保存配置</button>
+                                <button @click="refreshDomainRegisterStatus(); previewDomainRegisterDomains()" class="px-4 py-2 rounded-xl text-xs font-black text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-100">刷新状态</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                            <div class="space-y-3">
+                                <label class="block text-xs font-extrabold text-slate-600 uppercase tracking-wider">API Token</label>
+                                <input v-model="domainRegister.api_token" type="text" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" placeholder="dp_live_xxx">
+                                <label class="block text-xs font-extrabold text-slate-600 uppercase tracking-wider mt-2">我的邀请码</label>
+                                <input v-model="domainRegister.invite_ref" type="text" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-mono" placeholder="例如 GXO6RrZfzh，也可粘贴完整邀请链接" @blur="normalizeDomainRegisterInvite">
+                                <div class="text-[11px] text-slate-500" v-if="domainRegister.invite_ref">当前邀请码：<span class="font-mono font-bold text-slate-700">{{ domainRegister.invite_ref }}</span></div>
+                                <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 mt-2">
+                                    <input type="checkbox" v-model="domainRegister.auto_invite_signup" class="rounded border-slate-300"> 名额用尽时自动邀请注册（加主账号额度）
+                                </label>
+                                <div class="grid grid-cols-2 gap-3 mt-2">
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-slate-600 mb-1">前缀</label>
+                                        <input v-model="domainRegister.domain_prefix" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-slate-600 mb-1">后缀</label>
+                                        <input v-model="domainRegister.domain_suffix" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-slate-600 mb-1">开始</label>
+                                        <input v-model.number="domainRegister.domain_start" type="number" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-slate-600 mb-1">结束</label>
+                                        <input v-model.number="domainRegister.domain_end" type="number" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-slate-600 mb-1">补零</label>
+                                        <input v-model.number="domainRegister.domain_pad" type="number" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                                    </div>
+                                </div>
+                                <div class="text-xs text-slate-500 font-medium mt-2">预览：<span class="text-slate-700 font-bold">{{ (domainRegister.preview || []).join(', ') || '—' }}</span></div>
+                                <div class="text-xs font-bold" :class="domainRegister.running ? 'text-emerald-600' : 'text-slate-500'">
+                                    状态：{{ domainRegister.running ? '运行中' : '空闲' }}
+                                    <span v-if="domainRegister.progress">（{{ domainRegister.progress.done || 0 }}/{{ domainRegister.progress.total || 0 }}，成功 {{ domainRegister.progress.ok || 0 }}，失败 {{ domainRegister.progress.fail || 0 }}）</span>
+                                </div>
+                                <div class="text-xs text-slate-600">{{ domainRegister.statusText || '暂无消息' }}</div>
+                            </div>
+                            <div class="bg-slate-900 text-slate-100 rounded-2xl p-4 h-80 overflow-auto font-mono text-[11px] leading-5">
+                                <div v-if="!(domainRegister.logs && domainRegister.logs.length)" class="text-slate-400">暂无日志</div>
+                                <div v-for="(line, idx) in (domainRegister.logs || [])" :key="idx">{{ line }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+<div v-show="currentTab === 'concurrency'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-cyan-500 bg-gradient-to-br from-cyan-50/30 to-white lg:col-span-2">
                                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
                                     <div>

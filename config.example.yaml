@@ -1,4 +1,4 @@
-# [邮箱 API 模式选择]
+﻿# [邮箱 API 模式选择]
 # https://github.com/smanx/freemail
 # https://github.com/dreamhunter2333/cloudflare_temp_email
 # https://github.com/maillab/cloud-mail
@@ -451,3 +451,17 @@ cluster_secret: "wenfxl666"
 # 是否放弃强行变道走无密码OTP
 disable_forced_takeover: true
 enable_codex_agent_identity: false
+
+# [可选插件] 仅当 plugin/*/manifest.json 存在时生效
+domain_register:
+  api_token: ""
+  invite_ref: ""
+  auto_invite_signup: true
+  domain_prefix: sub2api
+  domain_suffix: dpdns.org
+  domain_start: 27
+  domain_end: 127
+  domain_pad: 4
+
+
+
