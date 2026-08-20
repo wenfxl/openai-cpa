@@ -1689,7 +1689,8 @@ createApp({
                     test_model: 'grok-4.5',
                     default_proxy: '',
                     auto_import_after_register: false,
-                    import_sso_as_grok_web: false
+                    import_sso_as_grok_web: false,
+                    sso_only_mode: false
                 };
                 Object.entries(grokDefaults).forEach(([key, value]) => {
                     if (this.config.grok2api[key] === undefined) this.config.grok2api[key] = value;

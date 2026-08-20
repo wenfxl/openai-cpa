@@ -129,6 +129,7 @@ def run(
     assigned_domain: Optional[str] = None,
     batch_id: Optional[int] = None,
     worker_index: Optional[int] = None,
+    sso_only: Optional[bool] = None,
 ) -> Tuple[Optional[str], Optional[str]]:
     if run_ctx is None:
         run_ctx = {}
@@ -210,6 +211,11 @@ def run(
         session_cookies.setdefault("sso", sso)
         session_cookies.setdefault("sso-rw", sso)
         _log("SSO 提取成功", email)
+
+        # 判断是否启用 SSO-only 模式（参数优先，其次读取配置）
+        is_sso_only = sso_only if sso_only is not None else bool(getattr(cfg, "GROK2API_SSO_ONLY_MODE", False))
+
+        # 风控检测（由 DISCARD_ON_DOWNGRADE 控制，两种模式都保留）
         discard_on_downgrade = getattr(cfg, "DISCARD_ON_DOWNGRADE", False)
         if discard_on_downgrade:
             bot_flag_dict = inspect_sso_account_state(session_cookies, proxy=proxy or "")
@@ -229,6 +235,21 @@ def run(
                 _log(f"账号状态检测失败: {bot_flag_dict['error']}", email)
 
         _import_grok_web_before_oauth(sso, email, run_ctx)
+
+        if is_sso_only:
+            # SSO-only 模式：跳过 OAuth device flow，直接返回简化 JSON
+            _log("SSO-only 模式已开启，跳过 Build OAuth", email)
+            sso_record = {
+                "email": email,
+                "password": password,
+                "sso": sso,
+                "status": "grok_sso",
+                "provider": "grok",
+            }
+            sso_json_str = json.dumps(sso_record, ensure_ascii=False)
+            _log_success("SSO-only 模式完成", email)
+            return sso_json_str, password
+
         try:
             oauth = complete_build_oauth(
                 email,

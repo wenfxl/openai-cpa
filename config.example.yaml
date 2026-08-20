@@ -344,6 +344,8 @@ grok2api:
   auto_import_after_register: false
   # 导入 Grok2API 时，若账号含 sso，同时导入为 Grok Web 账号
   import_sso_as_grok_web: false
+  # SSO-only 模式：注册后只拿 SSO 并先行导入 Grok Web，不执行 Build OAuth（不转换 access_token）
+  sso_only_mode: false
 
 image2api_mode:
   enable: false

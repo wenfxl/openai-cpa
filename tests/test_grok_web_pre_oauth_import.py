@@ -40,6 +40,7 @@ class _OAuth:
 
 def _run(monkeypatch, events, *, enabled=True, web_ok=True):
     monkeypatch.setattr(register.cfg, "GROK2API_IMPORT_SSO_AS_GROK_WEB", enabled, raising=False)
+    monkeypatch.setattr(register.cfg, "GROK2API_SSO_ONLY_MODE", False, raising=False)
     monkeypatch.setattr(register, "ensure_camoufox", lambda force=False: (True, ""))
     monkeypatch.setattr(register, "get_email_and_token", lambda *a, **k: ("test@example.com", "mail-token"))
     monkeypatch.setattr(register, "set_last_email", lambda email: None)
