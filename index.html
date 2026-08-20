@@ -4411,15 +4411,19 @@
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-fuchsia-500 bg-gradient-to-br from-fuchsia-50/20 to-white" v-if="config.grok2api">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-slate-100 pb-5 gap-4">
                                     <div>
-                                        <h3 class="text-xl md:text-2xl font-black text-fuchsia-700 tracking-tight flex items-center gap-2"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 17c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/></svg> Grok2API 仓管中心</h3>
+                                        <h3 class="text-xl md:text-2xl font-black text-fuchsia-700 tracking-tight flex items-center gap-2"><span><svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 17c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/></svg></span> Grok2API 仓管中心</h3>
                                         <p class="text-xs text-slate-500 mt-2 font-medium">独立开关、巡检、补货、额度处理与自动导入，按 CPA 仓管模式同级运行。</p>
                                     </div>
                                     <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                                        <button @click="startManualCheck" :disabled="isRunning" class="w-full sm:w-auto px-5 py-2.5 md:py-3 bg-white border-2 border-fuchsia-500 text-fuchsia-600 text-sm font-black rounded-xl hover:bg-fuchsia-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50">🔍 手动巡检</button>
-                                        <label class="relative inline-flex items-center cursor-pointer bg-slate-50 p-1 rounded-full border border-slate-200 shadow-inner">
+                                        <button @click="startManualCheck" :disabled="isRunning" class="w-full sm:w-auto px-5 py-2.5 md:py-3 bg-white border-2 border-fuchsia-500 text-fuchsia-600 text-sm font-black rounded-xl hover:bg-fuchsia-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                                            <span v-if="!isRunning" class="inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 001.555.832l10-6.86a1 1 0 000-1.664l-10-6.86A1 1 0 008 5.14z"></path></svg></span>
+                                            <span v-else class="inline-flex items-center justify-center animate-spin"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></span>
+                                            手动巡检
+                                        </button>
+                                        <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-fuchsia-50 transition-colors shadow-sm border border-fuchsia-200 w-full sm:w-auto items-center justify-center group">
                                             <input type="checkbox" v-model="config.grok2api.enable" @change="config.grok2api.enable ? (config.cpa_mode.enable = false, config.sub2api_mode.enable = false) : null" class="sr-only peer">
-                                            <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1.5 after:left-1.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-fuchsia-500 shadow-inner"></div>
-                                            <span class="ml-3 text-sm font-black" :class="config.grok2api.enable ? 'text-fuchsia-600' : 'text-slate-400'">{{ config.grok2api.enable ? '已开启' : '已关闭' }}</span>
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-fuchsia-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="font-black text-sm md:text-base ml-3 tracking-wide" :class="config.grok2api.enable ? 'text-fuchsia-900' : 'text-slate-400'">{{ config.grok2api.enable ? '已开启' : '已关闭' }}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -4430,7 +4434,10 @@
                                             <div class="relative">
                                                 <input v-if="!showPwd.grok2api_url" readonly :value="maskValue(config.grok2api.api_url)" class="w-full appearance-none bg-white border border-fuchsia-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-colors shadow-sm text-sm" placeholder="http://host.docker.internal:8000">
                                                 <input v-else type="text" v-model="config.grok2api.api_url" autocomplete="off" class="w-full appearance-none bg-white border border-fuchsia-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-colors shadow-sm text-sm" placeholder="http://host.docker.internal:8000">
-                                                <button @click="showPwd.grok2api_url = !showPwd.grok2api_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-fuchsia-500">👁</button>
+                                                <button @click="showPwd.grok2api_url = !showPwd.grok2api_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-fuchsia-500">
+                                                    <svg v-if="showPwd.grok2api_url" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
                                             </div>
                                             <p class="text-[10px] text-slate-400 mt-1">容器内可用 host.docker.internal:8000</p>
                                         </div>
@@ -4438,37 +4445,95 @@
                                             <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">管理员密码</label>
                                             <div class="relative">
                                                 <input :type="showPwd.grok2api_pass ? 'text' : 'password'" v-model="config.grok2api.admin_password" class="w-full appearance-none bg-white border border-fuchsia-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-colors shadow-sm text-sm" placeholder="Grok2API admin password">
-                                                <button @click="showPwd.grok2api_pass = !showPwd.grok2api_pass" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-fuchsia-600 focus:outline-none transition-transform hover:scale-110">👁</button>
+                                                <button @click="showPwd.grok2api_pass = !showPwd.grok2api_pass" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-fuchsia-600 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.grok2api_pass" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
                                             </div>
                                             <p class="text-[10px] text-slate-400 mt-1">填写 Grok2API 管理端的管理员密码</p>
                                         </div>
-                                        <div class="flex items-center justify-between bg-white rounded-xl p-4 border border-fuchsia-100">
-                                            <div><div class="text-sm font-black text-slate-700">本地备份</div><div class="text-[10px] text-slate-400">补货导入 Grok2API 时同步保存到本地库</div></div>
-                                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" v-model="config.grok2api.save_to_local" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-fuchsia-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div></label>
-                                        </div>
+                                        <label class="relative inline-flex p-4 bg-white rounded-xl border border-fuchsia-100 items-center cursor-pointer w-full hover:bg-fuchsia-50/50 transition-colors shadow-sm group">
+                                            <input type="checkbox" v-model="config.grok2api.save_to_local" class="sr-only peer">
+                                            <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-fuchsia-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="flex flex-col ml-3">
+                                                <span class="text-sm font-black text-fuchsia-800 tracking-wide">本地备份（同步入库）</span>
+                                                <span class="text-[10px] text-slate-400 mt-0.5">补货导入 Grok2API 时同步保存到本地库</span>
+                                            </span>
+                                        </label>
                                     </div>
                                     <div class="lg:col-span-1 space-y-5">
                                         <div class="grid grid-cols-2 gap-4">
-                                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><label class="text-xs font-bold text-slate-400 uppercase">库存阈值</label><input type="number" v-model.number="config.grok2api.min_accounts_threshold" class="w-full bg-white border border-slate-200 rounded-lg py-2 px-3 font-black text-xl text-slate-800"></div>
-                                            <div class="bg-fuchsia-50 p-4 rounded-2xl border border-fuchsia-100"><label class="text-xs font-bold text-fuchsia-400 uppercase">单次补货</label><input type="number" v-model.number="config.grok2api.batch_reg_count" class="w-full bg-white border border-fuchsia-200 rounded-lg py-2 px-3 font-black text-xl text-fuchsia-700"></div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-fuchsia-300 transition-all">
+                                                <label class="text-[11px] text-slate-500 font-black uppercase">库存阈值</label>
+                                                <input type="number" v-model.number="config.grok2api.min_accounts_threshold" class="w-full appearance-none bg-slate-50 border-none text-slate-800 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-fuchsia-300 transition-all">
+                                                <label class="text-[11px] text-fuchsia-600 font-black uppercase">单次补货</label>
+                                                <input type="number" v-model.number="config.grok2api.batch_reg_count" class="w-full appearance-none bg-fuchsia-50 border-none text-fuchsia-700 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            </div>
                                         </div>
                                         <div class="grid grid-cols-2 gap-4">
-                                            <div><label class="text-xs font-bold text-slate-500">巡检间隔(分钟)</label><input type="number" v-model.number="config.grok2api.check_interval_minutes" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 font-bold"></div>
-                                            <div><label class="text-xs font-bold text-slate-500">测活并发</label><input type="number" v-model.number="config.grok2api.threads" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 font-bold"></div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="text-[11px] text-slate-500 font-black uppercase">巡检间隔(分钟)</label>
+                                                <input type="number" v-model.number="config.grok2api.check_interval_minutes" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 shadow-sm text-center">
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="text-[11px] text-slate-500 font-black uppercase">测活并发</label>
+                                                <input type="number" v-model.number="config.grok2api.threads" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 shadow-sm text-center">
+                                            </div>
                                         </div>
                                         <div><label class="text-xs font-bold text-slate-500">测试模型</label><input type="text" v-model="config.grok2api.test_model" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 font-bold" placeholder="grok-4.5"></div>
                                         <div><label class="text-xs font-bold text-slate-500">默认代理池（可选，每行一个）</label><textarea v-model="config.grok2api.default_proxy" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-xs font-mono" placeholder="http://127.0.0.1:7890"></textarea></div>
                                     </div>
                                     <div class="lg:col-span-1 bg-gradient-to-br from-fuchsia-50 to-rose-50 p-5 rounded-2xl border border-fuchsia-100 space-y-4">
-                                        <h4 class="font-black text-fuchsia-700 flex items-center gap-2">⚙️ 高级策略</h4>
-                                        <div><label class="text-xs font-bold text-rose-500">额度剩余阈值(%)</label><input type="number" v-model.number="config.grok2api.min_remaining_weekly_percent" class="w-full bg-white border border-rose-200 rounded-lg py-2.5 px-3 font-black text-rose-600"><p class="text-[10px] text-slate-400 mt-1">0 表示只在真实耗尽时处理；大于 0 时低于该百分比即视为不足。</p></div>
+                                        <h4 class="font-black text-fuchsia-700 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.85c-1.4-.79-3.05.86-2.26 2.26a1.53 1.53 0 01-.85 2.29c-1.56.38-1.56 2.6 0 2.98a1.53 1.53 0 01.85 2.29c-.79 1.4.86 3.05 2.26 2.26a1.53 1.53 0 012.29.85c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.85c1.4.79 3.05-.86 2.26-2.26a1.53 1.53 0 01.85-2.29c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.85-2.29c.79-1.4-.86-3.05-2.26-2.26a1.53 1.53 0 01-2.29-.85zM9 12a3 3 0 100-6 3 3 0 000 6z"></path></svg> 高级策略</h4>
+                                        <div class="bg-gradient-to-br from-rose-50 to-white p-5 md:p-6 rounded-2xl border border-rose-100 mt-2 flex flex-col gap-4 shadow-sm">
+                                            <label class="text-rose-800 font-black text-xs md:text-sm uppercase tracking-wider text-center">额度剩余阈值(%)</label>
+                                            <input type="number" v-model.number="config.grok2api.min_remaining_weekly_percent" class="w-full mx-auto appearance-none bg-white border-2 border-rose-200 text-rose-600 font-black text-2xl md:text-3xl rounded-xl py-3 md:py-4 focus:outline-none focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-colors shadow-inner text-center">
+                                            <p class="text-[10px] text-slate-400 text-center">0 表示只在真实耗尽时处理；大于 0 时低于该百分比即视为不足。</p>
+                                        </div>
                                         <div class="grid grid-cols-1 gap-3">
-                                            <label class="flex justify-between items-center bg-white p-3 rounded-xl border border-fuchsia-100"><span class="text-sm font-bold text-slate-700">额度不足时删除</span><input type="checkbox" v-model="config.grok2api.remove_on_limit_reached"></label>
-                                            <label class="flex justify-between items-center bg-white p-3 rounded-xl border border-fuchsia-100"><span class="text-sm font-bold text-slate-700">死号删除</span><input type="checkbox" v-model="config.grok2api.remove_dead_accounts"></label>
-                                            <label class="flex justify-between items-center bg-white p-3 rounded-xl border border-fuchsia-100"><span class="text-sm font-bold text-slate-700">自动巡检</span><input type="checkbox" v-model="config.grok2api.auto_check"></label>
-                                            <label class="flex justify-between items-center bg-white p-3 rounded-xl border border-fuchsia-100"><span class="text-sm font-bold text-slate-700">自动导入注册结果</span><input type="checkbox" v-model="config.grok2api.auto_import_after_register"></label>
-                                            <label class="flex justify-between items-center bg-white p-3 rounded-xl border border-fuchsia-100"><span><span class="block text-sm font-bold text-slate-700">Grok Web 仓管</span><span class="block text-[10px] text-slate-400">获取 SSO 后先导入 grok_web，再继续 Build OAuth 与后续入库；导入失败也不中断</span></span><input type="checkbox" v-model="config.grok2api.import_sso_as_grok_web"></label>
-                                            <label class="flex justify-between items-center bg-white p-3 rounded-xl border border-fuchsia-100"><span class="text-sm font-bold text-slate-700">保留仅注册账号</span><input type="checkbox" v-model="config.grok2api.retain_reg_only"></label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.remove_on_limit_reached" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-rose-900 ml-3 tracking-wide">额度不足时物理删除</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.remove_dead_accounts" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-rose-900 ml-3 tracking-wide">死号物理删除</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-blue-100 items-center cursor-pointer shadow-sm hover:bg-blue-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.auto_check" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-blue-900 ml-3 tracking-wide">自动巡检</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-cyan-100 items-center cursor-pointer shadow-sm hover:bg-cyan-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.auto_import_after_register" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-cyan-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-cyan-900 ml-3 tracking-wide">自动导入注册结果</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-indigo-100 items-center cursor-pointer shadow-sm hover:bg-indigo-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.import_sso_as_grok_web" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="flex flex-col ml-3">
+                                                    <span class="text-[13px] md:text-sm font-black text-indigo-900 tracking-wide">Grok Web 仓管</span>
+                                                    <span class="text-[10px] text-slate-400 mt-0.5">获取 SSO 后先导入 grok_web，再继续 Build OAuth 与后续入库；导入失败也不中断</span>
+                                                </span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-purple-100 items-center cursor-pointer shadow-sm hover:bg-purple-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.sso_only_mode" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-purple-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="flex flex-col ml-3">
+                                                    <span class="text-[13px] md:text-sm font-black text-purple-900 tracking-wide">SSO-only 模式</span>
+                                                    <span class="text-[10px] text-slate-400 mt-0.5">只拿 SSO 并先行导入 Grok Web，不执行 Build OAuth</span>
+                                                </span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-slate-200 items-center cursor-pointer shadow-sm hover:bg-slate-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.retain_reg_only" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-slate-600 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-slate-900 ml-3 tracking-wide">保留仅注册账号</span>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
