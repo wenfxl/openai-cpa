@@ -1,0 +1,525 @@
+                        <div v-show="currentTab === 'sms'" v-if="config" class="space-y-5 md:space-y-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:col-span-2 border-t-4 border-t-orange-500 bg-gradient-to-b from-orange-50/30 to-white" v-if="config.hero_sms">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-orange-100 pb-5 gap-4">
+                                    <h3 class="text-xl md:text-2xl font-black text-orange-600 tracking-tight flex items-center flex-wrap gap-2">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5h8a2 2 0 012 2v10a2 2 0 01-2 2H8a2 2 0 01-2-2V7a2 2 0 012-2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17h2"></path></svg> HeroSMS 手机接码
+                                        <a href="https://hero-sms.com/" target="_blank" rel="noopener noreferrer" class="text-[10px] md:text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold px-2 py-1 rounded-md sm:ml-2 transition-colors inline-flex items-center gap-1 border border-orange-200/60 shadow-sm">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                            前往官网
+                                        </a>
+                                    </h3>
+                                    <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-orange-50 transition-colors shadow-sm border border-orange-200 w-full sm:w-auto items-center justify-center group">
+                                        <input type="checkbox" v-model="config.hero_sms.enabled" @change="if(config.hero_sms.enabled) { config.smsbower.enabled = false; config.fivesim.enabled = false; }" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-orange-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="font-black text-orange-900 text-sm md:text-base ml-3 tracking-wide">主开关：开启接码</span>
+                                    </label>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.hero_sms.enabled}">
+                                    <div>
+                                        <label class="flex justify-between items-end text-xs md:text-sm text-orange-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>API Key</span>
+                                            <span class="text-orange-600 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 shadow-sm text-[10px] md:text-xs">余额: <span class="font-mono font-bold">{{ heroSmsBalance || '0.00' }}</span> USD</span>
+                                        </label>
+                                        <div class="flex gap-3">
+                                            <div class="relative flex-1">
+                                                <input :type="showPwd.hero_key ? 'text' : 'password'" v-model="config.hero_sms.api_key" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="HeroSMS API Key">
+                                                <button @click="showPwd.hero_key = !showPwd.hero_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-orange-600 focus:outline-none">
+                                                    <svg v-if="showPwd.hero_key" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                            <button @click="fetchHeroSmsBalance" :disabled="isLoadingBalance" class="px-4 bg-white text-orange-600 rounded-xl hover:bg-orange-50 active:scale-95 transition-all border border-orange-200 flex items-center justify-center shadow-sm disabled:opacity-50">
+                                                <span class="inline-flex items-center justify-center">
+                                                    <svg v-if="isLoadingBalance" class="w-5 h-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                    <svg v-else class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.12-4 2.5S9.79 13 12 13s4 1.12 4 2.5S14.21 18 12 18s-4-1.12-4-2.5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12"></path></svg>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs md:text-sm text-orange-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>服务代号 (Service)</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" v-model="config.hero_sms.service" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="默认填: dr">
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2 pt-2">
+                                        <button @click="fetchHeroSmsPrices" :disabled="isLoadingPrices" class="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl text-sm md:text-base font-black hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-orange-400">
+                                            <span class="inline-flex items-center justify-center">
+                                                <svg v-if="isLoadingPrices" class="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 14l3-3 3 2 4-5"></path></svg>
+                                            </span>
+                                            {{ isLoadingPrices ? '正在拉取全球库存数据...' : '点击获取当前服务全球价格与库存面板' }}
+                                        </button>
+                                    </div>
+
+                                    <div v-if="heroSmsPrices.length > 0" class="md:col-span-2 mt-2 bg-white rounded-2xl border border-orange-200 overflow-hidden shadow-md animate-fade-in">
+                                        <div class="bg-gradient-to-r from-orange-100 to-amber-50 px-5 py-3.5 border-b border-orange-200 flex justify-between items-center">
+                                            <span class="text-xs font-black text-orange-900 tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse"></span>当前项目: <code class="bg-white px-1.5 py-0.5 rounded border border-orange-200">{{ config.hero_sms.service }}</code> 实时库存 (按价格升序)</span>
+                                            <button @click="heroSmsPrices = []" class="text-orange-500 hover:text-orange-700 bg-white/50 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors shadow-sm border border-orange-200/50">关闭面板</button>
+                                        </div>
+                                        <div class="max-h-[350px] overflow-y-auto custom-scrollbar">
+                                            <table class="min-w-full divide-y divide-orange-100/50">
+                                                <thead class="bg-white sticky top-0 z-10 shadow-sm">
+                                                <tr class="text-[11px] text-slate-400 font-black uppercase tracking-widest">
+                                                    <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm">国家 / ID</th>
+                                                    <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm">单价 ($)</th>
+                                                    <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm">余量 (个)</th>
+                                                    <th class="px-5 py-3.5 text-right bg-slate-50/80 backdrop-blur-sm">操作</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody class="divide-y divide-slate-50 text-xs font-medium">
+                                                <tr v-for="item in heroSmsPrices" :key="item.country" class="hover:bg-orange-50/40 transition-colors group">
+                                                    <td class="px-5 py-3">
+                                                        <div class="font-black text-slate-700 group-hover:text-orange-700 transition-colors">{{ item.name }}</div>
+                                                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">ID: {{ item.country }}</div>
+                                                    </td>
+                                                    <td class="px-5 py-3">
+                                                        <span class="bg-emerald-50 text-emerald-600 border border-emerald-100 font-black px-2 py-0.5 rounded-md shadow-sm">${{ item.cost }}</span>
+                                                    </td>
+                                                    <td class="px-5 py-3 text-slate-500 font-mono">{{ item.count }}</td>
+                                                    <td class="px-5 py-3 text-right">
+                                                        <button @click="config.hero_sms.country = item.country; showToast('已切换至: ' + item.name, 'success')"
+                                                                class="bg-white border border-orange-200 text-orange-600 px-4 py-1.5 rounded-lg hover:bg-orange-500 hover:text-white hover:border-orange-500 active:scale-95 transition-all font-bold shadow-sm">
+                                                            选用
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mt-2">
+                                        <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                                            <label class="block text-[11px] text-orange-900 font-black mb-1 uppercase tracking-wider">余额触发下限 ($)</label>
+                                            <span class="text-[10px] text-orange-500/80 block mb-3 font-medium">低于此值停止任务</span>
+                                            <input type="number" step="0.1" v-model.number="config.hero_sms.min_balance" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                                            <label class="block text-[11px] text-orange-900 font-black mb-1 uppercase tracking-wider">最大取号单价 ($)</label>
+                                            <span class="text-[10px] text-orange-500/80 block mb-3 font-medium">超过此价不买号</span>
+                                            <input type="number" step="0.1" v-model.number="config.hero_sms.max_price" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                                            <label class="block text-[11px] text-orange-900 font-black mb-1 uppercase tracking-wider">单次任务取号上限</label>
+                                            <span class="text-[10px] text-orange-500/80 block mb-3 font-medium">失败多少次后彻底放弃</span>
+                                            <input type="number" v-model.number="config.hero_sms.max_tries" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                                            <label class="block text-[11px] text-orange-900 font-black mb-1 uppercase tracking-wider">等码超时 (秒)</label>
+                                            <span class="text-[10px] text-orange-500/80 block mb-3 font-medium">单个号等多久超时</span>
+                                            <input type="number" v-model.number="config.hero_sms.poll_timeout_sec" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-orange-100">
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-orange-200 shadow-sm cursor-pointer hover:bg-orange-50 transition-colors group">
+                                            <input type="checkbox" v-model="config.hero_sms.auto_pick_country" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-orange-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-orange-900 tracking-wide">智能国家优选 <span class="text-xs font-medium text-orange-600/80 block mt-0.5">(避开黑名单/超时区)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-orange-200 shadow-sm cursor-pointer hover:bg-orange-50 transition-colors group">
+                                            <input type="checkbox" v-model="config.hero_sms.reuse_phone" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-orange-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <div class="ml-4 flex flex-col justify-center">
+                                                <span class="text-sm font-black text-orange-900 tracking-wide flex items-center gap-2">
+                                                    启用号码复用机制
+                                                    <span v-if="config.hero_sms.reuse_phone" class="inline-flex items-center gap-1 bg-orange-50/80 border border-orange-200 px-2 py-0.5 rounded text-xs font-mono shadow-sm">
+                                                        最多 <input type="number" v-model.number="config.hero_sms.reuse_max" class="w-10 bg-white border border-orange-200 text-center outline-none font-bold text-orange-700 rounded" min="1"> 次
+                                                    </span>
+                                                </span>
+                                                <span class="text-xs font-medium text-orange-600/80 mt-0.5">(开启后可在指定次数内反复拿号)</span>
+                                            </div>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:bg-rose-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.hero_sms.verify_on_register" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-rose-900 tracking-wide">账号创建时接码 <span class="text-xs font-medium text-rose-600/80 block mt-0.5">(注: 仅创建拦截有效,非拿OAuth时)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.hero_sms.use_proxy" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 HeroSMS，不经过代理)</span></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:col-span-2 border-t-4 border-t-indigo-500 bg-gradient-to-b from-indigo-50/30 to-white" v-if="config.smsbower">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-indigo-100 pb-5 gap-4">
+                                    <h3 class="text-xl md:text-2xl font-black text-indigo-600 tracking-tight flex items-center flex-wrap gap-2">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.5 2.5 4 5.8 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.8-4-9s1.5-6.5 4-9z"></path></svg> SmsBower 手机接码
+                                        <a href="https://smsbower.app/" target="_blank" rel="noopener noreferrer" class="text-[10px] md:text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold px-2 py-1 rounded-md sm:ml-2 transition-colors inline-flex items-center gap-1 border border-indigo-200/60 shadow-sm">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                            前往官网
+                                        </a>
+                                    </h3>
+                                    <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-indigo-50 transition-colors shadow-sm border border-indigo-200 w-full sm:w-auto items-center justify-center group">
+                                        <input type="checkbox" v-model="config.smsbower.enabled" @change="if(config.smsbower.enabled) { config.hero_sms.enabled = false; config.fivesim.enabled = false; }" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="font-black text-indigo-900 text-sm md:text-base ml-3 tracking-wide">主开关：开启接码</span>
+                                    </label>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.smsbower.enabled}">
+                                    <div>
+                                        <label class="flex justify-between items-end text-xs md:text-sm text-indigo-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>API Key</span>
+                                            <span class="text-indigo-600 bg-indigo-100 px-2 py-1 rounded-md border border-indigo-200 shadow-sm text-[10px] md:text-xs">余额: <span class="font-mono font-bold">{{ smsBowerBalance || '0.00' }}</span> USD</span>
+                                        </label>
+                                        <div class="flex gap-3">
+                                            <div class="relative flex-1">
+                                                <input :type="showPwd.smsbower_key ? 'text' : 'password'" v-model="config.smsbower.api_key" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="SmsBower API Key">
+                                                <button @click="showPwd.smsbower_key = !showPwd.smsbower_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 focus:outline-none">
+                                                    <svg v-if="showPwd.smsbower_key" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                            <button @click="fetchSmsBowerBalance" :disabled="isLoadingSmsBowerBalance" class="px-4 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 active:scale-95 transition-all border border-indigo-200 flex items-center justify-center shadow-sm disabled:opacity-50">
+                                                <span class="inline-flex items-center justify-center">
+                                                    <svg v-if="isLoadingSmsBowerBalance" class="w-5 h-5 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                    <svg v-else class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.12-4 2.5S9.79 13 12 13s4 1.12 4 2.5S14.21 18 12 18s-4-1.12-4-2.5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12"></path></svg>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="flex justify-between items-end text-xs md:text-sm text-indigo-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>Cookie</span>
+                                            <span class="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 shadow-sm animate-pulse">强烈推荐填写</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input :type="showPwd.smsbower_cookie ? 'text' : 'password'" v-model="config.smsbower.web_cookie" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="在此粘贴包含 smsbower_net_session 的完整 Cookie 字符串">
+                                            <button @click="showPwd.smsbower_cookie = !showPwd.smsbower_cookie" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 focus:outline-none transition-transform hover:scale-110">
+                                                <svg v-if="showPwd.smsbower_cookie" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs md:text-sm text-indigo-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>服务代号 (Service)</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" v-model="config.smsbower.service" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="默认填: dr">
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2 pt-2">
+                                        <button @click="fetchSmsBowerPrices" :disabled="isLoadingSmsBowerPrices" class="w-full py-3 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white rounded-xl text-sm md:text-base font-black hover:from-indigo-600 hover:to-cyan-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-indigo-400">
+                                            <span class="inline-flex items-center justify-center">
+                                                <svg v-if="isLoadingSmsBowerPrices" class="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 14l3-3 3 2 4-5"></path></svg>
+                                            </span>
+                                            {{ isLoadingSmsBowerPrices ? '正在拉取全球库存数据...' : '点击获取当前服务全球价格与库存面板' }}
+                                        </button>
+                                    </div>
+
+                                    <div v-if="smsBowerPrices.length > 0" class="md:col-span-2 mt-2 bg-white rounded-2xl border border-indigo-200 overflow-hidden shadow-md animate-fade-in">
+                                        <div class="bg-gradient-to-r from-indigo-100 to-blue-50 px-5 py-3.5 border-b border-indigo-200 flex justify-between items-center">
+                                            <span class="text-xs font-black text-indigo-900 tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse"></span>当前项目: <code class="bg-white px-1.5 py-0.5 rounded border border-indigo-200">{{ config.smsbower.service }}</code> 实时库存 (按价格升序)</span>
+                                            <button @click="smsBowerPrices = []" class="text-indigo-500 hover:text-indigo-700 bg-white/50 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors shadow-sm border border-indigo-200/50">关闭面板</button>
+                                        </div>
+                                        <div class="max-h-[350px] overflow-y-auto custom-scrollbar">
+                                            <table class="min-w-full divide-y divide-indigo-100/50">
+                                                <thead class="bg-white sticky top-0 z-10 shadow-sm">
+                                                    <tr class="text-[11px] text-slate-400 font-black uppercase tracking-widest">
+                                                        <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm w-1/4">国家 / ID</th>
+                                                        <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm w-3/4">可选线路 (点击卡片直接选用)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-50 text-xs font-medium">
+                                                    <tr v-for="item in smsBowerPrices" :key="item.country" class="hover:bg-indigo-50/20 transition-colors group">
+                                                        <td class="px-5 py-4 align-top border-r border-slate-50/80">
+                                                            <div class="font-black text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">{{ item.name }}</div>
+                                                            <div class="text-[10px] text-slate-400 font-mono mt-1.5 flex items-center gap-2">
+                                                                <span class="bg-slate-100 px-1.5 py-0.5 rounded">ID: {{ item.country }}</span>
+                                                                <span class="text-indigo-400 font-bold">总库存: {{ item.total_count }}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="px-5 py-3">
+                                                            <div class="flex flex-wrap gap-3">
+                                                                <button v-for="route in item.routes" :key="route.provider"
+                                                                    @click="config.smsbower.country = item.country; config.smsbower.operator = route.provider; showToast('已切换至: ' + item.name + ' (线路 ' + route.provider + ')', 'success')"
+                                                                    class="relative flex flex-col bg-white border border-indigo-100 rounded-xl p-3 hover:border-indigo-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all text-left min-w-[130px] group/card overflow-hidden"
+                                                                    :class="{'ring-2 ring-indigo-500 border-transparent bg-indigo-50/30': config.smsbower.country === item.country && config.smsbower.operator === route.provider}">
+
+                                                                <div v-if="config.smsbower.country === item.country && config.smsbower.operator === route.provider" class="absolute top-0 right-0 w-0 h-0 border-t-[28px] border-r-[28px] border-t-transparent border-r-indigo-500">
+                                                                    <svg class="absolute -top-[23px] -right-[24px] w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                                                                </div>
+
+                                                                <div class="flex justify-between items-start w-full mb-2 gap-4">
+                                                                    <div class="flex flex-col gap-1.5 items-start">
+                                                                        <span class="text-[10px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded uppercase tracking-wider border border-indigo-100/50">线路 {{ route.provider }}</span>
+
+                                                                        <span v-if="route.delivery !== undefined"
+                                                                              :class="{
+                                                                                  'text-emerald-600 bg-emerald-50 border-emerald-200': route.delivery >= 60,
+                                                                                  'text-orange-600 bg-orange-50 border-orange-200': route.delivery >= 30 && route.delivery < 60,
+                                                                                  'text-rose-600 bg-rose-50 border-rose-200': route.delivery >= 0 && route.delivery < 30,
+                                                                                  'text-slate-400 bg-slate-50 border-slate-200': route.delivery < 0
+                                                                              }"
+                                                                              class="text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm tracking-tight whitespace-nowrap">
+                                                                            {{ route.delivery >= 0 ? `成功率: ${route.delivery}%` : '成功率未知' }}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span class="text-sm font-black text-emerald-600">${{ route.cost }}</span>
+                                                                </div>
+
+                                                                <div class="text-[11px] text-slate-500 font-mono font-medium flex items-center gap-1.5 mt-auto">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                                    库存: <span class="text-slate-700 font-bold">{{ route.count }}</span>
+                                                                </div>
+                                                            </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2 grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 mt-2">
+                                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                            <label class="block text-[11px] text-indigo-900 font-black mb-1 uppercase tracking-wider">余额触发下限 ($)</label>
+                                            <span class="text-[10px] text-indigo-500/80 block mb-3 font-medium">低于此值停止任务</span>
+                                            <input type="number" step="0.1" v-model.number="config.smsbower.min_balance" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                            <label class="block text-[11px] text-indigo-900 font-black mb-1 uppercase tracking-wider">最大取号单价 ($)</label>
+                                            <span class="text-[10px] text-indigo-500/80 block mb-3 font-medium">超过此价不买号</span>
+                                            <input type="number" step="0.1" v-model.number="config.smsbower.max_price" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                            <label class="block text-[11px] text-indigo-900 font-black mb-1 uppercase tracking-wider">最低取号单价 ($)</label>
+                                            <span class="text-[10px] text-indigo-500/80 block mb-3 font-medium">低于此价不买号</span>
+                                            <input type="number" step="0.1" v-model.number="config.smsbower.min_price" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                            <label class="block text-[11px] text-indigo-900 font-black mb-1 uppercase tracking-wider">单次任务取号上限</label>
+                                            <span class="text-[10px] text-indigo-500/80 block mb-3 font-medium">失败多少次后放弃</span>
+                                            <input type="number" v-model.number="config.smsbower.max_tries" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                            <label class="block text-[11px] text-indigo-900 font-black mb-1 uppercase tracking-wider">等码超时 (秒)</label>
+                                            <span class="text-[10px] text-indigo-500/80 block mb-3 font-medium">单个号等多久超时</span>
+                                            <input type="number" v-model.number="config.smsbower.poll_timeout_sec" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-indigo-100">
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors group">
+                                            <input type="checkbox" v-model="config.smsbower.auto_pick_country" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-indigo-900 tracking-wide">智能国家优选 <span class="text-xs font-medium text-indigo-600/80 block mt-0.5">(避开黑名单/超时区)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors group">
+                                            <input type="checkbox" v-model="config.smsbower.reuse_phone" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <div class="ml-4 flex flex-col justify-center">
+                                                <span class="text-sm font-black text-indigo-900 tracking-wide flex items-center gap-2">
+                                                    启用号码复用机制
+                                                    <span v-if="config.smsbower.reuse_phone" class="inline-flex items-center gap-1 bg-indigo-50/80 border border-indigo-200 px-2 py-0.5 rounded text-xs font-mono shadow-sm">
+                                                        最多 <input type="number" v-model.number="config.smsbower.reuse_max" class="w-10 bg-white border border-indigo-200 text-center outline-none font-bold text-indigo-700 rounded" min="1"> 次
+                                                    </span>
+                                                </span>
+                                                <span class="text-xs font-medium text-indigo-600/80 mt-0.5">(开启后可在指定次数内反复拿号)</span>
+                                            </div>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:bg-rose-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.smsbower.verify_on_register" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-rose-900 tracking-wide">账号创建时接码 <span class="text-xs font-medium text-rose-600/80 block mt-0.5">(注: 仅创建拦截有效)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.smsbower.use_proxy" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 SmsBower，不经过代理)</span></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:col-span-2 border-t-4 border-t-teal-500 bg-gradient-to-b from-teal-50/30 to-white" v-if="config.fivesim">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-teal-100 pb-5 gap-4">
+                                    <h3 class="text-xl md:text-2xl font-black text-teal-600 tracking-tight flex items-center flex-wrap gap-2">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-teal-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c-3 2.8-5 5.8-5 9s2 6.2 5 9c3-2.8 5-5.8 5-9s-2-6.2-5-9z"></path></svg> 5SIM 手机接码
+                                        <a href="https://5sim.net/" target="_blank" rel="noopener noreferrer" class="text-[10px] md:text-xs bg-teal-100 hover:bg-teal-200 text-teal-700 font-bold px-2 py-1 rounded-md sm:ml-2 transition-colors inline-flex items-center gap-1 border border-teal-200/60 shadow-sm">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                            前往官网
+                                        </a>
+                                    </h3>
+                                    <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-teal-50 transition-colors shadow-sm border border-teal-200 w-full sm:w-auto items-center justify-center group">
+                                         <input type="checkbox" v-model="config.fivesim.enabled" @change="if(config.fivesim.enabled) { config.smsbower.enabled = false; config.hero_sms.enabled = false; }" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-teal-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="font-black text-teal-900 text-sm md:text-base ml-3 tracking-wide">主开关：开启接码</span>
+                                    </label>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.fivesim.enabled}">
+                                    <div>
+                                        <label class="flex justify-between items-end text-xs md:text-sm text-teal-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>API Key</span>
+                                            <span class="text-teal-600 bg-teal-100 px-2 py-1 rounded-md border border-teal-200 shadow-sm text-[10px] md:text-xs">余额: <span class="font-mono font-bold">{{ fivesimBalance || '0.00' }}</span> $</span>
+                                        </label>
+                                        <div class="flex gap-3">
+                                            <div class="relative flex-1">
+                                                <input :type="showPwd.fivesim_key ? 'text' : 'password'" v-model="config.fivesim.api_key" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="5SIM API Key">
+                                                <button @click="showPwd.fivesim_key = !showPwd.fivesim_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-teal-600 focus:outline-none"><svg v-if="showPwd.fivesim_key" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg></button>
+                                            </div>
+                                            <button @click="fetchFivesimBalance" :disabled="isLoadingFivesimBalance" class="px-4 bg-white text-teal-600 rounded-xl hover:bg-teal-50 active:scale-95 transition-all border border-teal-200 flex items-center justify-center shadow-sm disabled:opacity-50">
+                                                <span class="inline-flex items-center justify-center">
+                                                    <svg v-if="isLoadingFivesimBalance" class="w-5 h-5 animate-spin text-teal-500" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                    <svg v-else class="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.12-4 2.5S9.79 13 12 13s4 1.12 4 2.5S14.21 18 12 18s-4-1.12-4-2.5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12"></path></svg>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs md:text-sm text-teal-900 font-black mb-2 uppercase tracking-wider">
+                                            <span>服务代号 (Service)</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" v-model="config.fivesim.service" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="通常填: openai">
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2 pt-2">
+                                        <button @click="fetchFivesimPrices" :disabled="isLoadingFivesimPrices" class="w-full py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl text-sm md:text-base font-black hover:from-teal-600 hover:to-emerald-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-teal-400">
+                                            <span class="inline-flex items-center justify-center">
+                                                <svg v-if="isLoadingFivesimPrices" class="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                                <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 14l3-3 3 2 4-5"></path></svg>
+                                            </span>
+                                            {{ isLoadingFivesimPrices ? '正在拉取全球库存数据...' : '点击获取当前服务全球价格与库存面板' }}
+                                        </button>
+                                    </div>
+
+                                    <div v-if="fivesimPrices.length > 0" class="md:col-span-2 mt-2 bg-white rounded-2xl border border-teal-200 overflow-hidden shadow-md animate-fade-in">
+                                        <div class="bg-gradient-to-r from-teal-100 to-emerald-50 px-5 py-3.5 border-b border-teal-200 flex justify-between items-center">
+                                            <span class="text-xs font-black text-teal-900 tracking-wide flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse"></span>当前项目: <code class="bg-white px-1.5 py-0.5 rounded border border-teal-200">{{ config.fivesim.service }}</code> 实时库存</span>
+                                            <button @click="fivesimPrices = []" class="text-teal-500 hover:text-teal-700 bg-white/50 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors shadow-sm border border-teal-200/50">关闭面板</button>
+                                        </div>
+                                        <div class="max-h-[350px] overflow-y-auto custom-scrollbar">
+                                            <table class="min-w-full divide-y divide-teal-100/50">
+                                                <thead class="bg-white sticky top-0 z-10 shadow-sm">
+                                                    <tr class="text-[11px] text-slate-400 font-black uppercase tracking-widest">
+                                                        <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm w-1/4">国家 / Code</th>
+                                                        <th class="px-5 py-3.5 text-left bg-slate-50/80 backdrop-blur-sm w-3/4">可选线路 (点击卡片直接选用)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-50 text-xs font-medium">
+                                                    <tr v-for="item in fivesimPrices" :key="item.country" class="hover:bg-teal-50/20 transition-colors group">
+                                                        <td class="px-5 py-4 align-top border-r border-slate-50/80">
+                                                            <div class="font-black text-slate-800 text-sm group-hover:text-teal-700 transition-colors">{{ item.name }}</div>
+                                                            <div class="text-[10px] text-slate-400 font-mono mt-1.5 flex flex-col items-start gap-1">
+                                                                <span class="bg-slate-100 px-1.5 py-0.5 rounded">Code: {{ item.country }}</span>
+                                                                <span class="text-teal-600 font-bold">总库存: {{ item.total_count }}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="px-5 py-3">
+                                                            <div class="flex flex-wrap gap-3">
+                                                                <button v-for="route in item.routes" :key="route.provider"
+                                                                        @click="config.fivesim.country = item.country; config.fivesim.operator = route.provider; showToast('已切换至: ' + item.name + ' (线路 ' + route.provider + ')', 'success')"
+                                                                        class="relative flex flex-col bg-white border border-teal-100 rounded-xl p-3 hover:border-teal-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all text-left min-w-[130px] group/card overflow-hidden"
+                                                                        :class="{'ring-2 ring-teal-500 border-transparent bg-teal-50/40': config.fivesim.country === item.country && config.fivesim.operator === route.provider}">
+
+                                                                    <div v-if="config.fivesim.country === item.country && config.fivesim.operator === route.provider" class="absolute top-0 right-0 w-0 h-0 border-t-[28px] border-r-[28px] border-t-transparent border-r-teal-500">
+                                                                        <svg class="absolute -top-[23px] -right-[24px] w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                                                                    </div>
+
+                                                                    <div class="flex justify-between items-start w-full mb-2.5 gap-4">
+                                                                        <div class="flex flex-col gap-1.5 items-start">
+                                                                            <span class="text-[10px] font-black text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded uppercase tracking-wider border border-teal-200/50 max-w-[80px] truncate" :title="route.provider">
+                                                                                {{ route.provider }}
+                                                                            </span>
+                                                                            <span v-if="route.delivery !== undefined"
+                                                                                  :class="{
+                                                                                      'text-emerald-600 bg-emerald-50 border-emerald-200': route.delivery >= 60,
+                                                                                      'text-orange-600 bg-orange-50 border-orange-200': route.delivery >= 20 && route.delivery < 60,
+                                                                                      'text-slate-400 bg-slate-50 border-slate-200': route.delivery < 0
+                                                                                  }"
+                                                                                  class="text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm tracking-tight whitespace-nowrap">
+                                                                                {{ route.delivery >= 0 ? `成功率: ${route.delivery}%` : '成功率 < 20%' }}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span class="text-sm font-black text-emerald-600">${{ route.cost }}</span>
+                                                                    </div>
+
+                                                                    <div class="text-[11px] text-slate-500 font-mono font-medium flex items-center gap-1.5 mt-auto">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                                        库存: <span class="text-slate-700 font-bold">{{ route.count }}</span>
+                                                                    </div>
+                                                                </button>
+
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2 grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 mt-2">
+                                        <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                            <label class="block text-[11px] text-teal-900 font-black mb-1 uppercase tracking-wider">余额触发下限 ($)</label>
+                                            <span class="text-[10px] text-teal-500/80 block mb-3 font-medium">低于此值停止任务</span>
+                                            <input type="number" step="0.1" v-model.number="config.fivesim.min_balance" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                            <label class="block text-[11px] text-teal-900 font-black mb-1 uppercase tracking-wider">最大取号单价 ($)</label>
+                                            <span class="text-[10px] text-teal-500/80 block mb-3 font-medium">超过此价不买号</span>
+                                            <input type="number" step="0.1" v-model.number="config.fivesim.max_price" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                            <label class="block text-[11px] text-teal-900 font-black mb-1 uppercase tracking-wider">最低取号单价 ($)</label>
+                                            <span class="text-[10px] text-teal-500/80 block mb-3 font-medium">低于此价不买号</span>
+                                            <input type="number" step="0.1" v-model.number="config.fivesim.min_price" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                            <label class="block text-[11px] text-teal-900 font-black mb-1 uppercase tracking-wider">单次任务取号上限</label>
+                                            <span class="text-[10px] text-teal-500/80 block mb-3 font-medium">失败多少次后彻底放弃</span>
+                                            <input type="number" v-model.number="config.fivesim.max_tries" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                        <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                            <label class="block text-[11px] text-teal-900 font-black mb-1 uppercase tracking-wider">等码超时 (秒)</label>
+                                            <span class="text-[10px] text-teal-500/80 block mb-3 font-medium">单个号等多久超时</span>
+                                            <input type="number" v-model.number="config.fivesim.poll_timeout_sec" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono text-center">
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-teal-100">
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-teal-200 shadow-sm cursor-pointer hover:bg-teal-50 transition-colors group">
+                                            <input type="checkbox" v-model="config.fivesim.auto_pick_country" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-teal-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-teal-900 tracking-wide">智能国家优选 <span class="text-xs font-medium text-teal-600/80 block mt-0.5">(避开黑名单/超时区)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-teal-50 transition-colors group">
+                                            <input type="checkbox" v-model="config.fivesim.reuse_phone" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-teal-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <div class="ml-4 flex flex-col justify-center">
+                                                <span class="text-sm font-black text-teal-900 tracking-wide flex items-center gap-2">
+                                                    启用号码复用机制
+                                                    <span v-if="config.fivesim.reuse_phone" class="inline-flex items-center gap-1 bg-teal-50/80 border border-teal-200 px-2 py-0.5 rounded text-xs font-mono shadow-sm">
+                                                        最多 <input type="number" v-model.number="config.fivesim.reuse_max" class="w-10 bg-white border border-teal-200 text-center outline-none font-bold text-teal-700 rounded" min="1"> 次
+                                                    </span>
+                                                </span>
+                                                <span class="text-xs font-medium text-teal-600/80 mt-0.5">(开启后可在指定次数内反复拿号)</span>
+                                            </div>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-rose-50/50 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:bg-rose-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.fivesim.verify_on_register" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-rose-900 tracking-wide">账号创建时接码 <span class="text-xs font-medium text-rose-600/80 block mt-0.5">(注: 仅创建拦截有效)</span></span>
+                                        </label>
+                                        <label class="relative inline-flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-200 shadow-sm cursor-pointer hover:bg-blue-100/50 transition-colors group">
+                                            <input type="checkbox" v-model="config.fivesim.use_proxy" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="ml-4 text-sm font-black text-blue-900 tracking-wide">API 走代理 <span class="text-xs font-medium text-blue-600/80 block mt-0.5">(关闭则直连 5SIM，不经过代理)</span></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+

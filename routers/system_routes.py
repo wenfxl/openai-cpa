@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import os
 import time
 import secrets
@@ -572,11 +572,36 @@ async def get_dashboard():
     except Exception:
         pass
 
-    html_path = os.path.join(BASE_DIR, "index.html")
+    html_path = os.path.join(BASE_DIR, "templates", "index.html")
     if not os.path.exists(html_path): return HTMLResponse(content="<h1>找不到 index.html</h1>", status_code=404)
 
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
+
+    dashboard_partials = (
+        "console", "cluster", "accounts", "image-accounts", "mailboxes",
+        "email", "sms", "proxy", "cloud", "team-accounts", "relay",
+        "notify", "domain-register", "concurrency",
+    )
+    partials_dir = os.path.join(BASE_DIR, "templates", "dashboard")
+    for partial_name in dashboard_partials:
+        placeholder = f"<!-- DASHBOARD_PARTIAL:{partial_name} -->"
+        partial_path = os.path.join(partials_dir, f"{partial_name}.html")
+        if not os.path.exists(partial_path):
+            return HTMLResponse(
+                content=f"<h1>找不到页面片段: {partial_name}</h1>",
+                status_code=500,
+            )
+        with open(partial_path, "r", encoding="utf-8") as partial_file:
+            partial_content = partial_file.read()
+        for line_ending in ("\r\n", "\n"):
+            placeholder_line = placeholder + line_ending
+            if placeholder_line in html_content:
+                html_content = html_content.replace(placeholder_line, partial_content, 1)
+                break
+        else:
+            html_content = html_content.replace(placeholder, partial_content, 1)
+
     return HTMLResponse(content=html_content.replace("__VER__", version),
                         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 

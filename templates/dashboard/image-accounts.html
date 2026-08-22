@@ -1,0 +1,124 @@
+                        <div v-show="currentTab === 'image_accounts'" class="inventory-shell inventory-panel mobile-table-priority rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-md">
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col gap-4">
+                                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full">
+                                    <div class="flex items-center gap-3">
+                                        <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">半成品库存</h2>
+                                        <button @click="fetchImageAccounts(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-3 items-center w-full xl:w-auto">
+                                        <div class="relative flex items-center">
+                                            <span class="absolute left-3 text-slate-400 text-sm"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></span>
+                                            <input type="text" v-model="searchImageAccounts" placeholder="搜索半成品账号..." class="pl-8 pr-3 py-1.5 w-32 md:w-48 text-sm bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 transition shadow-sm font-medium">
+                                        </div>
+                                        <button @click="showAccountsPlaintext = !showAccountsPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                            <span v-if="showAccountsPlaintext">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                            </span>
+                                            <span v-else>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            </span>
+                                            {{ showAccountsPlaintext ? '脱敏' : '明文' }}
+                                        </button>
+                                        <div class="flex items-center gap-2 ml-auto xl:ml-2 border-l border-slate-200 pl-3">
+                                            <!-- 新增：一键全部获取 OAuth -->
+                                            <button @click="upgradeAllImageAccounts" :disabled="isUpgradingOAuthAll" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm font-bold rounded-lg hover:bg-indigo-100 transition flex items-center gap-1 shadow-sm disabled:opacity-50">
+                                                <svg v-if="isUpgradingOAuthAll" class="w-4 h-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                {{ isUpgradingOAuthAll ? '全量提取中...' : '一键全部获取 OAuth' }}
+                                            </button>
+                                            <button @click="exportImageAccounts" class="px-3 py-1.5 bg-slate-200/70 text-slate-600 text-sm font-bold rounded-lg hover:bg-slate-300 transition flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg> 导出全部</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="selectedImageAccounts.length > 0" class="flex flex-wrap items-center gap-3 bg-pink-50/80 border border-pink-100 p-2.5 rounded-xl shadow-sm transition-all duration-300 w-full animate-fade-in">
+                                    <span class="text-sm font-black text-pink-700 px-2 border-r border-pink-200">已选 {{ selectedImageAccounts.length }}</span>
+                                    <div class="flex items-center bg-white rounded-lg p-1 shadow-sm border border-slate-100 gap-1">
+                                        <span class="text-xs text-slate-400 font-bold px-2">操作:</span>
+                                        <button @click="upgradeSelectedImageAccounts" :disabled="isUpgradingSelected" class="px-3 py-1 bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-600 transition flex items-center gap-1 disabled:opacity-50">
+                                            <svg v-if="isUpgradingSelected" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                            <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            批量提取 OAuth
+                                        </button>
+                                        <button @click="deleteSelectedImageAccounts" class="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition ml-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 删除选中</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-[400px]">
+                                <table class="min-w-full divide-y divide-slate-100">
+                                    <thead class="bg-slate-50/80">
+                                        <tr>
+                                            <th class="px-3 md:px-4 py-3 text-left w-10"><input type="checkbox" @change="toggleAllImageAccounts" :checked="selectedImageAccounts.length === imageAccounts.length && imageAccounts.length > 0" class="form-checkbox w-4 h-4 text-pink-600 border-slate-300 rounded focus:ring-pink-500 transition-all"></th>
+                                            <th class="px-2 md:px-3 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
+                                            <th class="px-3 md:px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">账号 & 密码</th>
+                                            <th class="px-3 md:px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">状态</th>
+                                            <th class="px-3 md:px-4 py-3 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[130px]">入库时间</th>
+                                            <th class="px-3 md:px-4 py-3 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-slate-50">
+                                        <tr v-if="imageAccounts.length === 0">
+                                            <td colspan="5" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无 IMG 凭证记录</td>
+                                        </tr>
+                                        <tr v-for="(acc, index) in imageAccounts" :key="index" class="hover:bg-pink-50/40 transition duration-200" :class="{'bg-pink-50/60': selectedImageAccounts.includes(acc.email)}">
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap"><input type="checkbox" :value="acc.email" v-model="selectedImageAccounts" class="form-checkbox w-4 h-4 text-pink-600 border-slate-300 rounded focus:ring-pink-500 transition-all"></td>
+                                            <td class="px-2 md:px-3 py-3 whitespace-nowrap text-xs text-slate-400 font-mono font-medium">{{ index + 1 + (imagePage-1)*imagePageSize }}</td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap">
+                                                <div class="flex flex-col gap-1.5">
+                                                    <span class="text-sm font-bold text-slate-700">{{ showAccountsPlaintext ? acc.email : maskEmail(acc.email) }}</span>
+                                                    <div class="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+                                                        <span class="text-[10px] opacity-70"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span>
+                                                        <span class="bg-slate-50 rounded px-1.5 py-0.5 border border-slate-100 shadow-sm">{{ showAccountsPlaintext ? acc.password : '••••••••' }}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap">
+                                                <span class="px-2 py-1 text-[10px] font-black bg-pink-50 text-pink-600 rounded border border-pink-200 shadow-sm flex items-center gap-1 w-max">
+                                                    <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span> 半成品就绪
+                                                </span>
+                                            </td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap text-center text-xs text-slate-500 font-mono">
+                                                {{ formatTime(acc.created_at) }}
+                                            </td>
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap text-center">
+                                                <button @click="upgradeSingleImageAccount(acc)" :disabled="acc._upgrading" class="text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-sm disabled:opacity-50 min-w-[80px] inline-flex items-center justify-center gap-1 text-xs font-bold">
+                                                    <svg v-if="acc._upgrading" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                                    <span>{{ acc._upgrading ? '提取中...' : '提取 OAuth' }}</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="inventory-footer px-5 md:px-8 py-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                                <div class="text-sm text-slate-500 font-bold flex flex-wrap items-center gap-2">
+                                    <span>共 <span class="text-pink-600 text-base font-black">{{ totalImageAccounts }}</span> 个，</span>
+                                    <span>第 <span class="text-slate-800">{{ imagePage }}</span>/{{ Math.ceil(totalImageAccounts / imagePageSize) || 1 }} 页</span>
+                                    <select v-model.number="imagePageSize" @change="changeImagePageSize" class="bg-white border border-slate-200 text-slate-700 py-1.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition cursor-pointer text-sm ml-2 font-bold appearance-none pr-8 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_10px_center] bg-no-repeat">
+                                        <option :value="10">10 条/页</option>
+                                        <option :value="50">50 条/页</option>
+                                        <option :value="100">100 条/页</option>
+                                    </select>
+                                </div>
+                                <div class="flex gap-2 w-full md:w-auto justify-between md:justify-end">
+                                    <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 shadow-sm mr-1 h-[38px] focus-within:border-pink-500 focus-within:ring-2 focus-within:ring-pink-500/20 transition-all">
+                                        <span class="text-xs text-slate-400 font-bold">前往</span>
+                                        <input type="number"
+                                               :placeholder="imagePage"
+                                               @change="if($event.target.value) changeImagePage(parseInt($event.target.value)); $event.target.value='';"
+                                               class="w-10 text-center text-sm font-bold text-slate-700 placeholder:text-slate-700 border-none focus:ring-0 p-0 m-0 bg-transparent">
+                                        <span class="text-xs text-slate-400 font-bold">页</span>
+                                    </div>
+                                    <button @click="changeImagePage(imagePage - 1)" :disabled="imagePage <= 1" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all active:scale-95">上一页</button>
+                                    <button @click="changeImagePage(imagePage + 1)" :disabled="imagePage >= Math.ceil(totalImageAccounts / imagePageSize)" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all active:scale-95">下一页</button>
+                                </div>
+                            </div>
+                        </div>

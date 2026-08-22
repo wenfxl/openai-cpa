@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Wenfxl 注册管理系统</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260813-18">
+    <link rel="stylesheet" href="/static/css/index.css?v=20260813-18">
+    <script src="/static/js/tailwind.min.js?v=20260813-18"></script>
+    <script src="/static/js/vue.global.js?v=20260813-18"></script>
+    <script src="/static/js/jszip.min.js?v=20260813-18"></script>
+</head>
+<body class="overflow-hidden bg-slate-50">
+    <div id="app" v-cloak class="h-screen flex flex-col">
+
+        <div class="fixed top-4 right-4 md:top-6 md:right-6 z-[9999] flex flex-col gap-3">
+            <transition-group name="toast">
+                <div v-for="toast in toasts" :key="toast.id"
+                     class="px-4 py-3 md:px-5 md:py-3.5 rounded-xl shadow-2xl text-xs md:text-sm font-bold text-white flex items-center justify-between min-w-[200px] md:min-w-[260px] border transform transition-all backdrop-blur-md"
+                     :class="{
+                         'bg-emerald-500/90 border-emerald-400': toast.type === 'success',
+                         'bg-rose-500/90 border-rose-400': toast.type === 'error',
+                         'bg-indigo-500/90 border-indigo-400': toast.type === 'info',
+                         'bg-amber-500/90 border-amber-400 text-amber-950': toast.type === 'warning'
+                     }">
+                     <div class="flex items-center gap-2">
+                        <span v-if="toast.type === 'success'"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
+                        <span v-else-if="toast.type === 'error'"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></span>
+                        <span v-else-if="toast.type === 'warning'"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
+                        <span v-else><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span>
+                        <span class="tracking-wide">{{ toast.message }}</span>
+                     </div>
+                </div>
+            </transition-group>
+        </div>
+        <div v-if="confirmModal.show" class="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-opacity p-4">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-md transform transition-all scale-100 border border-slate-100">
+                <h3 class="text-lg md:text-xl font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093v1.5M12 18h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 系统确认
+                </h3>
+                <p class="text-sm md:text-base text-slate-600 mb-8 leading-relaxed">{{ confirmModal.message }}</p>
+                <div class="flex justify-end gap-3">
+                    <button @click="handleConfirm(false)" class="px-5 py-2.5 rounded-xl text-sm md:text-base font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all">取消</button>
+                    <button @click="handleConfirm(true)" class="px-5 py-2.5 rounded-xl text-sm md:text-base font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">确认执行</button>
+                </div>
+            </div>
+        </div>
+        <div v-if="authResetModal.show" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 transform transition-all">
+                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h3 class="text-lg font-black text-rose-600 flex items-center gap-2">
+                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 一键重置授权
+                    </h3>
+                    <button @click="authResetModal.show = false" class="text-slate-400 hover:text-rose-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6">
+                    <p class="text-sm text-slate-600 mb-6 font-medium bg-rose-50 p-3 rounded-lg border border-rose-100">
+                        请勾选需要从数据库彻底清除的凭据数据：
+                    </p>
+
+                    <div class="space-y-4">
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input type="checkbox" v-model="authResetModal.clearLicense" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除授权文件 (License)</span>
+                                <span class="block text-xs text-slate-500 mt-0.5">清空上传的卡密凭证内容</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input type="checkbox" v-model="authResetModal.clearHwid" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除机器码 (HWID)</span>
+                                <span class="block text-xs text-slate-500 mt-0.5">清空当前生成的设备硬件特征码</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input type="checkbox" v-model="authResetModal.clearLease" class="mt-0.5 w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 transition-all">
+                            <div>
+                                <span class="block text-sm font-bold text-slate-800 group-hover:text-rose-600 transition-colors">清除租约数据 (Lease)</span>
+                                <span class="block text-xs text-slate-500 mt-0.5">清空与服务端通讯的Token</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <button @click="authResetModal.show = false" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm active:scale-95">取消</button>
+                    <button @click="submitAuthReset" class="px-5 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-md hover:bg-rose-600 transition-all active:scale-95">确认清除</button>
+                </div>
+            </div>
+        </div>
+        <div v-if="outlookAuth && outlookAuth.showModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-200">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span> 为账号授权 (OAuth 2.0)
+                    </h3>
+                    <button @click="outlookAuth.showModal = false" class="text-slate-400 hover:text-rose-500 focus:outline-none transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                        <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">正在授权账号</span>
+                        <span class="text-base font-mono font-black text-indigo-900">{{ outlookAuth.mailbox?.email }}</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-sm">1</div>
+                            <span class="text-sm font-bold text-slate-800">获取并在浏览器中打开授权链接</span>
+                        </div>
+                        <div v-if="!outlookAuth.authUrl">
+                            <button @click="generateOutlookAuthUrl" :disabled="outlookAuth.isGenerating" class="w-full py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-2">
+                                <svg v-if="outlookAuth.isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                                {{ outlookAuth.isGenerating ? '生成中...' : '点击生成专属授权链接' }}
+                            </button>
+                        </div>
+                        <div v-else class="relative">
+                            <textarea readonly class="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:outline-none resize-none shadow-inner">{{ outlookAuth.authUrl }}</textarea>
+                            <a :href="outlookAuth.authUrl" target="_blank" class="absolute bottom-3 right-3 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-1">
+                                在浏览器中打开 ↗
+                            </a>
+                        </div>
+                        <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-2 ml-8 shadow-sm">
+                            <span class="text-amber-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg></span>
+                            <p class="text-[11px] text-amber-800 font-medium leading-relaxed">
+                                请确保在浏览器中登录的是上方指定的邮箱账号。授权后浏览器会跳转到一个<span class="text-rose-600 font-bold">无法访问的错误页面</span>，这是正常的！
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shadow-sm">2</div>
+                            <span class="text-sm font-bold text-slate-800">粘贴回传网址换取 Token</span>
+                        </div>
+                        <div class="ml-8">
+                            <input type="text" v-model="outlookAuth.pastedUrl" placeholder="请将跳转后浏览器地址栏的网址完整粘贴到这里" class="w-full bg-white border-2 border-slate-200 text-slate-800 rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-indigo-500 text-sm font-mono shadow-sm transition-colors">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <button @click="outlookAuth.showModal = false" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors shadow-sm active:scale-95">取消</button>
+                    <button @click="submitOutlookAuthCode" :disabled="outlookAuth.isLoading || !outlookAuth.pastedUrl" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95">
+                        <span v-if="outlookAuth.isLoading" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                        确认换取并保存 Token
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden px-4">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white z-0"></div>
+            <div class="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 w-full max-w-md z-10">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-blue-500 tracking-tight">Wenfxl Codex Manager</h2>
+                    <p class="text-xs md:text-sm text-slate-500 mt-3 font-medium">安全级控制台登录</p>
+                </div>
+                <div class="mb-6 relative">
+                    <label class="block text-slate-700 text-xs md:text-sm font-bold mb-2">访问密码</label>
+                    <div class="relative group">
+                        <input :type="showPwd.login ? 'text' : 'password'" v-model="loginPassword" @keyup.enter="handleLogin" class="appearance-none border-2 border-slate-200 rounded-xl w-full py-3 px-4 pr-10 text-sm md:text-base text-slate-700 leading-tight focus:outline-none focus:ring-0 focus:border-indigo-500 transition-colors bg-white/50" placeholder="请输入系统密码">
+                        <button @click="showPwd.login = !showPwd.login" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-500 focus:outline-none transition-transform hover:scale-110">
+                            <svg v-if="showPwd.login" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <button @click="handleLogin" class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm md:text-base focus:outline-none shadow-lg shadow-indigo-500/30 transform active:scale-[0.98] transition-all">
+                    安全登录
+                </button>
+                <button @click="toggleTheme" class="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-sm md:text-base border border-slate-200 transition-all active:scale-[0.98]">
+                    <span v-if="isDarkMode" class="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> 日间模式</span>
+                    <span v-else class="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg> 护眼模式</span>
+                </button>
+                <button @click="toggleLanguage" class="w-full mt-3 bg-white hover:bg-slate-50 text-indigo-600 font-bold py-2.5 px-4 rounded-xl text-sm md:text-base border border-indigo-100 shadow-sm transition-all active:scale-[0.98]">
+                    <span class="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg> {{ targetLanguageLabel() }}</span>
+                </button>
+                <div class="text-center mt-6">
+                    <span class="text-[11px] md:text-xs text-slate-400 font-mono tracking-widest font-semibold">{{ appVersion }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div v-else class="flex flex-col md:flex-row flex-1 overflow-hidden bg-slate-50">
+            <div v-if="mobileNavOpen" @click="toggleMobileNav(false)" class="md:hidden fixed inset-0 z-30 mobile-nav-mask"></div>
+            <!-- Mac Glass 左侧边栏重构 -->
+            <aside :class="mobileNavOpen ? 'is-open' : ''" class="mobile-nav-drawer fixed inset-y-0 left-0 z-40 md:static md:inset-auto md:translate-x-0 md:shadow-[inset_-1px_0_0_rgba(0,0,0,0.06)] w-64 h-full md:h-full bg-slate-100/92 md:bg-slate-100/70 backdrop-blur-3xl text-slate-600 flex flex-col shrink-0 border-r border-slate-200/50">
+                <div class="p-4 md:p-6 flex items-center justify-between md:justify-center border-b border-slate-200/60 shrink-0 bg-transparent">
+                    <span class="font-black text-base md:text-xl tracking-tight text-slate-800 drop-shadow-sm">Wenfxl <span class="text-indigo-500">Manager</span></span>
+                    <button @click="toggleMobileNav(false)" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 shadow-sm hover:text-slate-700 hover:bg-slate-50 active:scale-95 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <button v-if="updateInfo.hasUpdate" @click="promptUpdate" class="relative group flex items-center justify-center focus:outline-none shrink-0 cursor-pointer" title="发现新版本，点击查看！">
+                        <div class="absolute inset-0 bg-gradient-to-r from-rose-500 to-orange-500 blur-md opacity-50 group-hover:opacity-100 transition-opacity animate-pulse rounded-full"></div>
+                        <span class="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 border border-white/30 text-white font-black leading-none shadow-[0_4px_10px_rgba(244,63,94,0.4)] transform group-hover:scale-105 transition-all duration-300">
+                            <span class="text-[12px]"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                            <span class="text-[11px] tracking-wide drop-shadow-md">发现新版 {{ updateInfo.version }}</span>
+
+                            <span class="absolute -top-1.5 -right-1.5 flex h-3 w-3 z-10">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-100 border border-rose-500"></span>
+                            </span>
+                        </span>
+                    </button>
+                    <span v-else class="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-[10px] text-slate-500 font-mono font-bold leading-none shrink-0 shadow-sm">
+                        {{ appVersion }}
+                    </span>
+                </div>
+                <nav class="flex flex-col overflow-y-auto px-3 py-3 md:px-4 md:py-6 gap-2 md:gap-1.5 md:space-y-1 hide-scrollbar flex-1 min-h-0">
+                    <button v-for="tab in visibleTabs" :key="tab.id" @click="switchTab(tab.id)"
+                            :class="['whitespace-nowrap shrink-0 w-full flex items-center gap-2.5 md:gap-3 px-4 py-3 md:py-3.5 text-sm font-bold rounded-xl transition-all duration-300',
+                                     currentTab === tab.id ? 'bg-white text-indigo-600 shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-200/60' : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent']">
+                        <span class="text-base" :class="currentTab === tab.id ? 'scale-110 transition-transform drop-shadow-sm' : ''" v-html="tab.icon"></span>
+                        {{ t(tab.name) }}
+                    </button>
+                    <div class="flex flex-col md:hidden gap-2 mt-3 pt-3 border-t border-slate-200/70 shrink-0">
+                        <button @click="restartSystem" class="w-full px-4 py-2.5 text-xs font-bold text-amber-600 bg-amber-50/50 rounded-xl border border-amber-200/60 shadow-sm active:scale-95 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> 重启项目
+                        </button>
+                        <button @click="checkUpdate(true)" class="w-full px-4 py-2.5 text-xs font-bold text-blue-600 bg-blue-50/50 rounded-xl border border-blue-200/60 shadow-sm active:scale-95 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 检查更新
+                        </button>
+                        <button @click="logout" class="w-full px-4 py-2.5 text-xs font-bold text-slate-500 bg-slate-50 rounded-xl border border-slate-200/60 shadow-sm active:scale-95 transition-all hover:text-rose-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> 退出登录
+                        </button>
+                    </div>
+                </nav>
+                <div class="hidden md:block p-4 border-t border-slate-200/60 shrink-0 mt-auto bg-transparent">
+                    <button @click="restartSystem" class="w-full flex items-center justify-center gap-2 text-xs font-bold text-amber-600 hover:text-amber-700 py-3 mb-2.5 rounded-xl hover:bg-amber-100/50 transition-colors border border-amber-200/60 bg-amber-50/50 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> 重启项目
+                    </button>
+                    <button @click="checkUpdate(true)" class="w-full flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 py-3 mb-2.5 rounded-xl hover:bg-blue-100/50 transition-colors border border-blue-200/60 bg-blue-50/50 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 检查系统更新
+                    </button>
+                    <button @click="logout" class="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-rose-500 py-3 rounded-xl hover:bg-rose-50/80 transition-colors border border-transparent hover:border-rose-200/50 hover:shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> 退出登录
+                    </button>
+                </div>
+            </aside>
+
+            <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                <header class="bg-white/70 backdrop-blur-2xl border-b border-slate-200/60 text-slate-800 px-3 py-2.5 md:px-4 md:py-3 shrink-0 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] z-30 relative">
+                    <div class="w-full xl:max-w-[85%] mx-auto console-topbar">
+                        <div class="console-topbar-primary">
+                            <button @click="toggleMobileNav()" class="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50 hover:text-indigo-600 active:scale-95 transition-all shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                            </button>
+                            <div class="console-mode-chip bg-indigo-50/80 text-indigo-700 font-bold tracking-wide border border-indigo-100/80 truncate shadow-sm flex items-center">
+                                <span class="console-mode-main">模式: {{ t(stats.mode) }}</span>
+                                <span class="hidden sm:inline opacity-30 mx-2">|</span>
+                                <span class="hidden sm:inline text-slate-500">成功</span>
+                                <span class="hidden sm:inline font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span>
+                                <span class="sm:hidden console-mode-mobile-success">
+                                    <span class="opacity-40 mx-1">|</span>
+                                    <span class="text-slate-500">成功</span>
+                                    <span class="font-black ml-1 text-indigo-600">{{stats.success}}/{{stats.target}}</span>
+                                </span>
+                                <span class="sm:hidden console-mode-mobile-total">
+                                    <span class="opacity-40 mx-1">|</span>
+                                    <span class="text-slate-500">总</span>
+                                    <span class="font-black ml-1 text-indigo-600">{{stats.total}}</span>
+                                </span>
+                                <span class="hidden lg:inline opacity-30 mx-2">|</span>
+                                <span class="hidden lg:inline text-slate-500">总 {{stats.total}}</span>
+                            </div>
+                            <div class="console-progress-wrap">
+                                <div class="text-sky-500 font-black text-xs md:text-sm whitespace-nowrap">{{stats.progress_pct}}</div>
+                                <div class="console-progress-bar bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/60">
+                                    <div class="h-full bg-sky-400 progress-bar-inner shadow-[0_0_8px_rgba(56,189,248,0.6)] rounded-full transition-all duration-500" :style="{ width: stats.progress_pct }"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="console-topbar-actions">
+                            <div v-if="config" class="console-switches">
+                                <div class="console-seg">
+                                    <button type="button" @click="changeRegProvider('openai')"
+                                            :class="(config.reg_provider || 'openai') === 'openai' ? 'is-active-openai' : ''">
+                                        OpenAI
+                                    </button>
+                                    <button type="button" @click="changeRegProvider('grok')"
+                                            :class="config.reg_provider === 'grok' ? 'is-active-grok' : ''">
+                                        Grok
+                                    </button>
+                                </div>
+                                <div v-show="(config.reg_provider || 'openai') === 'openai'" class="console-seg">
+                                    <button type="button" @click="changeRegMode('email')"
+                                            :class="config.reg_mode === 'email' ? 'is-active-email' : ''">
+                                        邮箱
+                                    </button>
+                                    <button type="button" @click="changeRegMode('phone')"
+                                            :class="config.reg_mode === 'phone' ? 'is-active-phone' : ''">
+                                        手机
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="console-topbar-tools">
+                                <button @click="toggleTheme" class="console-toolbar-btn font-bold border transition-all active:scale-95 shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm flex items-center justify-center">
+                                    <span v-if="isDarkMode" class="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                        <span>日间</span>
+                                    </span>
+                                    <span v-else class="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                                        <span>护眼</span>
+                                    </span>
+                                </button>
+                                <button @click="toggleLanguage" class="console-toolbar-btn font-bold border transition-all active:scale-95 shrink-0 bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 shadow-sm flex items-center justify-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+                                    <span>{{ targetLanguageLabel() }}</span>
+                                </button>
+                                <span v-if="isRunning" class="console-status-pill flex items-center gap-1.5 md:gap-2 text-emerald-600 font-bold bg-white border border-slate-200 shadow-sm shrink-0">
+                                    <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span>
+                                    <span>运行中</span>
+                                </span>
+                                <span v-else class="console-status-pill flex items-center gap-1.5 md:gap-2 text-slate-500 font-bold bg-white border border-slate-200 shadow-sm shrink-0">
+                                    <span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-slate-400 rounded-full"></span>
+                                    <span>已停止</span>
+                                </span>
+                                <button @click="toggleSystem"
+                                        class="console-run-btn font-black text-white shadow-lg transition-all active:scale-95 shrink-0 flex items-center gap-1"
+                                        :class="isRunning ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'">
+                                    <svg v-if="isRunning" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9h6v6H9V9z"></path></svg>
+                                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    <span>{{ t(isRunning ? '停止' : '启动') }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full xl:max-w-[85%] mx-auto mt-2 md:mt-3 font-mono tracking-wide console-meta-strip">
+                        <span class="text-slate-500 font-bold whitespace-nowrap">成功率 <span class="text-sky-500 font-black ml-0.5">{{stats.success_rate}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">成功 <span class="text-emerald-500 font-black ml-0.5">{{stats.success}}/{{stats.target}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">失败 <span class="text-rose-500 font-black ml-0.5">{{stats.failed}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">可用域名 <span class="text-emerald-500 font-black ml-0.5">{{stats.available_count || 0}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">冷却域名 <span class="text-amber-500 font-black ml-0.5">{{stats.cooldown_count || 0}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">风控拦截 <span class="text-amber-500 font-black ml-0.5">{{stats.retries}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">密码受阻 <span class="text-orange-500 font-black ml-0.5">{{stats.pwd_blocked || 0}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span v-if="grokMode" class="text-slate-500 font-bold whitespace-nowrap">丢弃数 <span class="text-red-500 font-black ml-0.5">{{stats.discard_count || 0}}</span></span>
+                        <span v-if="grokMode" class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">出现手机 <span class="text-purple-500 font-black ml-0.5">{{stats.phone_verify || 0}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">总耗时 <span class="text-slate-800 font-black ml-0.5">{{stats.elapsed}}</span></span>
+                        <span class="text-slate-300 hidden sm:inline">•</span>
+                        <span class="text-slate-500 font-bold whitespace-nowrap">平均 <span class="text-slate-800 font-black ml-0.5">{{stats.avg_time}}</span></span>
+                    </div>
+                </header>
+
+                <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 relative">
+                    <div class="w-full xl:max-w-[85%] mx-auto">
+
+                            <button v-show="['email', 'proxy', 'relay', 'concurrency', 'sms', 'notify', 'cluster'].includes(currentTab)" @click="saveConfig"
+                                class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-50 px-5 md:px-8 py-3 md:py-4 bg-indigo-600 text-white text-sm md:text-base font-black rounded-full shadow-2xl hover:bg-indigo-700 hover:shadow-indigo-500/40 active:scale-95 transition-all flex items-center gap-2.5 ring-4 ring-indigo-600/20 backdrop-blur-md border border-indigo-500">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> <span class="hidden sm:inline tracking-wide">保存并热重载配置</span><span class="sm:hidden tracking-wide">保存配置</span>
+                            </button>
+
+                        <div v-if="isLoggedIn && !config" class="min-h-[55vh] flex items-center justify-center">
+                            <div class="w-full max-w-xl bg-white/90 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-sm p-8 text-center">
+                                <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-800">页面配置暂未加载完成</h3>
+                                <p class="mt-3 text-sm font-medium text-slate-500">{{ configLoadError || (isLoadingConfig ? '正在加载配置，请稍候...' : '配置仍未返回，请点击下方重试。') }}</p>
+                                <button @click="fetchConfig" class="mt-6 inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 text-white text-sm font-black rounded-2xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-500/25">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    重新加载配置
+                                </button>
+                            </div>
+                        </div>
+
+<!-- DASHBOARD_PARTIAL:console -->
+<!-- DASHBOARD_PARTIAL:cluster -->
+<!-- DASHBOARD_PARTIAL:accounts -->
+<!-- DASHBOARD_PARTIAL:image-accounts -->
+<!-- DASHBOARD_PARTIAL:mailboxes -->
+<!-- DASHBOARD_PARTIAL:email -->
+<!-- DASHBOARD_PARTIAL:sms -->
+<!-- DASHBOARD_PARTIAL:proxy -->
+<!-- DASHBOARD_PARTIAL:cloud -->
+<!-- DASHBOARD_PARTIAL:team-accounts -->
+<!-- DASHBOARD_PARTIAL:relay -->
+<!-- DASHBOARD_PARTIAL:notify -->
+<!-- DASHBOARD_PARTIAL:domain-register -->
+<!-- DASHBOARD_PARTIAL:concurrency -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    </div>
+    </div>
+    <script src="/static/js/index.js?v=20260813-18"></script>
+    <script src="/static/js/i18n.js?v=20260813-18"></script>
+    <script src="/static/js/realtime.js?v=20260813-18"></script>
+    <script src="/static/js/cloud.js?v=20260813-18"></script>
+    <script src="/static/js/cluster.js?v=20260813-18"></script>
+    <script src="/static/js/mailboxes.js?v=20260813-18"></script>
+    <script src="/static/js/accounts.js?v=20260813-18"></script>
+    <script src="/static/js/domain-register.js?v=20260813-18"></script>
+    <script src="/static/js/maintenance.js?v=20260813-18"></script>
+    <script src="/static/js/proxy.js?v=20260813-18"></script>
+    <script src="/static/js/cloudflare.js?v=20260813-18"></script>
+    <script src="/static/js/app.js?v=20260813-18"></script>
+</body>
+</html>

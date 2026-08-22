@@ -1,0 +1,94 @@
+                        <div v-show="currentTab === 'team_accounts'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden relative animate-fade-in transition-shadow duration-300 hover:shadow-md">
+                            <div v-if="showImportTeamModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                                <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
+                                    <h3 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></span> 批量导入 Team Token</h3>
+                                    <p class="text-xs text-slate-500 mb-3 font-bold bg-slate-50 p-2 rounded border border-slate-100">
+                                        <span class="block mb-2 text-slate-800 font-black">支持以下两种导入格式 (每行一个)：</span>
+
+                                        <span class="block text-emerald-600 mb-1">▶ 格式一：access_token</span>
+                                        <code class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 block mb-3 break-all">eyJhbGciOiJSUzI1NiIs...</code>
+
+                                        <span class="block text-sky-600 mb-1">▶ 格式二：access_token + Cookie (开启超速妙，用 ---- 分隔)</span>
+                                        <code class="text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 block mb-3 break-all">access_token----Cookie...</code>
+                                        <span class="text-rose-600 font-black flex items-center gap-1 mt-2 border-t border-slate-200/60 pt-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            超速妙必读：获取完整 Cookie 教程
+                                        </span>
+                                        <span class="block mt-1">1. 请前往 <a href="https://admin.openai.com/" target="_blank" class="text-blue-600 hover:text-blue-700 hover:underline font-bold transition-colors">https://admin.openai.com/</a> 完成登录。</span>
+                                        <span class="block mt-1">2. 按 <kbd class="bg-slate-200 px-1 rounded shadow-sm">F12</kbd> 打开开发者工具，切换到 <b>Network (网络)</b> 面板。</span>
+                                        <span class="block mt-1">3. 刷新页面，找到 <code>/analytics</code> 的接口请求。</span>
+                                        <span class="block mt-1">4. 在 <b>Request Headers (请求标头)</b> 中找到 <b>Cookie</b> 字段，复制后面那一长串完整内容，如果没有cookie就刷新一下页面。</span>
+                                    </p>
+                                    <textarea v-model="importTeamText" class="w-full h-64 appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-xs leading-relaxed placeholder:text-slate-300 mb-4" placeholder="在此粘贴 access_token 数据..."></textarea>
+                                    <div class="flex justify-end gap-3">
+                                        <button @click="showImportTeamModal = false" class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all">取消</button>
+                                        <button @click="submitImportTeams" :disabled="isImportingTeam" class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md flex items-center gap-2 transition-all disabled:opacity-50">
+                                            <span v-if="isImportingTeam" class="inline-flex items-center justify-center"><svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></span>确认导入
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                                <div class="flex items-center gap-3">
+                                    <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                                        <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-sky-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M16 19a3 3 0 013-3h1a2 2 0 012 2v1"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M2 19v-1a2 2 0 012-2h1a3 3 0 013 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 18a4 4 0 00-4 4h8a4 4 0 00-4-4z"></path><circle cx="12" cy="10" r="3.25" stroke-width="1.9"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M6 8.5a2.5 2.5 0 115 0"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M13 8.5a2.5 2.5 0 115 0"></path></svg> Team 团队账号库
+                                    </h2>
+                                    <button @click="fetchTeamAccounts(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20v-5h-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.64 19A9 9 0 0019 18.36L20 15"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.36 5A9 9 0 005 5.64L4 9"></path></svg></button>
+                                </div>
+
+                                <div class="flex flex-wrap gap-3 items-center w-full xl:w-auto">
+                                    <label v-if="config && config.team_mode" class="relative inline-flex items-center cursor-pointer group bg-white px-3 py-1.5 rounded-xl border border-emerald-200 shadow-sm mr-2 hover:bg-emerald-50 transition-colors">
+                                        <input type="checkbox" v-model="config.team_mode.enable" @change="saveConfig" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner group-hover:shadow-md"></div>
+                                        <span class="ml-2 text-xs font-black text-emerald-700 tracking-wide">启用团队配合注册</span>
+                                    </label>
+                                    <label v-if="config && config.team_mode" class="relative inline-flex bg-white px-3 py-1.5 rounded-xl cursor-pointer hover:bg-rose-50 transition-colors shadow-sm border border-rose-200 items-center group mr-2">
+                                        <input type="checkbox" :checked="config.team_mode.overspeed" @change="handleOverspeedToggle" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner group-hover:shadow-md"></div>
+                                        <span class="ml-2 text-xs font-black text-rose-700 tracking-wide">超速妙</span>
+                                    </label>
+                                    <button @click="showImportTeamModal = true" class="text-sm bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-100 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 导入数据
+                                    </button>
+                                    <button @click="showTeamsPlaintext = !showTeamsPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                        <span><svg v-if="showTeamsPlaintext" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></span> {{ showTeamsPlaintext ? '脱敏' : '明文' }}
+                                    </button>
+                                    <div class="flex items-center gap-2 ml-auto xl:ml-2 border-l border-slate-200 pl-3">
+                                        <button @click="clearAllTeamAccounts" class="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold rounded-lg hover:bg-rose-100 transition flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16"></path></svg> 清空库</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
+                                <table class="min-w-full divide-y divide-slate-100">
+                                    <thead class="bg-slate-50/80">
+                                        <tr>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-16">#</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">解析邮箱</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Access Token & Cookies</th>
+                                            <th class="px-5 md:px-8 py-4 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-slate-50">
+                                        <tr v-if="teamAccounts.length === 0">
+                                            <td colspan="4" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无 Team 库数据，请点击右上角导入</td>
+                                        </tr>
+                                        <tr v-for="(team, index) in teamAccounts" :key="index" class="hover:bg-slate-50 transition duration-200">
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-400 font-mono font-medium">{{ index + 1 }}</td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
+                                                {{ showTeamsPlaintext ? team.email : maskEmail(team.email) }}
+                                            </td>
+                                            <td class="px-5 md:px-8 py-4 text-xs font-mono text-slate-500 max-w-[240px]">
+                                                <div class="truncate font-bold text-slate-600" :title="team.access_token">{{ showTeamsPlaintext ? team.access_token : 'eyJhbGciOi...' }}</div>
+                                                <div v-if="team.cookies" class="truncate text-[10px] text-slate-400 mt-1" :title="team.cookies">Cookie: {{ showTeamsPlaintext ? team.cookies : '******' }}</div>
+                                            </td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-center">
+                                                <button @click="deleteSingleTeam(team.id)" class="inline-flex items-center px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-sm active:scale-95 gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 11v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16"></path></svg> 删除</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+

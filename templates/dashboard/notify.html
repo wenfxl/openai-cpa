@@ -1,0 +1,77 @@
+                        <div v-show="currentTab === 'notify'" v-if="config" class="space-y-5 md:space-y-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-sky-400 lg:max-w-3xl">
+                                <h3 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight mb-6 flex items-center gap-2"><svg class="w-5 h-5 inline-block align-text-bottom shrink-0" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M21 16.5C21 16.88 20.79 17.21 20.47 17.38L12.57 21.82C12.41 21.94 12.21 22 12 22C11.79 22 11.59 21.94 11.43 21.82L3.53 17.38C3.21 17.21 3 16.88 3 16.5V7.5C3 7.12 3.21 6.79 3.53 6.62L11.43 2.18C11.59 2.06 11.79 2 12 2C12.21 2 12.41 2.06 12.57 2.18L20.47 6.62C20.79 6.79 21 7.12 21 7.5V16.5ZM12 4.15L6.04 7.5L12 10.85L17.96 7.5L12 4.15Z"></path></svg> Telegram 机器人通知</h3>
+                                <div class="bg-gradient-to-br from-sky-50/80 to-blue-50/30 p-5 md:p-6 rounded-2xl border border-sky-100 shadow-inner">
+                                    <label class="relative inline-flex bg-white px-5 py-3.5 rounded-xl cursor-pointer hover:bg-sky-50 transition-colors shadow-sm border border-sky-200 items-center group w-full sm:w-auto mb-6">
+                                        <input type="checkbox" v-model="config.tg_bot.enable" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-sky-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="ml-4 text-base font-black text-sky-900 tracking-wide">开启 TG 消息推送</span>
+                                    </label>
+
+                                    <div class="flex flex-col gap-5" :class="{'opacity-50 pointer-events-none grayscale transition-opacity duration-300': !config.tg_bot.enable}">
+                                        <div class="bg-white p-4 rounded-xl border border-sky-100 shadow-sm">
+                                            <label class="block text-sky-800 text-xs font-black uppercase tracking-wider mb-2">Bot Token</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.tg_token ? 'text' : 'password'" v-model="config.tg_bot.token" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors shadow-inner text-sm font-mono placeholder:text-slate-400" placeholder="形如 123456:AAH...">
+                                                <button @click="showPwd.tg_token = !showPwd.tg_token" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.tg_token" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-sky-100 shadow-sm">
+                                            <label class="block text-sky-800 text-xs font-black uppercase tracking-wider mb-2">Chat ID (接收者)</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.tg_chatid ? 'text' : 'password'" v-model="config.tg_bot.chat_id" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors shadow-inner text-sm font-mono placeholder:text-slate-400" placeholder="你的 TG 用户ID">
+                                                <button @click="showPwd.tg_chatid = !showPwd.tg_chatid" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.tg_chatid" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                            <div class="flex items-center justify-between mt-3">
+                                                <p class="text-[11px] text-sky-600/80 font-medium bg-sky-50/50 p-2 rounded inline-block">* 系统在推送消息时会自动走全局配置里的网络代理</p>
+
+                                                <button @click="testTgNotification" :disabled="isTestingTg || !config.tg_bot.token || !config.tg_bot.chat_id"
+                                                        class="px-4 py-1.5 bg-sky-100 text-sky-700 border border-sky-200 rounded-lg text-xs font-bold shadow-sm hover:bg-sky-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
+                                                    <span v-if="isTestingTg" class="inline-flex items-center justify-center animate-spin"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></span>
+                                                    <span v-else class="inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg></span>
+                                                    {{ isTestingTg ? '发送中...' : '发送测试通知' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 border-t border-sky-200/60 pt-6">
+                                            <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
+                                                <label class="block text-sky-900 text-sm font-black uppercase tracking-wider mb-0 flex items-center gap-1.5"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z"></path></svg> 单号产出通知模板</label>
+                                                <div class="flex gap-5 bg-white p-2.5 rounded-xl border border-sky-100 shadow-sm">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <span class="text-[11px] font-black text-sky-700 uppercase">邮箱脱敏</span>
+                                                        <label class="relative inline-flex items-center cursor-pointer group">
+                                                            <input type="checkbox" v-model="config.tg_bot.mask_email" class="sr-only peer">
+                                                            <div class="relative w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                        </label>
+                                                    </div>
+                                                    <div class="w-px bg-sky-100"></div>
+                                                    <div class="flex items-center gap-2.5">
+                                                        <span class="text-[11px] font-black text-sky-700 uppercase">密码脱敏</span>
+                                                        <label class="relative inline-flex items-center cursor-pointer group">
+                                                            <input type="checkbox" v-model="config.tg_bot.mask_password" class="sr-only peer">
+                                                            <div class="relative w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <textarea v-model="config.tg_bot.template_success" class="w-full appearance-none bg-white border-2 border-sky-100 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-sky-400 transition-colors shadow-inner text-xs font-mono h-24 md:h-28 leading-relaxed placeholder:text-slate-300" placeholder="填入单号成功模板"></textarea>
+                                            <div class="text-[11px] text-sky-700/80 mt-2 font-medium bg-sky-50/80 p-3 rounded-lg border border-sky-100/50 leading-relaxed">
+                                                可用变量: <code class="bg-white px-1.5 py-0.5 rounded shadow-sm border border-sky-100 font-bold text-sky-600">{email}</code> (自动适配脱敏开关), <code class="bg-white px-1.5 py-0.5 rounded shadow-sm border border-sky-100 font-bold text-sky-600">{password}</code> (自动适配脱敏开关), <code class="bg-white px-1.5 py-0.5 rounded shadow-sm border border-sky-100 font-bold text-sky-600">{time}</code> 时间。
+                                            </div>
+                                        </div>
+                                        <div class="mt-6 border-t border-sky-200/60 pt-6">
+                                            <label class="block text-rose-700 text-sm font-black uppercase tracking-wider mb-4 flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6h12v12H6z"></path></svg> 运行总结/停止通知模板</label>
+                                            <textarea v-model="config.tg_bot.template_stop" class="w-full appearance-none bg-white border-2 border-rose-100 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-rose-400 transition-colors shadow-inner text-xs font-mono h-28 md:h-32 leading-relaxed placeholder:text-slate-300" placeholder="填入总结模板"></textarea>
+                                            <div class="text-[11px] text-rose-700/80 mt-2 font-medium bg-rose-50/80 p-3 rounded-lg border border-rose-100/50 leading-relaxed break-words">
+                                                可用变量: <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{success_rate}</code> 成功率, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{success}</code> 成功数, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{target}</code> 目标数, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{failed}</code> 失败数, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{retries}</code> 拦截数, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{pwd_blocked}</code> 密码受阻, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{phone_verify}</code> 出现手机, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{elapsed_time}</code> 总耗时, <code class="bg-white px-1 py-0.5 rounded shadow-sm font-bold text-rose-600 mx-0.5">{avg_time}</code> 平均耗时。
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        

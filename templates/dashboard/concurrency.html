@@ -1,0 +1,564 @@
+<div v-show="currentTab === 'concurrency'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-cyan-500 bg-gradient-to-br from-cyan-50/30 to-white lg:col-span-2">
+                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-cyan-700 flex items-center gap-2 tracking-tight">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 7h10v10H7z"></path></svg>
+                                            内存预测与实测监控
+                                        </h3>
+                                        <p class="text-xs text-slate-500 font-medium mt-2">根据当前配置估算低/中/高内存占用，并通过 psutil 显示当前 Python 进程 RSS。</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button @click="fetchMemoryPrediction" :disabled="isLoadingMemoryPrediction" class="px-4 py-2.5 rounded-xl bg-cyan-600 text-white text-sm font-black shadow-md shadow-cyan-500/20 hover:bg-cyan-700 active:scale-95 disabled:opacity-60 disabled:cursor-wait transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': isLoadingMemoryPrediction}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            重新估算
+                                        </button>
+                                        <button @click="applyMemoryRecommendation" :disabled="!memoryPrediction?.recommendation?.suggested_config" class="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-black shadow-md shadow-emerald-500/20 hover:bg-emerald-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            套用建议并保存
+                                        </button>
+                                        <button @click="applyMemoryRecommendationAndRestart" :disabled="!memoryPrediction?.recommendation?.suggested_config" class="px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-black shadow-md shadow-rose-500/20 hover:bg-rose-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                            套用建议并重启
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-if="memoryPredictionError" class="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold">
+                                    {{ memoryPredictionError }}
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                    <div class="bg-white p-4 rounded-xl border border-cyan-100 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">当前消耗内存 RSS</div>
+                                        <div class="text-2xl font-black text-cyan-700">{{ formatMemoryMb(memoryPrediction?.actual?.rss_mb ?? stats.memory?.rss_mb) }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">预测中等负载</div>
+                                        <div class="text-2xl font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.mid ?? stats.memory?.predicted_mid_mb) }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">预测满载峰值</div>
+                                        <div class="text-2xl font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.high ?? stats.memory?.predicted_high_mb) }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border shadow-sm" :class="memorySafetyClass(memoryPrediction?.safety?.level ?? stats.memory?.safety_level)">
+                                        <div class="text-[11px] font-black uppercase tracking-wider mb-2 opacity-70">安全状态</div>
+                                        <div class="text-2xl font-black">{{ memoryPrediction?.safety?.label ?? stats.memory?.safety_label ?? '无数据' }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                    <div class="lg:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">预测分解</div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200"><span class="block text-[10px] text-slate-400 font-black uppercase mb-1">最低消耗</span><span class="font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.low) }}</span></div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200"><span class="block text-[10px] text-slate-400 font-black uppercase mb-1">标准负载</span><span class="font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.mid) }}</span></div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200"><span class="block text-[10px] text-slate-400 font-black uppercase mb-1">满载峰值</span><span class="font-black text-slate-700">{{ formatMemoryMb(memoryPrediction?.prediction?.predicted_mb?.high) }}</span></div>
+                                        </div>
+                                        <p class="text-xs text-slate-500 leading-relaxed font-medium">{{ memoryPrediction?.safety?.message || memoryPrediction?.prediction?.model_note || '切换到本页后会自动获取完整预测数据。' }}</p>
+                                        <p v-if="memoryPrediction?.actual?.note" class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3 font-bold">{{ memoryPrediction.actual.note }}</p>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">配置快照</div>
+                                        <div class="space-y-2 text-xs font-bold text-slate-600">
+                                            <div class="flex justify-between gap-3"><span>注册并发线程</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.reg_threads ?? config.reg_threads }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>CPA 测活并发</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.cpa_threads ?? config.cpa_mode?.threads }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>Sub2API 并发</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.sub2api_threads ?? config.sub2api_mode?.threads }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>代理池载入规模</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.proxy_pool_size ?? 'N/A' }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>控制台日志行数</span><span class="text-cyan-700">{{ memoryPrediction?.prediction?.config_snapshot?.max_log_lines ?? config.max_log_lines }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>数据库连接类型</span><span class="text-cyan-700 uppercase">{{ memoryPrediction?.prediction?.config_snapshot?.db_type ?? config.database?.type }}</span></div>
+                                            <div class="flex justify-between gap-3"><span>系统物理内存使用率</span><span class="text-cyan-700">{{ memoryPrediction?.actual?.system_used_percent ?? 'N/A' }}%</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="memoryPrediction?.recommendation" class="mt-5 p-5 rounded-2xl border shadow-sm" :class="memoryRecommendationClass(memoryPrediction?.recommendation?.level)">
+                                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                                        <div>
+                                            <div class="text-xs font-black uppercase tracking-wider opacity-70">可执行建议</div>
+                                            <div class="text-base font-black mt-1">{{ memoryPrediction?.recommendation?.label || '建议观察' }}</div>
+                                            <p class="text-sm font-medium mt-2 leading-relaxed">{{ memoryPrediction?.recommendation?.summary }}</p>
+                                        </div>
+                                        <div class="text-xs font-black uppercase opacity-70 md:text-right">
+                                            <div>可预估节省 {{ formatMemoryMb(memoryPrediction?.recommendation?.estimated_savings_mb) }}</div>
+                                            <div class="mt-1">目标预算 {{ formatMemoryMb(memoryPrediction?.recommendation?.target_budget_mb) }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-bold">
+                                        <div class="bg-white/80 rounded-xl p-3 border border-white/70">建议注册并发：<span class="text-cyan-700">{{ memoryPrediction?.recommendation?.suggested_config?.reg_threads ?? 'N/A' }}</span></div>
+                                        <div class="bg-white/80 rounded-xl p-3 border border-white/70">建议 CPA 并发：<span class="text-cyan-700">{{ memoryPrediction?.recommendation?.suggested_config?.cpa_threads ?? 'N/A' }}</span></div>
+                                        <div class="bg-white/80 rounded-xl p-3 border border-white/70">建议 Sub2API 并发：<span class="text-cyan-700">{{ memoryPrediction?.recommendation?.suggested_config?.sub2api_threads ?? 'N/A' }}</span></div>
+                                    </div>
+                                    <ul class="mt-4 space-y-2 text-sm font-medium leading-relaxed">
+                                        <li v-for="item in (memoryPrediction?.recommendation?.action_items || [])" :key="item" class="flex gap-2">
+                                            <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-current shrink-0"></span>
+                                            <span>{{ item }}</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-teal-500 bg-gradient-to-br from-teal-50/20 to-white lg:col-span-2">
+                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-teal-700 flex items-center gap-2 tracking-tight">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>
+                                            磁盘 / 日志清理
+                                        </h3>
+                                        <p class="text-xs text-slate-500 font-medium mt-2">清理历史日志、缓存、`__pycache__` 和临时文件。适合服务器越来越卡、磁盘涨上去、重启恢复变慢时先做一轮保洁。</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button @click="fetchCleanupStatus(true)" :disabled="cleanupMaintenance.loading || cleanupMaintenance.actionLoading" class="px-4 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-black shadow-md shadow-teal-500/20 hover:bg-teal-700 active:scale-95 disabled:opacity-60 disabled:cursor-wait transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': cleanupMaintenance.loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            刷新清理状态
+                                        </button>
+                                        <button @click="runCleanup(false)" :disabled="cleanupMaintenance.loading || cleanupMaintenance.actionLoading || !cleanupMaintenance.data?.can_run" class="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-black shadow-md shadow-emerald-500/20 hover:bg-emerald-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': cleanupMaintenance.actionLoading}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            按阈值执行清理
+                                        </button>
+                                        <button @click="runCleanup(true)" :disabled="cleanupMaintenance.loading || cleanupMaintenance.actionLoading || !cleanupMaintenance.data?.can_run" class="px-4 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-black shadow-md shadow-amber-500/20 hover:bg-amber-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': cleanupMaintenance.actionLoading}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            强制立即清理
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-if="cleanupMaintenance.error" class="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold">
+                                    {{ cleanupMaintenance.error }}
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                    <div class="bg-white p-4 rounded-xl border border-teal-100 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">运行平台</div>
+                                        <div class="text-lg font-black text-teal-700">{{ cleanupMaintenance.data?.platform || 'N/A' }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">目标磁盘路径</div>
+                                        <div class="text-lg font-black text-slate-700 break-all">{{ cleanupMaintenance.data?.target_path || 'N/A' }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">当前磁盘占用</div>
+                                        <div class="text-lg font-black text-slate-700">{{ cleanupMaintenance.data?.disk_used_percent ?? 'N/A' }}%</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">触发阈值</div>
+                                        <div class="text-lg font-black text-slate-700">{{ cleanupMaintenance.data?.threshold_percent ?? 'N/A' }}%</div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                    <div class="lg:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">清理范围</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-bold text-slate-700">
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200">`run.out.log` / `run.err.log` 大日志截断</div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200">`data/server.log`、`mihomo-core.log` 截断</div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200">旧 `.log.*` / `.tmp` / `.cache` 删除</div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200">`__pycache__`、`.pyc`、`/tmp`、`/var/tmp` 清理</div>
+                                        </div>
+                                        <div class="mt-4 text-[11px] text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-2 font-medium">
+                                            這塊目前主要面向 Linux 伺服器。本機 Windows 端能看狀態，但不能直接執行腳本。
+                                        </div>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">清理输出</div>
+                                        <div v-if="cleanupMaintenance.outputTail?.length" class="bg-slate-900 text-slate-100 rounded-xl p-3 font-mono text-xs leading-6 overflow-auto border border-slate-700 max-h-64">
+                                            <div v-for="line in cleanupMaintenance.outputTail" :key="line">{{ line }}</div>
+                                        </div>
+                                        <div v-else class="text-xs font-medium text-slate-500 leading-relaxed bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                            暂无执行输出。伺服器卡頓但磁碟還沒爆時，可以直接用“强制立即清理”先把歷史垃圾收掉。
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-indigo-500 bg-gradient-to-br from-indigo-50/20 to-white lg:col-span-2">
+                                <h3 class="text-lg md:text-xl font-black text-indigo-700 mb-6 flex items-center gap-2 tracking-tight"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7c0-1.105 3.582-2 8-2s8 .895 8 2-3.582 2-8 2-8-.895-8-2zm0 5c0 1.105 3.582 2 8 2s8-.895 8-2m-16 5c0 1.105 3.582 2 8 2s8-.895 8-2"></path></svg> 数据库存储引擎 <span class="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded border border-rose-100 ml-2">修改后需点左下角重启项目后生效</span></h3>
+
+                                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                                    <label class="flex-1 cursor-pointer group">
+                                        <input type="radio" v-model="config.database.type" value="sqlite" class="peer sr-only">
+                                        <div class="p-4 border-2 rounded-xl text-center font-bold text-slate-500 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 transition-all shadow-sm group-hover:bg-slate-50">
+                                            <svg class="w-4 h-4 inline-block align-text-bottom mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg> 本地 SQLite (默认)
+                                        </div>
+                                    </label>
+                                    <label class="flex-1 cursor-pointer group">
+                                        <input type="radio" v-model="config.database.type" value="mysql" class="peer sr-only">
+                                        <div class="p-4 border-2 rounded-xl text-center font-bold text-slate-500 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 transition-all shadow-sm group-hover:bg-slate-50">
+                                            <span class="inline-flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 014-4 5 5 0 019.584-1.5A3.5 3.5 0 1117.5 17H7a4 4 0 01-4-2z"></path></svg><span>云端 MySQL</span></span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div v-show="config.database.type === 'mysql'" class="grid grid-cols-1 md:grid-cols-2 gap-5 bg-white p-5 rounded-xl border border-indigo-100 shadow-inner animate-fade-in">
+                                    <div>
+                                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">数据库地址 (Host)</label>
+                                        <input type="text" v-model="config.database.mysql.host" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">端口 (Port)</label>
+                                        <input type="number" v-model.number="config.database.mysql.port" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">用户名 (User)</label>
+                                        <input type="text" v-model="config.database.mysql.user" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">密码 (Password)</label>
+                                        <div class="relative">
+                                            <input :type="showPwd.db_pass ? 'text' : 'password'" v-model="config.database.mysql.password" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm font-mono">
+                                            <button @click="showPwd.db_pass = !showPwd.db_pass" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 transition-transform">
+                                                <svg v-if="showPwd.db_pass" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">数据库名 (Database Name)</label>
+                                        <input type="text" v-model="config.database.mysql.db_name" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-violet-500 bg-gradient-to-br from-violet-50/20 to-white lg:col-span-2">
+                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-violet-700 flex items-center gap-2 tracking-tight">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-8 9h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                            Git 更新
+                                        </h3>
+                                        <p class="text-xs text-slate-500 font-medium mt-2">查看当前分支与远端差异，支持抓取远端状态，必要时强制同步到跟踪分支。</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button @click="fetchGitSyncStatus(true)" :disabled="gitSync.loading || gitSync.actionLoading" class="px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-black shadow-md shadow-violet-500/20 hover:bg-violet-700 active:scale-95 disabled:opacity-60 disabled:cursor-wait transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': gitSync.loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            刷新状态
+                                        </button>
+                                        <button @click="runGitSyncAction('fetch')" :disabled="gitSync.loading || gitSync.actionLoading" class="px-4 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-black shadow-md shadow-sky-500/20 hover:bg-sky-700 active:scale-95 disabled:opacity-60 disabled:cursor-wait transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': gitSync.actionLoading && gitSync.lastAction === 'fetch'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9m0 0l-3-3m3 3l-3 3M21 9a4 4 0 00-4-4H8m0 0l3-3M8 5l3 3"></path></svg>
+                                            抓取远端状态
+                                        </button>
+                                        <button @click="runGitSyncAction('reset_hard')" :disabled="gitSync.loading || gitSync.actionLoading" class="px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-black shadow-md shadow-rose-500/20 hover:bg-rose-700 active:scale-95 disabled:opacity-60 disabled:cursor-wait transition-all flex items-center justify-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin': gitSync.actionLoading && gitSync.lastAction === 'reset_hard'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-1.414 1.414M15 9l-6 6m0 0l-3 3m3-3l-3-3m3 3l3 3m6-9l3-3m-3 3l3 3"></path></svg>
+                                            强制同步覆盖
+                                        </button>
+                                    </div>
+                                </div>
+                                <label class="mt-1 relative inline-flex items-center cursor-pointer w-full md:w-auto">
+                                    <input type="checkbox" v-model="gitSync.restartAfter" class="sr-only peer">
+                                    <div class="relative w-10 h-5 bg-slate-200 rounded-full peer-checked:bg-violet-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-5"></div>
+                                    <span class="ml-3 text-xs font-bold text-violet-800">强制同步覆盖后自动重启项目</span>
+                                </label>
+
+                                <div v-if="gitSync.error" class="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold">
+                                    {{ gitSync.error }}
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                    <div class="bg-white p-4 rounded-xl border border-violet-100 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">当前分支</div>
+                                        <div class="text-lg font-black text-violet-700 break-all">{{ gitSync.data?.branch || 'N/A' }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">跟踪分支</div>
+                                        <div class="text-lg font-black text-slate-700 break-all">{{ gitSync.data?.tracking || 'N/A' }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div class="text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">提交差异</div>
+                                        <div class="text-lg font-black text-slate-700">落后 {{ gitSync.data?.behind ?? 0 }} / 超前 {{ gitSync.data?.ahead ?? 0 }}</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border shadow-sm" :class="gitSyncStateClass(gitSync.data)">
+                                        <div class="text-[11px] font-black uppercase tracking-wider mb-2 opacity-70">工作区状态</div>
+                                        <div class="text-lg font-black">{{ gitSync.data ? (gitSync.data.is_clean ? '干净' : `有 ${gitSync.data.dirty_count || 0} 处改动`) : '无数据' }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                    <div class="lg:col-span-2 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">最后一次提交</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-bold text-slate-700">
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200">
+                                                <div class="text-[10px] text-slate-400 uppercase mb-1">Commit</div>
+                                                <div class="break-all">{{ gitSync.data?.last_commit?.full || gitSync.data?.current_commit || 'N/A' }}</div>
+                                            </div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200">
+                                                <div class="text-[10px] text-slate-400 uppercase mb-1">时间</div>
+                                                <div>{{ gitSync.data?.last_commit?.date || 'N/A' }}</div>
+                                            </div>
+                                            <div class="bg-white rounded-xl p-3 border border-slate-200 md:col-span-2">
+                                                <div class="text-[10px] text-slate-400 uppercase mb-1">说明</div>
+                                                <div>{{ gitSync.data?.last_commit?.subject || 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                        <div v-if="gitSync.data?.dirty_preview?.length" class="mt-4">
+                                            <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-3">未提交改动预览</div>
+                                            <div class="bg-slate-900 text-slate-100 rounded-xl p-3 font-mono text-xs leading-6 overflow-auto border border-slate-700 max-h-48">
+                                                <div v-for="line in gitSync.data.dirty_preview" :key="line">{{ line }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div class="text-xs font-black text-slate-600 uppercase tracking-wider mb-4">操作输出</div>
+                                        <div v-if="gitSync.outputTail?.length" class="bg-slate-900 text-slate-100 rounded-xl p-3 font-mono text-xs leading-6 overflow-auto border border-slate-700 max-h-64">
+                                            <div v-for="line in gitSync.outputTail" :key="line">{{ line }}</div>
+                                        </div>
+                                        <div v-else class="text-xs font-medium text-slate-500 leading-relaxed bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                            暂无执行输出。你可以先点“刷新状态”看当前仓库状态，或者抓取远端状态后再决定是否需要强制同步。
+                                        </div>
+                                        <div class="mt-4 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 font-bold">
+                                            强制同步会调用后端 `git reset --hard` 与 `git clean -fd`，会直接覆盖当前未提交改动。
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-slate-400 bg-gradient-to-br from-slate-50/30 to-white">
+                                <h3 class="text-lg md:text-xl font-black text-slate-700 mb-6 flex items-center gap-2 tracking-tight">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM11 19.93V17H13V19.93C16.6 19.57 19.57 16.6 19.93 13H17V11H19.93C19.57 7.4 16.6 4.43 13 4.07V7H11V4.07C7.4 4.43 4.43 7.4 4.07 11H7V13H4.07C4.43 16.6 7.4 19.57 11 19.93Z"></path></svg> 杂项与安全控制
+                                </h3>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div class="bg-rose-50/50 p-5 md:p-6 rounded-2xl border border-rose-100 shadow-inner flex flex-col justify-between">
+                                        <div>
+                                            <label class="block text-rose-800 text-xs font-black uppercase tracking-wider mb-3">Web 控制台保护密码</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.web ? 'text' : 'password'" v-model="config.web_password" class="w-full appearance-none bg-white border-2 border-rose-200 text-rose-700 font-extrabold rounded-xl py-3.5 px-4 pr-12 focus:outline-none focus:ring-0 focus:border-rose-500 transition-colors shadow-sm text-base">
+                                                <button @click="showPwd.web = !showPwd.web" class="absolute right-4 top-1/2 -translate-y-1/2 text-xl text-slate-400 hover:text-rose-600 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.web" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="text-[11px] text-rose-500/80 font-medium bg-white px-3 py-1.5 rounded-lg border border-rose-100 shadow-sm inline-block">请妥善保管此密码，热重载后立即生效</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner flex flex-col justify-between">
+                                        <div>
+                                            <label class="block text-slate-600 text-xs font-black uppercase tracking-wider mb-3 flex items-center flex-wrap gap-2">
+                                                <span>终端日志显示上限</span>
+                                                <span class="text-[10px] text-slate-400 font-normal bg-white px-2 py-0.5 rounded border border-slate-200">超出后删除防卡顿</span>
+                                            </label>
+                                            <div>
+                                                <input type="number" v-model.number="config.max_log_lines" class="w-full appearance-none bg-white border-2 border-slate-200 text-slate-800 font-bold rounded-xl py-3.5 px-4 focus:outline-none focus:ring-0 focus:border-slate-400 transition-colors shadow-sm text-base">
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="text-[11px] text-amber-600/80 font-medium bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100 shadow-sm inline-block">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> 设置过大(>1000)可能导致浏览器严重卡顿
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner flex flex-col justify-between">
+                                        <div>
+                                            <label class="block text-slate-600 text-xs font-black uppercase tracking-wider mb-3 flex items-center flex-wrap gap-2">
+                                                <span>集群账号上传超时（秒）</span>
+                                            </label>
+                                            <div>
+                                                <input type="number" v-model.number="config.cluster_upload_timeout_sec" min="15" max="3600" class="w-full appearance-none bg-white border-2 border-slate-200 text-slate-800 font-bold rounded-xl py-3.5 px-4 focus:outline-none focus:ring-0 focus:border-slate-400 transition-colors shadow-sm text-base">
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="text-[11px] text-sky-700/80 font-medium bg-sky-50 px-3 py-1.5 rounded-lg border border-sky-100 shadow-sm inline-block">
+                                                控制节点向总控上传等待时长。默认 15 秒，最大 3600 秒。
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-indigo-50/40 p-5 md:p-6 rounded-2xl border border-indigo-100 shadow-inner flex flex-col justify-between">
+                                        <div>
+                                            <label class="block text-indigo-800 text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                                Codex 身份全局获取
+                                            </label>
+                                            <label class="relative inline-flex items-center cursor-pointer group mt-2">
+                                                <input type="checkbox" v-model="config.enable_codex_agent_identity" @change="saveConfig" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner group-hover:shadow-md"></div>
+                                                <span class="ml-3 text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">自动注册并使用 Agent Identity 格式</span>
+                                            </label>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="text-[11px] text-indigo-700/80 font-medium bg-indigo-100/50 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm inline-block">
+                                                开启后，将使用新 Agent Identity 格式进行注册与获取。
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-amber-50/50 p-5 md:p-6 rounded-2xl border border-amber-200/60 shadow-inner flex flex-col justify-between">
+                                        <div>
+                                             <label class="block text-amber-800 text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                                接管模式控制
+                                            </label>
+                                            <label class="relative inline-flex items-center cursor-pointer group w-full mt-2">
+                                                <input type="checkbox" v-model="config.disable_forced_takeover" class="sr-only peer">
+                                                <div class="relative min-w-[44px] w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-amber-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="ml-4 text-sm font-black text-amber-900 tracking-wide flex-1">放弃强行变道无密码OTP</span>
+                                            </label>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="text-[11px] text-amber-700/80 font-medium bg-amber-100/50 px-3 py-1.5 rounded-lg border border-amber-200 shadow-sm inline-block">
+                                                (目前废弃) 开启后直接放弃无密码接管流程，节省 HeroSMS 接码成本。
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-red-50/40 p-5 md:p-6 rounded-2xl border border-red-100 shadow-inner flex flex-col justify-between">
+                                        <div>
+                                            <label class="block text-red-800 text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                Grok账号风控处理
+                                            </label>
+                                            <label class="relative inline-flex items-center cursor-pointer group w-full mt-2">
+                                                <input type="checkbox" v-model="config.discard_on_downgrade" @change="saveConfig" class="sr-only peer">
+                                                <div class="relative min-w-[44px] w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-red-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="ml-4 text-sm font-black text-red-900 tracking-wide flex-1">降智号立即作废丢弃</span>
+                                            </label>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="text-[11px] text-red-700/80 font-medium bg-red-100/50 px-3 py-1.5 rounded-lg border border-red-200 shadow-sm inline-block">
+                                                开启后，若检测到Grok账号(已降智)，将自动丢弃该账号不再入库。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-amber-400 bg-gradient-to-br from-amber-50/30 to-white">
+                                <h3 class="text-lg md:text-xl font-black text-amber-600 mb-6 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"></path></svg></span> 并发与时延微调</h3>
+                                <div class="bg-amber-50/50 p-5 md:p-6 rounded-2xl border border-amber-200/60 mb-6 shadow-inner flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+                                    <label class="relative inline-flex bg-white px-5 py-3 rounded-xl cursor-pointer hover:bg-amber-50 transition-colors shadow-sm border border-amber-200 items-center group w-full md:w-auto">
+                                        <input type="checkbox" v-model="config.enable_multi_thread_reg" class="sr-only peer">
+                                        <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-amber-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                        <span class="ml-3 text-sm md:text-base font-black text-amber-900 tracking-wide">允许多线程并发</span>
+                                    </label>
+                                    <div class="flex items-center gap-3 w-full md:w-auto bg-white p-2.5 rounded-xl border border-amber-200 shadow-sm" :class="{'opacity-50 grayscale transition-opacity': !config.enable_multi_thread_reg}">
+                                        <label class="text-[11px] text-amber-800 font-black uppercase tracking-wider whitespace-nowrap ml-2">线程数</label>
+                                        <input type="number" v-model.number="config.reg_threads" :disabled="!config.enable_multi_thread_reg" class="appearance-none bg-amber-50 border border-amber-300 text-amber-900 font-black rounded-lg py-2 px-2 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors text-base w-20 text-center shadow-inner">
+                                    </div>
+                                </div>
+
+                                <div class="bg-sky-50/60 p-5 md:p-6 rounded-2xl border border-sky-200/70 mb-6 shadow-inner">
+                                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                                        <div>
+                                            <div class="text-sm font-black text-sky-900">Grok 自动重建</div>
+                                            <div class="text-[11px] text-sky-700 mt-1">达到任一阈值后，不中断当前任务，并在下一个任务执行前重建</div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="config.grok_browser_recycle_enabled" class="sr-only peer">
+                                            <div class="relative w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                                            <span class="ml-3 text-sm font-black text-sky-900">启用</span>
+                                        </label>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" :class="{'opacity-50': !config.grok_browser_recycle_enabled}">
+                                        <div class="bg-white p-4 rounded-xl border border-sky-200 shadow-sm">
+                                            <label class="block text-[11px] text-sky-800 font-black uppercase tracking-wider mb-2">任务数量阈值</label>
+                                            <input type="number" min="0" v-model.number="config.grok_browser_recycle_task_limit" :disabled="!config.grok_browser_recycle_enabled" class="w-full bg-sky-50 border border-sky-200 text-sky-900 font-black rounded-lg py-2.5 px-3 text-center" placeholder="50">
+                                            <p class="text-[10px] text-slate-500 mt-2">成功、失败、降智丢弃和异常任务均计数；0 表示禁用数量阈值。</p>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-sky-200 shadow-sm">
+                                            <label class="block text-[11px] text-sky-800 font-black uppercase tracking-wider mb-2">运行时长阈值（分钟）</label>
+                                            <input type="number" min="0" v-model.number="config.grok_browser_recycle_minutes_limit" :disabled="!config.grok_browser_recycle_enabled" class="w-full bg-sky-50 border border-sky-200 text-sky-900 font-black rounded-lg py-2.5 px-3 text-center" placeholder="120">
+                                            <p class="text-[10px] text-slate-500 mt-2">从本轮生命周期开始计算；0 表示禁用时长阈值。</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <label class="block text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">Token 等待下限(秒)</label>
+                                        <input type="number" v-model.number="config.login_delay_min" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-inner text-center">
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <label class="block text-[11px] text-slate-500 font-black uppercase tracking-wider mb-2">Token 等待上限(秒)</label>
+                                        <input type="number" v-model.number="config.login_delay_max" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-inner text-center">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+                                        <label class="text-[11px] text-slate-500 font-black uppercase tracking-wider leading-relaxed">验证码(OTP)<br>重发(Resend)次数</label>
+                                        <input type="number" v-model.number="config.max_otp_retries" class="w-24 appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-inner text-center">
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+                                        <label class="text-[11px] text-slate-500 font-black uppercase tracking-wider leading-relaxed">验证码提取<br>单次轮询最大次数</label>
+                                        <input type="number" v-model.number="config.otp_poll_max_attempts" class="w-24 appearance-none bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-inner text-center" placeholder="默认 20">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-emerald-500 bg-gradient-to-br from-emerald-50/10 to-white lg:col-span-2">
+                                <h3 class="text-lg md:text-xl font-black text-emerald-700 mb-6 flex items-center gap-2 tracking-tight">
+                                    <span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></span> 云端授权管理控制台
+                                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 shadow-sm ml-2">容器部署必备</span>
+                                </h3>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-stretch">
+                                    <div class="bg-emerald-50/50 p-5 md:p-6 rounded-2xl border border-emerald-200/60 shadow-inner flex flex-col justify-center">
+                                        <label class="block text-emerald-800 text-xs font-black uppercase tracking-wider mb-3">请加入官方群获取授权凭证后，上传 wenfxl.license 然后左下角重启项目</label>
+                                        <div class="flex flex-col xl:flex-row gap-3 mt-auto">
+                                            <input type="file" id="licenseFileInput" accept=".license,.txt,application/octet-stream,text/plain"
+                                                   class="flex-1 appearance-none bg-white border border-emerald-200 text-slate-700 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-colors shadow-sm text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 cursor-pointer">
+                                            <button @click="uploadLicenseFile"
+                                                    class="px-5 py-2.5 bg-emerald-600 text-white text-sm font-black rounded-xl hover:bg-emerald-700 active:scale-95 transition-all shadow-md shadow-emerald-500/30 whitespace-nowrap flex items-center justify-center gap-2">
+                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4"></path></svg></span> 确认上传
+                                            </button>
+                                        </div>
+                                        <p class="text-[11px] text-emerald-600/80 mt-3 font-medium">支持上传 .license 授权文件，自动保存至 MySQL/SQLite 系统库。</p>
+                                    </div>
+
+                                    <div class="bg-rose-50/50 p-5 md:p-6 rounded-2xl border border-rose-200/60 shadow-inner flex flex-col justify-center">
+                                        <label class="block text-rose-800 text-xs font-black uppercase tracking-wider mb-3">授权与设备状态重置</label>
+                                        <div class="mt-auto">
+                                            <button @click="authResetModal.show = true"
+                                                    class="w-full px-6 py-3 md:py-3.5 bg-white border-2 border-rose-200 text-rose-600 text-sm font-black rounded-xl hover:bg-rose-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 group">
+                                                <span class="group-hover:rotate-12 transition-transform text-lg"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 一键重置系统授权与设备绑定
+                                            </button>
+                                        </div>
+                                        <p class="text-[11px] text-rose-500/80 mt-3 font-medium">如果连数据库一起迁移新机，那么首次运行时，一定要在这里清理数据库旧机器码与租约数据。可以不清理(License)。</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-blue-500 bg-gradient-to-br from-blue-50/20 to-white lg:col-span-2" v-if="config.normal_mode">
+                                <h3 class="text-lg md:text-xl font-black text-blue-700 mb-6 flex items-center gap-2 tracking-tight pb-4 border-b border-blue-100"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></span> 常规量产模式边界控制</h3>
+                                <div class="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-stretch">
+                                    <div class="w-full md:flex-1 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-inner flex flex-col justify-center">
+                                        <label class="block text-xs font-black text-slate-600 uppercase tracking-wider mb-4 text-center md:text-left">防风控缓冲范围 (秒)</label>
+                                        <div class="flex items-center justify-center md:justify-start gap-4">
+                                            <input type="number" v-model.number="config.normal_mode.sleep_min" class="w-28 appearance-none bg-white border border-slate-300 text-slate-800 font-bold rounded-xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm text-center text-lg" placeholder="最小">
+                                            <span class="text-slate-400 font-black text-xl">~</span>
+                                            <input type="number" v-model.number="config.normal_mode.sleep_max" class="w-28 appearance-none bg-white border border-slate-300 text-slate-800 font-bold rounded-xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm text-center text-lg" placeholder="最大">
+                                        </div>
+                                    </div>
+                                    <div class="w-full md:w-1/3 bg-blue-50/50 p-5 rounded-2xl border border-blue-200 flex flex-col justify-center shadow-sm">
+                                        <label class="block text-center font-black text-blue-800 text-xs mb-3 uppercase tracking-wider">单次产出目标 <span class="text-[10px] font-bold text-blue-500/80 block mt-1">(0为无限)</span></label>
+                                        <input type="number" v-model.number="config.normal_mode.target_count" class="w-full md:w-4/5 mx-auto appearance-none bg-white border-2 border-blue-300 text-blue-700 font-black text-2xl md:text-3xl rounded-xl py-3 md:py-4 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-inner text-center">
+                                    </div>
+                                </div>
+                                <div class="col-span-2 md:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-all group">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-black text-slate-700 uppercase tracking-widest">保留仅注册成功账号</span>
+                                                <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-[10px] text-indigo-500 font-bold border border-indigo-100">常规模式专属</span>
+                                            </div>
+                                            <p class="text-[11px] text-slate-400 font-medium leading-relaxed max-w-[240px]">
+                                                开启后，即使未获取到 Token 的“半成品”账号也会强行入库，方便您后续手动登录提取。
+                                            </p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="config.retain_reg_only" @change="saveConfig" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner group-hover:shadow-md"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-span-2 md:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all group">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-black text-slate-700 uppercase tracking-widest">保存 IMG 账号到本地</span>
+                                                <span class="px-1.5 py-0.5 rounded bg-blue-50 text-[10px] text-blue-500 font-bold border border-blue-100">常规模式专属</span>
+                                            </div>
+                                            <p class="text-[11px] text-slate-400 font-medium leading-relaxed max-w-[240px]">
+                                                开启后，常规模式注册成功会自动将 image2api 凭证写入本地数据库。
+                                            </p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" v-model="config.normal_mode.save_img_to_local" @change="saveConfig" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner group-hover:shadow-md transition-all duration-300"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+

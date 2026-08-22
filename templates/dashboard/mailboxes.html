@@ -1,0 +1,131 @@
+                        <div v-show="currentTab === 'mailboxes'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden relative transition-shadow duration-300 hover:shadow-md">
+
+                            <div v-if="showImportMailboxModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                                <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
+                                    <h3 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></span> 批量导入邮箱</h3>
+                                    <p class="text-xs text-slate-500 mb-3 font-bold bg-slate-50 p-2 rounded border border-slate-100">
+                                        支持格式 (每行一个): <br>
+                                        <code class="text-sky-600">email----password</code> <br>
+                                        <code class="text-sky-600">email----password----client_id----refresh_token</code>
+                                    </p>
+                                    <textarea v-model="importMailboxText" class="w-full h-64 appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-xs leading-relaxed placeholder:text-slate-300 mb-4" placeholder="在此粘贴数据..."></textarea>
+                                    <div class="flex justify-end gap-3">
+                                        <button @click="showImportMailboxModal = false" class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all">取消</button>
+                                        <button @click="submitImportMailboxes" :disabled="isImportingMailbox" class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md flex items-center gap-2 transition-all disabled:opacity-50">
+                                            <svg v-if="isImportingMailbox" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                                            确认导入
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 min-h-[80px]">
+                                <div class="flex items-center gap-3">
+                                    <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">微软邮箱资源库</h2>
+                                        <button @click="fetchMailboxes(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-3 items-center w-full xl:w-auto">
+                                        <div class="relative flex items-center">
+                                            <span class="absolute left-3 text-slate-400 text-sm"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></span>
+                                        <input type="text" v-model="searchMailboxes" placeholder="搜索微软邮箱..." class="pl-8 pr-3 py-1.5 w-32 md:w-48 text-sm bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-sm font-medium">
+                                    </div>
+                                    <button @click="showImportMailboxModal = true" class="text-sm bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1.5 rounded-lg hover:bg-sky-100 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 导入数据
+                                    </button>
+                                    <button @click="showPwd.showMailboxesPlaintext = !showPwd.showMailboxesPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold inline-flex items-center gap-1 whitespace-nowrap">
+                                        <span class="inline-flex items-center gap-1 whitespace-nowrap"><svg v-if="showPwd.showMailboxesPlaintext" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><span>{{ showPwd.showMailboxesPlaintext ? '脱敏' : '明文' }}</span></span>
+                                    </button>
+
+                                    <div v-if="selectedMailboxes.length > 0" class="flex flex-wrap items-center gap-2 bg-indigo-50 border border-indigo-100 p-1.5 rounded-xl shadow-sm transition-all duration-300">
+                                        <span class="text-xs font-black text-indigo-600 px-2">已选 {{ selectedMailboxes.length }}</span>
+                                        <button @click="exportSelectedMailboxesToTxt" class="px-3 py-1 bg-white text-indigo-600 rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> 导出 TXT</button>
+                                        <button @click="recoverSelectedMailboxes" class="px-3 py-1 bg-white text-amber-600 rounded-lg text-xs font-bold shadow-sm hover:bg-amber-50 transition"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 恢复正常</button>
+                                        <button @click="deleteSelectedMailboxes" class="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 删除选中</button>
+                                    </div>
+
+                                    <div class="flex items-center gap-2 ml-auto xl:ml-2 border-l border-slate-200 pl-3">
+                                        <button @click="exportAllMailboxes" class="px-3 py-1.5 bg-slate-200/70 text-slate-600 text-sm font-bold rounded-lg hover:bg-slate-300 transition flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg> 导出全部</button>
+                                        <button @click="clearAllMailboxes" class="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold rounded-lg hover:bg-rose-100 transition flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 清空库</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
+                                <table class="min-w-full divide-y divide-slate-100">
+                                    <thead class="bg-slate-50/80">
+                                        <tr>
+                                            <th class="px-5 md:px-8 py-4 text-left w-12"><input type="checkbox" @change="toggleAllMailboxes" :checked="selectedMailboxes.length === filteredMailboxes.length && filteredMailboxes.length > 0" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"></th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-16">#</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">邮箱账号</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">鉴权类型</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">状态</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">分裂次数</th>
+                                            <th class="px-5 md:px-8 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">导入时间</th>
+                                            <th class="px-5 md:px-8 py-4 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-slate-50">
+                                        <tr v-if="filteredMailboxes.length === 0">
+                                            <td colspan="6" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无邮箱数据，请点击右上角导入</td>
+                                        </tr>
+                                        <tr v-for="(mb, index) in filteredMailboxes" :key="index" class="hover:bg-slate-50 transition duration-200" :class="{'bg-indigo-50/60': selectedMailboxes.includes(mb.email)}">
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap"><input type="checkbox" :value="mb.email" v-model="selectedMailboxes" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"></td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-400 font-mono font-medium">{{ index + 1 }}</td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
+                                                {{ showPwd.showMailboxesPlaintext ? mb.email : maskEmail(mb.email) }}
+                                            </td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap">
+                                                <span v-if="mb.refresh_token" class="px-2 py-1 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded border border-indigo-100">OAuth</span>
+                                                <span v-else class="px-2 py-1 text-[10px] font-black bg-slate-100 text-slate-600 rounded border border-slate-200">密码</span>
+                                            </td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap">
+                                                <span v-if="mb.status === 0" class="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-[10px] font-black bg-emerald-50 text-emerald-600 rounded-md border border-emerald-200"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg><span>未使用</span></span>
+                                                <span v-else-if="mb.status === 1" class="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-[10px] font-black bg-amber-50 text-amber-600 rounded-md border border-amber-200"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>已注册 (被占用)</span></span>
+                                                <span v-else-if="mb.status === 2" class="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-[10px] font-black bg-blue-50 text-blue-600 rounded-md border border-blue-200"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg><span>已出凭证</span></span>
+                                                <span v-else class="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-[10px] font-black bg-rose-50 text-rose-600 rounded-md border border-rose-200"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span>失效/死号</span></span>
+                                            </td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">{{ mb.fission_count || 0 }} <small class="opacity-70">fission</small></td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">{{ formatTime(mb.created_at) }}</td>
+                                            <td class="px-5 md:px-8 py-4 whitespace-nowrap text-center">
+                                                <button v-if="!mb.refresh_token"
+                                                        @click="openOutlookAuthModal(mb)"
+                                                        class="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300 rounded-lg text-xs font-bold transition-colors shadow-sm active:scale-95">
+                                                    <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg> 去授权</span>
+                                                </button>
+                                                <span v-else class="text-xs font-bold text-emerald-500 flex items-center justify-center gap-1">
+                                                    <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span> 已授权
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="inventory-footer px-5 md:px-8 py-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                                <div class="text-sm text-slate-500 font-bold flex flex-wrap items-center gap-2">
+                                    <span>共 <span class="text-sky-600 text-base font-black">{{ totalMailboxes }}</span> 个邮箱，</span>
+                                    <span>第 <span class="text-slate-800">{{ mailboxPage }}</span>/{{ mailboxTotalPages }} 页</span>
+                                    <select v-model.number="mailboxPageSize" @change="changeMailboxPageSize" class="bg-white border border-slate-200 text-slate-700 py-1.5 px-3 rounded-xl shadow-sm focus:outline-none ml-2 font-bold">
+                                        <option :value="10">10 条/页</option>
+                                        <option :value="50">50 条/页</option>
+                                        <option :value="200">200 条/页</option>
+                                    </select>
+                                </div>
+                                <div class="flex gap-2">
+                                    <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 shadow-sm mr-1 h-[38px] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                                        <span class="text-xs text-slate-400 font-bold">前往</span>
+                                        <input type="number"
+                                               :placeholder="mailboxPage"
+                                               @change="if($event.target.value) changeMailboxPage(parseInt($event.target.value)); $event.target.value='';"
+                                               @keyup.enter="$event.target.blur()"
+                                               class="w-10 text-center text-sm font-bold text-slate-700 placeholder:text-slate-700 border-none focus:ring-0 p-0 m-0 bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                        <span class="text-xs text-slate-400 font-bold">页</span>
+                                    </div>
+                                    <button @click="changeMailboxPage(mailboxPage - 1)" :disabled="mailboxPage <= 1" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">上一页</button>
+                                    <button @click="changeMailboxPage(mailboxPage + 1)" :disabled="mailboxPage >= mailboxTotalPages" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">下一页</button>
+                                </div>
+                            </div>
+                        </div>

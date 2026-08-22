@@ -1,0 +1,63 @@
+                        <div v-show="currentTab === 'console'" class="h-full flex flex-col">
+                            <div class="flex justify-between items-end mb-3 md:mb-4">
+                                <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">实时运行日志</h2>
+                                <button @click="clearLogs" class="text-xs md:text-sm bg-white/80 backdrop-blur-md text-slate-600 px-4 py-2 rounded-xl hover:bg-white active:scale-95 transition-all font-bold shadow-sm border border-slate-200 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 清屏
+                                </button>
+                            </div>
+
+                            <div class="bg-[#0f172a] rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] relative overflow-hidden border border-slate-800/80 flex flex-col h-[calc(100vh-220px)] md:h-[calc(100vh-280px)] min-h-[450px]">
+                                <div class="w-full h-10 md:h-12 bg-[#1e293b] flex items-center px-4 md:px-5 gap-3 border-b border-slate-800 shrink-0">
+                                    <div class="flex gap-1.5 md:gap-2">
+                                        <div class="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-rose-500 shadow-sm border border-rose-600/50"></div>
+                                        <div class="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-amber-500 shadow-sm border border-amber-600/50"></div>
+                                        <div class="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full bg-emerald-500 shadow-sm border border-emerald-600/50"></div>
+                                    </div>
+                                    <div class="flex-1 text-center flex justify-center items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" :class="isRunning ? 'bg-emerald-400 text-emerald-400 animate-pulse' : 'bg-slate-500 text-slate-500'"></span>
+                                        <span class="text-[11px] md:text-xs text-slate-400 font-mono font-medium tracking-wider">wfxl-openai-terminal</span>
+                                    </div>
+                                    <div class="w-10"></div>
+                                </div>
+
+                                <div class="flex-1 overflow-y-auto p-3 md:p-5 text-[12px] md:text-[14px] font-mono leading-relaxed" id="terminal-container" style="scroll-behavior: smooth;">
+                                    <div v-if="logs.length === 0" class="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+                                        <div class="text-4xl md:text-5xl opacity-30 grayscale"><svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></div>
+                                        <div class="font-medium text-sm md:text-base tracking-wide text-slate-400">系统待命，日志将在此打印...</div>
+                                    </div>
+
+                                    <div v-for="(log, index) in logs" :key="log.id"
+                                         class="flex items-start gap-2.5 md:gap-4 py-1.5 px-2 md:px-3 rounded-lg hover:bg-slate-800/50 transition-colors group">
+
+                                        <template v-if="log.parsed">
+                                            <span class="text-slate-500 shrink-0 select-none font-medium">[{{ log.time }}]</span>
+
+                                            <span class="shrink-0 w-[55px] md:w-[75px] text-center rounded-md text-[10px] md:text-[11px] font-black tracking-widest py-0.5 border shadow-sm"
+                                                  :class="{
+                                                      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20': log.level === 'SUCCESS',
+                                                      'bg-rose-500/10 text-rose-400 border-rose-500/20': log.level === 'ERROR',
+                                                      'bg-amber-500/10 text-amber-400 border-amber-500/20': log.level === 'WARNING',
+                                                      'bg-sky-500/10 text-sky-400 border-sky-500/20': log.level === 'INFO' || log.level === '系统',
+                                                      'bg-slate-700/30 text-slate-300 border-slate-600/50': !['SUCCESS','ERROR','WARNING','INFO','系统'].includes(log.level)
+                                                  }">
+                                                {{ log.level }}
+                                            </span>
+
+                                            <span class="flex-1 break-all tracking-tight font-medium"
+                                                  :class="{
+                                                      'text-emerald-300 drop-shadow-[0_0_8px_rgba(110,231,183,0.3)]': log.level === 'SUCCESS',
+                                                      'text-rose-300 drop-shadow-[0_0_8px_rgba(253,164,175,0.3)]': log.level === 'ERROR',
+                                                      'text-amber-300 drop-shadow-[0_0_8px_rgba(252,211,77,0.3)]': log.level === 'WARNING',
+                                                      'text-slate-300': !['SUCCESS','ERROR','WARNING'].includes(log.level)
+                                                  }">
+                                                {{ log.text }}
+                                            </span>
+                                        </template>
+
+                                        <template v-else>
+                                            <span class="text-slate-400 font-medium whitespace-pre-wrap break-all tracking-tight">{{ log.raw }}</span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>

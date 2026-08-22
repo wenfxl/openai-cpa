@@ -1,0 +1,256 @@
+                        <div v-show="currentTab === 'accounts'" class="inventory-shell inventory-panel mobile-table-priority rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-md">
+                            <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col gap-4">
+                                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full">
+                                    <div class="flex items-center gap-3">
+                                        <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">本地账号库</h2>
+                                        <button @click="fetchAccounts(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-3 items-center w-full xl:w-auto">
+                                        <div class="relative flex items-center">
+                                            <span class="absolute left-3 text-slate-400 text-sm"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></span>
+                                            <input type="text" v-model="searchAccounts" placeholder="搜索本地账号..." class="pl-8 pr-3 py-1.5 w-32 md:w-48 text-sm bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-sm font-medium">
+                                        </div>
+                                        <button @click="showAccountsPlaintext = !showAccountsPlaintext" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                            <span v-if="showAccountsPlaintext">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                            </span>
+                                            <span v-else>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            </span>
+                                            {{ showAccountsPlaintext ? '脱敏' : '明文' }}
+                                        </button>
+                                        <button @click="toggleHideRegisterOnlyAccounts" class="text-sm bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 active:scale-95 transition shadow-sm font-bold flex items-center gap-1">
+                                            <span v-if="hideRegisterOnlyAccounts">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            </span>
+                                            <span v-else>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle></svg>
+                                            </span>
+                                            {{ hideRegisterOnlyAccounts ? '已过滤仅注册成功' : '过滤仅注册成功' }}
+                                        </button>
+
+                                        <div class="flex items-center gap-2 ml-auto xl:ml-2 border-l border-slate-200 pl-3">
+                                            <button @click="exportAllAccounts" class="px-3 py-1.5 bg-slate-200/70 text-slate-600 text-sm font-bold rounded-lg hover:bg-slate-300 transition flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg> 导出全部</button>
+                                            <button @click="clearAllAccounts" class="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 text-sm font-bold rounded-lg hover:bg-rose-100 transition flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 清空库</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="selectedAccounts.length > 0" class="flex flex-wrap items-center gap-3 bg-indigo-50/80 border border-indigo-100 p-2.5 rounded-xl shadow-sm transition-all duration-300 w-full animate-fade-in">
+                                    <span class="text-sm font-black text-indigo-700 px-2 border-r border-indigo-200">已选 {{ selectedAccounts.length }}</span>
+
+                                    <div class="flex items-center bg-white rounded-lg p-1 shadow-sm border border-slate-100 gap-1">
+                                        <span class="text-xs text-slate-400 font-bold px-2">导出:</span>
+                                        <button @click="exportSelectedAccounts" class="px-3 py-1 text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition">CPA</button>
+                                        <button @click="exportSub2Api" class="px-3 py-1 text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition">Sub2Api</button>
+                                        <button @click="exportAccountsToTxt" class="px-3 py-1 text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition">账密</button>
+                                    </div>
+
+                                    <div class="flex items-center bg-white rounded-lg p-1 shadow-sm border border-slate-100 gap-1">
+                                        <span class="text-xs text-slate-400 font-bold px-2">推送:</span>
+                                        <template v-if="!selectedAccounts.some(acc => acc.status === 'image2api')">
+                                            <button @click="bulkPushCPA" class="px-3 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded transition flex items-center"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>CPA</button>
+                                            <button @click="bulkPushSub2API" class="px-3 py-1 text-xs font-bold text-purple-600 hover:bg-purple-50 rounded transition flex items-center"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>Sub</button>
+                                        </template>
+                                        <button @click="bulkPushImage2API" class="px-3 py-1 text-xs font-bold text-pink-600 hover:bg-pink-50 rounded transition flex items-center"><svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Img2API</button>
+                                    </div>
+                                    <div class="flex items-center bg-white rounded-lg p-1 shadow-sm border border-slate-100 gap-1">
+                                        <span class="text-xs text-slate-400 font-bold px-2">凭证:</span>
+                                        <button @click="bulkRefreshLocalTokens" :disabled="isRefreshingAccounts" class="px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded transition flex items-center disabled:opacity-50">
+                                            <svg v-if="isRefreshingAccounts" class="w-4 h-4 inline animate-spin mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            <svg v-else class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 批量刷新
+                                        </button>
+                                    </div>
+                                        <button @click="deleteSelectedAccounts" class="px-4 py-1.5 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition ml-auto"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 删除选中</button>
+                                    </div>
+                                </div>
+                            <div class="inventory-toolbar inventory-stats p-5 md:px-8 border-b border-slate-100">
+                                <div class="grid grid-cols-2 xl:grid-cols-7 gap-2.5 w-full">
+
+                                    <div @click="filterLocalAccounts('all')" class="inventory-mini-card inventory-mini-card--slate cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'all' ? 'border-sky-300 ring-2 ring-sky-200 shadow-sky-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">账号总数</div>
+                                            <div class="text-[1.05rem] font-black text-slate-800 leading-none">{{ inventoryStats?.local?.total || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center shadow-inner border border-slate-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414A1 1 0 006.586 13H4"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('unpushed')" class="inventory-mini-card inventory-mini-card--amber cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'unpushed' ? 'border-amber-300 ring-2 ring-amber-200 shadow-amber-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-amber-500 mb-1 uppercase tracking-widest">未推送</div>
+                                            <div class="text-[1.05rem] font-black text-amber-600 leading-none">{{ inventoryStats?.local?.unpushed || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shadow-inner border border-amber-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('pushed')" class="inventory-mini-card inventory-mini-card--indigo cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'pushed' ? 'border-indigo-300 ring-2 ring-indigo-200 shadow-indigo-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-indigo-500 mb-1 uppercase tracking-widest">已推送</div>
+                                            <div class="text-[1.05rem] font-black text-indigo-600 leading-none">{{ inventoryStats?.local?.pushed || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shadow-inner border border-indigo-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m4-4H8"></path></svg></div>
+                                    </div>
+                                    <div @click="filterLocalAccounts('credential')" class="inventory-mini-card inventory-mini-card--cyan cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'credential' ? 'border-cyan-300 ring-2 ring-cyan-200 shadow-cyan-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-cyan-500 mb-1 uppercase tracking-widest">有凭证</div>
+                                            <div class="text-[1.05rem] font-black text-cyan-600 leading-none">{{ inventoryStats?.local?.credential || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center shadow-inner border border-cyan-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('image2api')" class="inventory-mini-card inventory-mini-card--pink cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'image2api' ? 'border-pink-300 ring-2 ring-pink-200 shadow-pink-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-pink-500 mb-1 uppercase tracking-widest">Img凭证</div>
+                                            <div class="text-[1.05rem] font-black text-pink-600 leading-none">{{ inventoryStats?.local?.image2api || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center shadow-inner border border-pink-100 z-10"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('active')" class="inventory-mini-card inventory-mini-card--emerald cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'active' ? 'border-emerald-300 ring-2 ring-emerald-200 shadow-emerald-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-emerald-500/80 mb-1 uppercase tracking-widest">活跃状态</div>
+                                            <div class="text-[1.05rem] font-black text-emerald-600 leading-none">{{ inventoryStats?.local?.active || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shadow-inner border border-emerald-100 z-10"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                    </div>
+
+                                    <div @click="filterLocalAccounts('disabled')" class="inventory-mini-card inventory-mini-card--rose cursor-pointer active:scale-95 bg-white shadow-sm border relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex justify-between items-center group" :class="accountStatusFilter === 'disabled' ? 'border-rose-300 ring-2 ring-rose-200 shadow-rose-100' : 'border-slate-200'">
+                                        <div class="z-10">
+                                            <div class="text-[10px] font-black text-rose-400 mb-1 uppercase tracking-widest">已禁用</div>
+                                            <div class="text-[1.05rem] font-black text-rose-600 leading-none">{{ inventoryStats?.local?.disabled || 0 }}</div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center shadow-inner border border-rose-100 z-10"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full hide-scrollbar">
+                                <table class="min-w-full divide-y divide-slate-100">
+                                    <thead class="bg-slate-50/80">
+                                        <tr>
+                                            <th class="px-3 md:px-4 py-3 text-left w-10"><input type="checkbox" @change="toggleAll" :checked="selectedAccounts.length === filteredAccounts.length && filteredAccounts.length > 0" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all"></th>
+                                            <th class="px-2 md:px-3 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
+                                            <th class="px-3 md:px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">账号 & 密码</th>
+                                            <th class="px-3 md:px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">当前状态</th>
+                                            <th class="px-3 md:px-4 py-3 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[100px]">推送平台</th>
+                                            <th class="px-3 md:px-4 py-3 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[130px]">入库时间</th>
+                                            <th class="px-3 md:px-4 py-3 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-slate-50">
+                                        <tr v-if="filteredAccounts.length === 0">
+                                            <td colspan="7" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无本地记录</td>
+                                        </tr>
+                                        <tr v-for="(acc, index) in filteredAccounts" :key="index" class="hover:bg-indigo-50/40 transition duration-200" :class="{'bg-indigo-50/60': selectedAccounts.includes(acc.email)}">
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap"><input type="checkbox" :value="acc.email" v-model="selectedAccounts" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all"></td>
+                                            <td class="px-2 md:px-3 py-3 whitespace-nowrap text-xs text-slate-400 font-mono font-medium">{{ index + 1 }}</td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap">
+                                                <div class="flex flex-col gap-1.5">
+                                                    <span class="text-sm font-bold text-slate-700">{{ showAccountsPlaintext ? acc.email : maskEmail(acc.email) }}</span>
+                                                    <div class="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+                                                        <span class="text-[10px] opacity-70"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span>
+                                                        <span class="bg-slate-50 rounded px-1.5 py-0.5 border border-slate-100 shadow-sm">{{ showAccountsPlaintext ? acc.password : '••••••••' }}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap">
+                                                <div class="flex flex-col gap-1.5 items-start">
+                                                    <span v-if="acc.status === '有凭证'" class="px-2 py-1 text-[10px] font-black bg-emerald-50 text-emerald-600 rounded border border-emerald-200 shadow-sm flex items-center gap-1">
+                                                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span> 完整凭证
+                                                    </span>
+                                                    <span v-else-if="acc.status === 'image2api'" class="px-2 py-1 text-[10px] font-black bg-emerald-50 text-emerald-600 rounded border border-emerald-200 shadow-sm flex items-center gap-1">
+                                                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span> image2api
+                                                    </span>
+                                                    <span v-else-if="acc.status === '仅注册成功'" class="px-2 py-1 text-[10px] font-black bg-amber-50 text-amber-600 rounded border border-amber-200 shadow-sm flex items-center gap-1">
+                                                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 仅注册
+                                                    </span>
+                                                    <span v-else class="px-2 py-1 text-[10px] font-black bg-slate-50 text-slate-500 rounded border border-slate-200 shadow-sm flex items-center gap-1">
+                                                        <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093v1.5M12 18h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span> 未知
+                                                    </span>
+
+                                                    <div v-if="acc.is_active === 0" class="px-2 py-1 text-[10px] font-black text-rose-600 bg-rose-50 rounded border border-rose-200 shadow-sm flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_5px_#f43f5e]"></span> 已禁用
+                                                    </div>
+
+                                                    <template v-else>
+                                                        <div v-if="!acc.push_platform" class="px-2 py-1 text-[10px] font-bold text-slate-400 bg-slate-100/50 rounded border border-slate-200 flex items-center gap-1">
+                                                            <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> 未推送
+                                                        </div>
+                                                        <div v-else-if="acc.is_active === 1" class="px-2 py-1 text-[10px] font-black text-emerald-600 bg-emerald-50 rounded border border-emerald-200 shadow-sm flex items-center gap-1">
+                                                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_#10b981] animate-pulse"></span> 活跃中
+                                                        </div>
+                                                        <div v-else class="px-2 py-1 text-[10px] font-bold text-slate-400 bg-slate-50 rounded border border-slate-200 shadow-sm flex items-center gap-1">
+                                                            <span class="w-1.5 h-1.5 bg-slate-300 rounded-full"></span> 待检查
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap text-center">
+                                                <div v-if="acc.push_platform" class="flex flex-col gap-1 items-center">
+                                                    <span v-for="badge in getPlatformBadges(acc.push_platform)" :key="badge.name"
+                                                          :class="getBadgeClass(badge.type)"
+                                                          class="px-2 py-0.5 rounded text-[10px] font-black border whitespace-nowrap tracking-wide transition-transform hover:scale-105 shadow-sm">
+                                                        {{ badge.name }}
+                                                    </span>
+                                                </div>
+                                                <span v-else class="px-2 py-0.5 bg-slate-50 text-slate-400 text-[10px] font-bold rounded border border-slate-200 shadow-sm">无</span>
+                                            </td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap text-center text-xs text-slate-500 font-mono">
+                                                {{ formatTime(acc.created_at) }}
+                                            </td>
+
+                                            <td class="px-3 md:px-4 py-3 whitespace-nowrap text-center">
+                                                <div class="flex gap-1.5 justify-center">
+                                                    <button v-if="acc.status !== 'image2api'" @click="triggerAccountAction(acc, 'push')" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1.5 rounded active:scale-95 transition-all shadow-sm">推CPA</button>
+                                                    <button v-if="acc.status !== 'image2api'" @click="triggerAccountAction(acc, 'push_sub2api')" class="text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1.5 rounded active:scale-95 transition-all shadow-sm">推Sub</button>
+                                                <!-- Grok2API 导入 -->
+                                                <button v-if="acc.status === '有凭证'" @click="triggerAccountAction(acc, 'grok2api-import')" class="text-[11px] font-bold text-fuchsia-700 bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200 px-2 py-1.5 rounded active:scale-95 transition-all shadow-sm">导Grok</button>
+                                                    <button @click="triggerAccountAction(acc, 'push_image2api')" class="text-[11px] font-bold text-pink-700 bg-pink-50 hover:bg-pink-100 border border-pink-200 px-2 py-1.5 rounded active:scale-95 transition-all shadow-sm">推Img</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="inventory-footer px-5 md:px-8 py-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                                <div class="text-sm text-slate-500 font-bold flex flex-wrap items-center gap-2">
+                                    <span>共 <span class="text-indigo-600 text-base font-black">{{ totalAccounts }}</span> 个，</span>
+                                    <span>第 <span class="text-slate-800">{{ currentPage }}</span>/{{ totalPages }} 页</span>
+                                    <select v-model.number="pageSize" @change="changePageSize" class="bg-white border border-slate-200 text-slate-700 py-1.5 px-3 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer text-sm ml-2 font-bold appearance-none pr-8 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_10px_center] bg-no-repeat">
+                                        <option :value="10">10 条/页</option>
+                                        <option :value="20">20 条/页</option>
+                                        <option :value="50">50 条/页</option>
+                                        <option :value="100">100 条/页</option>
+                                        <option :value="200">200 条/页</option>
+                                        <option :value="500">500 条/页</option>
+                                        <option :value="1000">1000 条/页</option>
+                                        <option :value="2000">2000 条/页</option>
+                                    </select>
+                                </div>
+                                <div class="flex gap-2 w-full md:w-auto justify-between md:justify-end">
+                                    <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 shadow-sm mr-1 h-[38px] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                                        <span class="text-xs text-slate-400 font-bold">前往</span>
+                                        <input type="number"
+                                               :placeholder="currentPage"
+                                               @change="if($event.target.value) changePage(parseInt($event.target.value)); $event.target.value='';"
+                                               @keyup.enter="$event.target.blur()"
+                                               class="w-10 text-center text-sm font-bold text-slate-700 placeholder:text-slate-700 border-none focus:ring-0 p-0 m-0 bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                        <span class="text-xs text-slate-400 font-bold">页</span>
+                                    </div>
+                                    <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all active:scale-95">
+                                        上一页
+                                    </button>
+                                    <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages" class="px-4 py-2 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all active:scale-95">
+                                        下一页
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+

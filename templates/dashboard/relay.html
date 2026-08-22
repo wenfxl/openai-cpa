@@ -1,0 +1,540 @@
+                        <div v-show="currentTab === 'relay'" v-if="config" class="space-y-5 md:space-y-8">
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-emerald-500 bg-gradient-to-br from-emerald-50/20 to-white" v-if="config.cpa_mode">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-slate-100 pb-5 gap-4">
+                                    <h3 class="text-xl md:text-2xl font-black text-emerald-700 tracking-tight flex items-center gap-2"><span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg></span> CPA 仓管中心
+                                        <a href="https://github.com/router-for-me/CLIProxyAPI" target="_blank" rel="noopener noreferrer" class="text-[10px] md:text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-2 py-1 rounded-md sm:ml-2 transition-colors inline-flex items-center gap-1 border border-emerald-200/60 shadow-sm">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                                前往项目地址
+                                        </a>
+                                    </h3>
+                                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                        <button @click="startManualCheck" :disabled="isRunning" class="w-full sm:w-auto px-5 py-2.5 md:py-3 bg-white border-2 border-emerald-500 text-emerald-600 text-sm font-black rounded-xl hover:bg-emerald-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                                            <span v-if="!isRunning" class="inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 001.555.832l10-6.86a1 1 0 000-1.664l-10-6.86A1 1 0 008 5.14z"></path></svg></span>
+                                            <span v-else class="inline-flex items-center justify-center animate-spin"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></span>
+                                            独立测活
+                                        </button>
+                                        <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-emerald-50 transition-colors shadow-sm border border-emerald-200 w-full sm:w-auto items-center justify-center group">
+                                            <input type="checkbox" v-model="config.cpa_mode.enable" @change="config.cpa_mode.enable ? config.sub2api_mode.enable = false : null" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-emerald-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="font-black text-emerald-900 text-sm md:text-base ml-3 tracking-wide">主开关：开启 CPA</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.cpa_mode.enable}">
+                                    <div class="col-span-1 space-y-5 bg-slate-50/80 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">CPA 接口地址</label>
+                                            <div class="relative">
+                                                <input v-if="!showPwd.cpa_url" readonly :value="maskValue(config.cpa_mode.api_url)"
+                                                       class="w-full appearance-none bg-white border border-emerald-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm text-sm">
+
+                                                <input v-else type="text" v-model="config.cpa_mode.api_url" autocomplete="off"
+                                                       class="w-full appearance-none bg-white border border-emerald-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm text-sm">
+
+                                                <button @click="showPwd.cpa_url = !showPwd.cpa_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500">
+                                                    <svg v-if="showPwd.cpa_url" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">登陆密码</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.cpa ? 'text' : 'password'" v-model="config.cpa_mode.api_token" class="w-full appearance-none bg-white border border-emerald-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm font-mono text-sm">
+                                                <button @click="showPwd.cpa = !showPwd.cpa" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-emerald-600 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.cpa" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="pt-4 border-t border-slate-200/60 mt-2">
+                                            <label class="relative inline-flex p-4 bg-white rounded-xl border border-blue-100 items-center cursor-pointer w-full hover:bg-blue-50/50 transition-colors shadow-sm group">
+                                                <input type="checkbox" v-model="config.cpa_mode.save_to_local" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                <span class="ml-3 text-sm font-black text-blue-800 tracking-wide">同步备份到账号库</span>
+                                            </label>
+                                        </div>
+                                        <div class="col-span-2 md:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-all group">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex flex-col gap-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs font-black text-slate-700 uppercase tracking-widest">保留仅注册成功账号</span>
+                                                        <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-[10px] text-indigo-500 font-bold border border-indigo-100">CPA 专属</span>
+                                                    </div>
+                                                    <p class="text-[11px] text-slate-400 font-medium leading-relaxed max-w-[240px]">
+                                                        开启后，即使未获取到 Token 的“半成品”账号也会强行入库，方便您后续手动登录提取。
+                                                    </p>
+                                                </div>
+                                                <label class="relative inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" v-model="config.cpa_mode.retain_reg_only" @change="saveConfig" class="sr-only peer">
+                                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner group-hover:shadow-md"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-span-1 lg:col-span-2 grid grid-cols-2 gap-5 md:gap-6">
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">库存报警阈值</label>
+                                            <input type="number" v-model.number="config.cpa_mode.min_accounts_threshold" class="w-full appearance-none bg-slate-50 border-none text-slate-800 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            <p class="text-[11px] text-slate-400 mt-2 font-medium leading-relaxed">设为 0 时将跳过库存巡检，直接按单次补发量执行补货，不再获取云端全量账号数据。</p>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
+                                            <label class="block text-[11px] text-emerald-600 font-black mb-2 uppercase tracking-wider">单次补发量</label>
+                                            <input type="number" v-model.number="config.cpa_mode.batch_reg_count" class="w-full appearance-none bg-emerald-50 border-none text-emerald-700 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">巡检间隔(分)</label>
+                                            <input type="number" v-model.number="config.cpa_mode.check_interval_minutes" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm text-center">
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">测活并发数</label>
+                                            <input type="number" v-model.number="config.cpa_mode.threads" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm text-center">
+                                        </div>
+
+                                        <div class="col-span-2 bg-gradient-to-br from-rose-50 to-white p-5 md:p-6 rounded-2xl border border-rose-100 mt-2 flex flex-col md:flex-row gap-6 shadow-sm">
+                                            <div class="w-full md:w-1/3 flex flex-col justify-center">
+                                                <label class="block text-rose-800 font-black text-xs md:text-sm mb-3 uppercase tracking-wider text-center md:text-left">周限额剔除阈值(%)</label>
+                                                <input type="number" v-model.number="config.cpa_mode.min_remaining_weekly_percent" class="w-full md:w-4/5 mx-auto md:mx-0 appearance-none bg-white border-2 border-rose-200 text-rose-600 font-black text-2xl md:text-3xl rounded-xl py-3 md:py-4 focus:outline-none focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-colors shadow-inner text-center">
+                                            </div>
+                                            <div class="w-full md:w-2/3 flex flex-col justify-center gap-3">
+                                                <label class="relative inline-flex p-3 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.cpa_mode.remove_on_limit_reached" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-[13px] md:text-sm font-black text-rose-900 ml-3 tracking-wide">耗尽自动物理删除</span>
+                                                </label>
+                                                <label class="relative inline-flex p-3 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.cpa_mode.remove_dead_accounts" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-[13px] md:text-sm font-black text-rose-900 ml-3 tracking-wide">死亡自动物理删除</span>
+                                                </label>
+                                                <label class="relative inline-flex p-3 bg-blue-50/50 rounded-xl border border-blue-100 items-center cursor-pointer shadow-sm hover:bg-blue-100/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.cpa_mode.enable_token_revive" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-[13px] md:text-sm font-black text-blue-900 ml-3 tracking-wide">尝试 Token 复活</span>
+                                                </label>
+                                                <label class="relative inline-flex p-3 bg-fuchsia-50/50 rounded-xl border border-fuchsia-100 items-center cursor-pointer shadow-sm hover:bg-fuchsia-100/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.cpa_mode.auto_re_oauth" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-fuchsia-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-[13px] md:text-sm font-black text-fuchsia-900 ml-3 tracking-wide">死号自动重走 OAuth</span>
+                                                </label>
+                                                <label class="relative inline-flex p-3 bg-cyan-50/50 rounded-xl border border-cyan-100 items-center cursor-pointer shadow-sm hover:bg-cyan-100/50 transition-colors w-full group">
+                                                    <input type="checkbox" v-model="config.cpa_mode.auto_check" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-cyan-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-[13px] md:text-sm font-black text-cyan-900 ml-3 tracking-wide">补货前自动巡检测活</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-purple-500 bg-gradient-to-br from-purple-50/20 to-white" v-if="config.sub2api_mode">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-slate-100 pb-5 gap-4">
+                                    <div>
+                                            <h3 class="text-xl md:text-2xl font-black text-purple-700 tracking-tight flex items-center gap-2"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M21 16.5C21 16.88 20.79 17.21 20.47 17.38L12.57 21.82C12.41 21.94 12.21 22 12 22C11.79 22 11.59 21.94 11.43 21.82L3.53 17.38C3.21 17.21 3 16.88 3 16.5V7.5C3 7.12 3.21 6.79 3.53 6.62L11.43 2.18C11.59 2.06 11.79 2 12 2C12.21 2 12.41 2.06 12.57 2.18L20.47 6.62C20.79 6.79 21 7.12 21 7.5V16.5Z"/></svg> Sub2API 仓管
+                                            <a href="https://github.com/Wei-Shaw/sub2api" target="_blank" rel="noopener noreferrer" class="text-[10px] md:text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold px-2 py-1 rounded-md sm:ml-2 transition-colors inline-flex items-center gap-1 border border-purple-200/60 shadow-sm">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                                    前往项目地址
+                                            </a>
+                                        </h3>
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                        <button @click="startManualCheck" :disabled="isRunning" class="w-full sm:w-auto px-5 py-2.5 md:py-3 bg-white border-2 border-cyan-500 text-cyan-600 text-sm font-black rounded-xl hover:bg-cyan-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                                            <span v-if="!isRunning" class="inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 001.555.832l10-6.86a1 1 0 000-1.664l-10-6.86A1 1 0 008 5.14z"></path></svg></span>
+                                            <span v-else class="inline-flex items-center justify-center animate-spin"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></span>
+                                            独立测活
+                                        </button>
+                                        <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-purple-50 transition-colors shadow-sm border border-purple-200 w-full sm:w-auto items-center justify-center group">
+                                            <input type="checkbox" v-model="config.sub2api_mode.enable" @change="config.sub2api_mode.enable ? config.cpa_mode.enable = false : null" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-purple-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="font-black text-purple-900 text-sm md:text-base ml-3 tracking-wide">主开关：开启 Sub2API</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.sub2api_mode.enable}">
+                                    <div class="col-span-1 space-y-5 bg-slate-50/80 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">Sub2API 接口地址</label>
+                                            <div class="relative">
+                                                <input v-if="!showPwd.sub_url" readonly :value="maskValue(config.sub2api_mode.api_url)"
+                                                       class="w-full appearance-none bg-white border border-purple-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm text-sm">
+
+                                                <input v-else type="text" v-model="config.sub2api_mode.api_url" autocomplete="off"
+                                                       class="w-full appearance-none bg-white border border-purple-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm text-sm">
+
+                                                <button @click="showPwd.sub_url = !showPwd.sub_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500">
+                                                    <svg v-if="showPwd.sub_url" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">API Key</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.sub2api ? 'text' : 'password'" v-model="config.sub2api_mode.api_key" class="w-full appearance-none bg-white border border-purple-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm font-mono text-sm">
+                                                <button @click="showPwd.sub2api = !showPwd.sub2api" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-purple-600 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.sub2api" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="pt-4 border-t border-slate-200/60 mt-2">
+                                            <label class="relative inline-flex p-4 bg-white rounded-xl border border-blue-100 items-center cursor-pointer w-full hover:bg-blue-50/50 transition-colors shadow-sm group">
+                                                <input type="checkbox" v-model="config.sub2api_mode.save_to_local" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                <span class="ml-3 text-sm font-black text-blue-800 tracking-wide">同步备份到账号库</span>
+                                            </label>
+                                        </div>
+                                        <div class="col-span-2 md:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-all group">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex flex-col gap-1">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs font-black text-slate-700 uppercase tracking-widest">保留仅注册成功账号</span>
+                                                        <span class="px-1.5 py-0.5 rounded bg-purple-50 text-[10px] text-purple-500 font-bold border border-purple-100">SUB 专属</span>
+                                                    </div>
+                                                    <p class="text-[11px] text-slate-400 font-medium leading-relaxed max-w-[240px]">
+                                                        防止因 Sub2API 绑定失败导致账号丢失。开启后将保留所有注册成功的原始账密。
+                                                    </p>
+                                                </div>
+                                                <label class="relative inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" v-model="config.sub2api_mode.retain_reg_only" @change="saveConfig" class="sr-only peer">
+                                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 shadow-inner group-hover:shadow-md"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-span-1 lg:col-span-2 grid grid-cols-2 gap-5 md:gap-6">
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">库存报警阈值</label>
+                                            <input type="number" v-model.number="config.sub2api_mode.min_accounts_threshold" class="w-full appearance-none bg-slate-50 border-none text-slate-800 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            <p class="text-[11px] text-slate-400 mt-2 font-medium leading-relaxed">设为 0 时将跳过库存巡检，直接按单次补发量执行补货，不再获取云端全量账号数据。</p>
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
+                                            <label class="block text-[11px] text-purple-600 font-black mb-2 uppercase tracking-wider">单次补发量</label>
+                                            <input type="number" v-model.number="config.sub2api_mode.batch_reg_count" class="w-full appearance-none bg-purple-50 border-none text-purple-700 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">巡检间隔(分)</label>
+                                            <input type="number" v-model.number="config.sub2api_mode.check_interval_minutes" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm text-center">
+                                        </div>
+                                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">测活并发数</label>
+                                            <input type="number" v-model.number="config.sub2api_mode.threads" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm text-center">
+                                        </div>
+                                        <div class="col-span-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">Sub2API 测活验证模型</label>
+                                            <div class="relative">
+                                                <select v-model="config.sub2api_mode.test_model" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm relative cursor-pointer bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat pr-10">
+                                                    <option value="gpt-5.4-mini">GPT-5.4-mini</option>
+                                                    <option value="gpt-5.5">GPT-5.5</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-span-2 bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-purple-300 transition-colors mt-1">
+                                            <label class="block text-[11px] text-slate-500 font-black mb-2 uppercase tracking-wider">专属代理池</label>
+                                            <textarea v-model="config.sub2api_mode.default_proxy"
+                                                      rows="4"
+                                                      class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm placeholder:text-slate-400 resize-y"
+                                                      placeholder="每行 1 个代理&#10;&#10;示例:&#10;socks5://user:pass@1.1.1.1:1080&#10;http://2.2.2.2:8080&#10;https://user:pass@proxy.example.com:443"></textarea>
+                                            <p class="text-[11px] text-slate-400 font-medium mt-2 flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"></path></svg><span>仅用于 Sub2API 推送与导出。0 行 = 不带代理，1 行 = 固定代理，2+ 行 = 按顺序轮转。</span></p>
+                                        </div>
+                                        <div class="col-span-2 bg-purple-50/50 p-5 md:p-6 rounded-2xl border border-purple-200 mt-2 space-y-6 shadow-sm">
+                                            <h4 class="text-sm md:text-base font-black text-purple-800 flex items-center gap-2 pb-3 border-b border-purple-200/60 uppercase tracking-widest">
+                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg></span> 新账号推送参数
+                                            </h4>
+
+                                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+                                                <div class="bg-white p-3 rounded-xl border border-purple-100 shadow-sm">
+                                                    <label class="block text-[11px] text-purple-800 font-black mb-1 uppercase tracking-wider">并发数</label>
+                                                    <span class="text-[10px] text-purple-500/80 block mb-2 font-medium">账号并发上限</span>
+                                                    <input type="number" min="1" v-model.number="config.sub2api_mode.account_concurrency" class="w-full appearance-none bg-slate-50 border border-purple-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-inner text-sm font-mono text-center">
+                                                </div>
+                                                <div class="bg-white p-3 rounded-xl border border-purple-100 shadow-sm">
+                                                    <label class="block text-[11px] text-purple-800 font-black mb-1 uppercase tracking-wider">负载因子</label>
+                                                    <span class="text-[10px] text-purple-500/80 block mb-2 font-medium">提高账号调度频率</span>
+                                                    <input type="number" min="1" v-model.number="config.sub2api_mode.account_load_factor" class="w-full appearance-none bg-slate-50 border border-purple-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-inner text-sm font-mono text-center">
+                                                </div>
+                                                <div class="bg-white p-3 rounded-xl border border-purple-100 shadow-sm">
+                                                    <label class="block text-[11px] text-purple-800 font-black mb-1 uppercase tracking-wider">优先级</label>
+                                                    <span class="text-[10px] text-purple-500/80 block mb-2 font-medium">数值越小越优先使用</span>
+                                                    <input type="number" min="1" v-model.number="config.sub2api_mode.account_priority" class="w-full appearance-none bg-slate-50 border border-purple-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-inner text-sm font-mono text-center">
+                                                </div>
+                                                <div class="bg-white p-3 rounded-xl border border-purple-100 shadow-sm">
+                                                    <label class="block text-[11px] text-purple-800 font-black mb-1 uppercase tracking-wider">账号计费倍率</label>
+                                                    <span class="text-[10px] text-purple-500/80 block mb-2 font-medium">0 = 不计费</span>
+                                                    <input type="number" step="0.1" min="0" v-model.number="config.sub2api_mode.account_rate_multiplier" class="w-full appearance-none bg-slate-50 border border-purple-200 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-inner text-sm font-mono text-center">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-purple-800 text-xs font-black mb-1.5 uppercase tracking-wider">WS mode</label>
+                                                <p class="text-[11px] text-purple-600/80 mb-3 font-medium">仅对 OpenAI OAuth 账号生效。启用后并发数将作为该账号 WS 连接池上限。</p>
+                                                <select v-model="config.sub2api_mode.enable_ws_mode" class="appearance-none bg-white border border-purple-200 text-purple-900 font-bold rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors shadow-sm text-sm w-full md:w-64 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%237e22ce%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat cursor-pointer">
+                                                    <option :value="false">关闭 (off)</option>
+                                                    <option :value="true">透传 (passthrough)</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="bg-white p-5 rounded-xl border border-purple-100 shadow-sm">
+                                                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
+                                                    <label class="block text-purple-800 text-xs font-black uppercase tracking-wider mb-0">绑定分组</label>
+                                                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                                                        <button @click="fetchSub2ApiGroups" :disabled="isLoadingSub2APIGroups"
+                                                                class="px-4 py-2 bg-purple-600 text-white text-xs font-black rounded-lg hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md shadow-purple-500/20 w-full sm:w-auto">
+                                                            <span :class="{'animate-spin text-sm': isLoadingSub2APIGroups}">
+                                                                <svg v-if="isLoadingSub2APIGroups" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                                                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                                            </span>
+                                                            {{ isLoadingSub2APIGroups ? '获取中...' : '获取线上分组' }}
+                                                        </button>
+                                                        <span v-if="config.sub2api_mode.account_group_ids" class="text-xs text-purple-700 font-mono font-bold bg-purple-50 rounded-md px-3 py-1 border border-purple-200 shadow-inner whitespace-nowrap">
+                                                            已选: {{ config.sub2api_mode.account_group_ids }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div v-if="sub2apiGroups.length > 0" class="flex flex-wrap gap-2.5">
+                                                    <label v-for="group in sub2apiGroups" :key="group.id"
+                                                           class="flex items-center gap-2 px-4 py-2 rounded-xl border-2 cursor-pointer transition-all text-xs font-black select-none shadow-sm active:scale-95"
+                                                           :class="isGroupSelected(group.id) ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/30' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50 hover:border-purple-300'">
+                                                        <input type="checkbox" class="sr-only" @change="toggleGroup(group.id)">
+                                                        {{ group.name }}
+                                                    </label>
+                                                </div>
+                                                <p v-else class="text-xs text-slate-400 italic font-medium bg-slate-50 p-3 rounded-lg border border-slate-100/50">填写接口地址和 API Key 并保存后，点击「获取线上分组」以同步数据。</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-span-2 bg-gradient-to-br from-rose-50 to-white p-5 md:p-6 rounded-2xl border border-rose-100 mt-2 flex flex-col gap-4 shadow-sm">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <label class="relative inline-flex p-4 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.sub2api_mode.remove_on_limit_reached" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-sm font-black text-rose-900 ml-3 tracking-wide">耗尽自动物理删除</span>
+                                                </label>
+                                                <label class="relative inline-flex p-4 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.sub2api_mode.remove_dead_accounts" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-sm font-black text-rose-900 ml-3 tracking-wide">死亡自动物理删除</span>
+                                                </label>
+                                                <label class="relative inline-flex p-4 bg-blue-50/50 rounded-xl border border-blue-100 items-center cursor-pointer shadow-sm hover:bg-blue-100/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.sub2api_mode.enable_token_revive" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-sm font-black text-blue-900 ml-3 tracking-wide">尝试 Token 复活</span>
+                                                </label>
+                                                <label class="relative inline-flex p-4 bg-fuchsia-50/50 rounded-xl border border-fuchsia-100 items-center cursor-pointer shadow-sm hover:bg-fuchsia-100/50 transition-colors group">
+                                                    <input type="checkbox" v-model="config.sub2api_mode.auto_re_oauth" class="sr-only peer">
+                                                    <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-fuchsia-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                    <span class="text-sm font-black text-fuchsia-900 ml-3 tracking-wide">死号自动重走 OAuth</span>
+                                                </label>
+                                            </div>
+                                            <label class="relative inline-flex p-4 bg-cyan-50/50 rounded-xl border border-cyan-100 items-center cursor-pointer shadow-sm hover:bg-cyan-100/50 transition-colors w-full group md:w-1/3">
+                                                <input type="checkbox" v-model="config.sub2api_mode.auto_check" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-cyan-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                                <span class="text-sm font-black text-cyan-900 ml-3 tracking-wide">补货前自动巡检测活</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-blue-500 bg-gradient-to-br from-blue-50/20 to-white" v-if="config.image2api_mode">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-slate-100 pb-5 gap-4">
+                                    <div>
+                                        <h3 class="text-xl md:text-2xl font-black text-blue-700 tracking-tight flex items-center gap-2"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M21 19V5C21 3.89 20.1 3 19 3H5C3.89 3 3 3.89 3 5V19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z"/></svg> image2api 仓管
+                                            <a href="https://github.com/basketikun/chatgpt2api" target="_blank" rel="noopener noreferrer" class="text-[10px] md:text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-2 py-1 rounded-md sm:ml-2 transition-colors inline-flex items-center gap-1 border border-blue-200/60 shadow-sm">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                                    前往项目地址
+                                            </a>
+                                        </h3>
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                        <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-blue-50 transition-colors shadow-sm border border-blue-200 w-full sm:w-auto items-center justify-center group">
+                                            <input type="checkbox" v-model="config.image2api_mode.enable" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="font-black text-blue-900 text-sm md:text-base ml-3 tracking-wide">主开关：开启 image2api</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-6 md:gap-8">
+                                    <div class="col-span-1 space-y-5 bg-slate-50/80 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner">
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.image2api_mode.enable}">
+                                            <div>
+                                                <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">image2api 接口地址 (URL)</label>
+                                                <div class="relative">
+                                                    <input v-if="!showPwd.image2api_url" readonly :value="maskValue(config.image2api_mode.api_url)"
+                                                           class="w-full appearance-none bg-white border border-blue-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm text-sm"
+                                                           placeholder="https://api.example.com">
+
+                                                    <input v-else type="text" v-model="config.image2api_mode.api_url" autocomplete="off"
+                                                           class="w-full appearance-none bg-white border border-blue-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm text-sm"
+                                                           placeholder="https://api.example.com">
+
+                                                    <button @click="showPwd.image2api_url = !showPwd.image2api_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-500">
+                                                        <svg v-if="showPwd.image2api_url" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">Auth Key (凭证)</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.image2api_key ? 'text' : 'password'" v-model="config.image2api_mode.api_key" class="w-full appearance-none bg-white border border-blue-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm font-mono text-sm" placeholder="sk-xxxxxxxxxx">
+                                                    <button @click="showPwd.image2api_key = !showPwd.image2api_key" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-blue-600 focus:outline-none transition-transform hover:scale-110">
+                                                        <svg v-if="showPwd.image2api_key" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-1 border-t border-slate-100 pt-4 flex flex-col gap-4">
+                                            <label class="relative inline-flex items-center cursor-pointer group w-full">
+                                                <input type="checkbox" v-model="config.image2api_mode.retain_reg_only" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner group-hover:shadow-md"></div>
+                                                <span class="ml-3 text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">同步备份到账号库</span>
+                                            </label>
+                                            <label class="relative inline-flex items-start cursor-pointer group w-full">
+                                                <input type="checkbox" v-model="config.image2api_mode.img_only_mode" class="sr-only peer">
+                                                <div class="w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500 shadow-inner group-hover:shadow-md"></div>
+                                                <div class="ml-3 flex flex-col">
+                                                    <span class="text-sm font-bold text-slate-700 group-hover:text-pink-600 transition-colors leading-6">仅注册提取 IMG 凭证 (跳过 OAuth)</span>
+                                                    <span class="text-[10px] text-slate-400 font-medium leading-relaxed">
+                                                        开启后，创建完账号后立即返回成功，<b class="text-rose-400">不获取 OAuth 登录凭证</b>
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grok2API 仓管中心 -->
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-fuchsia-500 bg-gradient-to-br from-fuchsia-50/20 to-white" v-if="config.grok2api">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-slate-100 pb-5 gap-4">
+                                    <div>
+                                        <h3 class="text-xl md:text-2xl font-black text-fuchsia-700 tracking-tight flex items-center gap-2"><span><svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 17c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/></svg></span> Grok2API 仓管中心</h3>
+                                        <p class="text-xs text-slate-500 mt-2 font-medium">独立开关、巡检、补货、额度处理与自动导入，按 CPA 仓管模式同级运行。</p>
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                        <button @click="startManualCheck" :disabled="isRunning" class="w-full sm:w-auto px-5 py-2.5 md:py-3 bg-white border-2 border-fuchsia-500 text-fuchsia-600 text-sm font-black rounded-xl hover:bg-fuchsia-50 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                                            <span v-if="!isRunning" class="inline-flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 001.555.832l10-6.86a1 1 0 000-1.664l-10-6.86A1 1 0 008 5.14z"></path></svg></span>
+                                            <span v-else class="inline-flex items-center justify-center animate-spin"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></span>
+                                            手动巡检
+                                        </button>
+                                        <label class="relative inline-flex bg-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl cursor-pointer hover:bg-fuchsia-50 transition-colors shadow-sm border border-fuchsia-200 w-full sm:w-auto items-center justify-center group">
+                                            <input type="checkbox" v-model="config.grok2api.enable" @change="config.grok2api.enable ? (config.cpa_mode.enable = false, config.sub2api_mode.enable = false) : null" class="sr-only peer">
+                                            <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-fuchsia-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="font-black text-sm md:text-base ml-3 tracking-wide" :class="config.grok2api.enable ? 'text-fuchsia-900' : 'text-slate-400'">{{ config.grok2api.enable ? '已开启' : '已关闭' }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.grok2api.enable}">
+                                    <div class="lg:col-span-1 space-y-5 bg-slate-50/80 p-5 md:p-6 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">Grok2API 接口地址 (URL)</label>
+                                            <div class="relative">
+                                                <input v-if="!showPwd.grok2api_url" readonly :value="maskValue(config.grok2api.api_url)" class="w-full appearance-none bg-white border border-fuchsia-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-colors shadow-sm text-sm" placeholder="http://host.docker.internal:8000">
+                                                <input v-else type="text" v-model="config.grok2api.api_url" autocomplete="off" class="w-full appearance-none bg-white border border-fuchsia-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-colors shadow-sm text-sm" placeholder="http://host.docker.internal:8000">
+                                                <button @click="showPwd.grok2api_url = !showPwd.grok2api_url" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-fuchsia-500">
+                                                    <svg v-if="showPwd.grok2api_url" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                            <p class="text-[10px] text-slate-400 mt-1">容器内可用 host.docker.internal:8000</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-2 uppercase tracking-wider">管理员密码</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.grok2api_pass ? 'text' : 'password'" v-model="config.grok2api.admin_password" class="w-full appearance-none bg-white border border-fuchsia-200 text-slate-700 rounded-xl py-3 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 transition-colors shadow-sm text-sm" placeholder="Grok2API admin password">
+                                                <button @click="showPwd.grok2api_pass = !showPwd.grok2api_pass" class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-fuchsia-600 focus:outline-none transition-transform hover:scale-110">
+                                                    <svg v-if="showPwd.grok2api_pass" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                            <p class="text-[10px] text-slate-400 mt-1">填写 Grok2API 管理端的管理员密码</p>
+                                        </div>
+                                        <label class="relative inline-flex p-4 bg-white rounded-xl border border-fuchsia-100 items-center cursor-pointer w-full hover:bg-fuchsia-50/50 transition-colors shadow-sm group">
+                                            <input type="checkbox" v-model="config.grok2api.save_to_local" class="sr-only peer">
+                                            <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-fuchsia-600 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
+                                            <span class="flex flex-col ml-3">
+                                                <span class="text-sm font-black text-fuchsia-800 tracking-wide">本地备份（同步入库）</span>
+                                                <span class="text-[10px] text-slate-400 mt-0.5">补货导入 Grok2API 时同步保存到本地库</span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="lg:col-span-1 space-y-5">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-fuchsia-300 transition-all">
+                                                <label class="text-[11px] text-slate-500 font-black uppercase">库存阈值</label>
+                                                <input type="number" v-model.number="config.grok2api.min_accounts_threshold" class="w-full appearance-none bg-slate-50 border-none text-slate-800 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-fuchsia-300 transition-all">
+                                                <label class="text-[11px] text-fuchsia-600 font-black uppercase">单次补货</label>
+                                                <input type="number" v-model.number="config.grok2api.batch_reg_count" class="w-full appearance-none bg-fuchsia-50 border-none text-fuchsia-700 font-black text-xl md:text-2xl rounded-lg py-2 px-3 focus:outline-none focus:ring-0 transition-colors text-center shadow-inner">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="text-[11px] text-slate-500 font-black uppercase">巡检间隔(分钟)</label>
+                                                <input type="number" v-model.number="config.grok2api.check_interval_minutes" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 shadow-sm text-center">
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="text-[11px] text-slate-500 font-black uppercase">测活并发</label>
+                                                <input type="number" v-model.number="config.grok2api.threads" class="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/20 focus:border-fuchsia-500 shadow-sm text-center">
+                                            </div>
+                                        </div>
+                                        <div><label class="text-xs font-bold text-slate-500">测试模型</label><input type="text" v-model="config.grok2api.test_model" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 font-bold" placeholder="grok-4.5"></div>
+                                        <div><label class="text-xs font-bold text-slate-500">默认代理池（可选，每行一个）</label><textarea v-model="config.grok2api.default_proxy" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-xs font-mono" placeholder="http://127.0.0.1:7890"></textarea></div>
+                                    </div>
+                                    <div class="lg:col-span-1 bg-gradient-to-br from-fuchsia-50 to-rose-50 p-5 rounded-2xl border border-fuchsia-100 space-y-4">
+                                        <h4 class="font-black text-fuchsia-700 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.85c-1.4-.79-3.05.86-2.26 2.26a1.53 1.53 0 01-.85 2.29c-1.56.38-1.56 2.6 0 2.98a1.53 1.53 0 01.85 2.29c-.79 1.4.86 3.05 2.26 2.26a1.53 1.53 0 012.29.85c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.85c1.4.79 3.05-.86 2.26-2.26a1.53 1.53 0 01.85-2.29c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.85-2.29c.79-1.4-.86-3.05-2.26-2.26a1.53 1.53 0 01-2.29-.85zM9 12a3 3 0 100-6 3 3 0 000 6z"></path></svg> 高级策略</h4>
+                                        <div class="bg-gradient-to-br from-rose-50 to-white p-5 md:p-6 rounded-2xl border border-rose-100 mt-2 flex flex-col gap-4 shadow-sm">
+                                            <label class="text-rose-800 font-black text-xs md:text-sm uppercase tracking-wider text-center">额度剩余阈值(%)</label>
+                                            <input type="number" v-model.number="config.grok2api.min_remaining_weekly_percent" class="w-full mx-auto appearance-none bg-white border-2 border-rose-200 text-rose-600 font-black text-2xl md:text-3xl rounded-xl py-3 md:py-4 focus:outline-none focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 transition-colors shadow-inner text-center">
+                                            <p class="text-[10px] text-slate-400 text-center">0 表示只在真实耗尽时处理；大于 0 时低于该百分比即视为不足。</p>
+                                        </div>
+                                        <div class="grid grid-cols-1 gap-3">
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.remove_on_limit_reached" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-rose-900 ml-3 tracking-wide">额度不足时物理删除</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-rose-100 items-center cursor-pointer shadow-sm hover:bg-rose-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.remove_dead_accounts" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-rose-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-rose-900 ml-3 tracking-wide">死号物理删除</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-blue-100 items-center cursor-pointer shadow-sm hover:bg-blue-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.auto_check" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-blue-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-blue-900 ml-3 tracking-wide">自动巡检</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-cyan-100 items-center cursor-pointer shadow-sm hover:bg-cyan-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.auto_import_after_register" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-cyan-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-cyan-900 ml-3 tracking-wide">自动导入注册结果</span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-indigo-100 items-center cursor-pointer shadow-sm hover:bg-indigo-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.import_sso_as_grok_web" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="flex flex-col ml-3">
+                                                    <span class="text-[13px] md:text-sm font-black text-indigo-900 tracking-wide">Grok Web 仓管</span>
+                                                    <span class="text-[10px] text-slate-400 mt-0.5">获取 SSO 后先导入 grok_web，再继续 Build OAuth 与后续入库；导入失败也不中断</span>
+                                                </span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-purple-100 items-center cursor-pointer shadow-sm hover:bg-purple-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.sso_only_mode" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-purple-500 shadow-inner transition-colors duration-300"></div>
+                                                <span class="flex flex-col ml-3">
+                                                    <span class="text-[13px] md:text-sm font-black text-purple-900 tracking-wide">SSO-only 模式</span>
+                                                    <span class="text-[10px] text-slate-400 mt-0.5">只拿 SSO 并先行导入 Grok Web，不执行 Build OAuth</span>
+                                                </span>
+                                            </label>
+                                            <label class="relative inline-flex p-3 bg-white rounded-xl border border-slate-200 items-center cursor-pointer shadow-sm hover:bg-slate-50/50 transition-colors group">
+                                                <input type="checkbox" v-model="config.grok2api.retain_reg_only" class="sr-only peer">
+                                                <div class="relative w-9 h-5 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm peer-checked:bg-slate-600 shadow-inner transition-colors duration-300"></div>
+                                                <span class="text-[13px] md:text-sm font-black text-slate-900 ml-3 tracking-wide">保留仅注册账号</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
