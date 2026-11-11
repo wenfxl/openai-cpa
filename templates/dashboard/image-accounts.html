@@ -62,7 +62,7 @@
                                     </thead>
                                     <tbody class="bg-white divide-y divide-slate-50">
                                         <tr v-if="imageAccounts.length === 0">
-                                            <td colspan="5" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无 IMG 凭证记录</td>
+                                            <td colspan="5" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无半成品账号记录</td>
                                         </tr>
                                         <tr v-for="(acc, index) in imageAccounts" :key="index" class="hover:bg-pink-50/40 transition duration-200" :class="{'bg-pink-50/60': selectedImageAccounts.includes(acc.email)}">
                                             <td class="px-3 md:px-4 py-3 whitespace-nowrap"><input type="checkbox" :value="acc.email" v-model="selectedImageAccounts" class="form-checkbox w-4 h-4 text-pink-600 border-slate-300 rounded focus:ring-pink-500 transition-all"></td>

@@ -59,6 +59,22 @@ pip install -r requirements.txt
 python -m camoufox fetch
 ```
 
+### Cloak runtime installation
+dependencies need to be installed when using Cloak.
+Windows:
+
+```cmd
+python -m cloakbrowser install
+python -c "from cloakbrowser.geoip import _ensure_geoip_db; print(_ensure_geoip_db())"
+```
+
+macOS:
+
+```bash
+python3 -m cloakbrowser install
+python3 -c "from cloakbrowser.geoip import _ensure_geoip_db; print(_ensure_geoip_db())"
+```
+
 ### 2. Start the Web Console
 
 ```bash
@@ -200,7 +216,7 @@ The platform keeps a shared control plane for mailbox, proxy, warehouse, and inv
 - **Smart tech subdomains**: Generates tech-style keywords for multi-level subdomain construction.
 
 ### Mailbox and OTP workflow
-- **Multi-backend mailbox support**: Supports `cloudflare_temp_email`, `freemail`, `imap`, `cloudmail`, `mail_curl`, `luckmail`, `TempMail.org`, `Tempmail.lol`, `Duckmail`, `Generator`, `hotmail/outlook` and `GmailOauth`.
+- **Multi-backend mailbox support**: Supports `cloudflare_temp_email`, `freemail`, `imap`, `cloudmail`, `mail_curl`, `luckmail`, `openai_cpa_cloud`, `TempMail.org`, `Tempmail.lol`, `Duckmail`, `Generator`, `hotmail/outlook` and `GmailOauth`.
 - **Multi-domain rotation**: Supports comma-separated mailbox domains and randomized selection when generating addresses.
 - **Random multi-level subdomain generation**: Can generate random subdomains in batches, including multi-level subdomain structures.
 - **Subdomain pool takeover**: When subdomain mode is enabled, generated subdomains can directly replace the normal mailbox domain pool for subsequent registration tasks.

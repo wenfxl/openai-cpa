@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Wenfxl 注册管理系统</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260813-18">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261111-1">
     <link rel="stylesheet" href="/static/css/index.css?v=20260813-18">
     <script src="/static/js/tailwind.min.js?v=20260813-18"></script>
     <script src="/static/js/vue.global.js?v=20260813-18"></script>
@@ -163,7 +163,7 @@
             <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white z-0"></div>
             <div class="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 w-full max-w-md z-10">
                 <div class="text-center mb-8">
-                    <h2 class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-blue-500 tracking-tight">Wenfxl Codex Manager</h2>
+                    <h2 class="login-title text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-blue-500 tracking-tight">Wenfxl Codex Manager</h2>
                     <p class="text-xs md:text-sm text-slate-500 mt-3 font-medium">安全级控制台登录</p>
                 </div>
                 <div class="mb-6 relative">
@@ -295,6 +295,16 @@
                                     </button>
                                 </div>
                                 <div v-show="(config.reg_provider || 'openai') === 'openai'" class="console-seg">
+                                    <button type="button" @click="changeRegisterDriver('protocol')"
+                                            :class="(config.register_driver || 'protocol') === 'protocol' ? 'is-active-openai' : ''">
+                                        协议
+                                    </button>
+                                    <button type="button" @click="changeRegisterDriver('cloakbrowser')"
+                                            :class="config.register_driver === 'cloakbrowser' ? 'is-active-phone' : ''">
+                                        Cloak
+                                    </button>
+                                </div>
+                                <div v-show="(config.reg_provider || 'openai') === 'openai' && (config.register_driver || 'protocol') !== 'cloakbrowser'" class="console-seg">
                                     <button type="button" @click="changeRegMode('email')"
                                             :class="config.reg_mode === 'email' ? 'is-active-email' : ''">
                                         邮箱

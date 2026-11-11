@@ -29,7 +29,11 @@ from utils import config as cfg
 from utils import db_manager
 from utils.config import reload_all_configs, ts, format_docker_url
 from utils.email_providers.mail_service import mask_email
-from utils.auth_pipeline.register import run
+from utils.auth_pipeline.register import (
+    resolve_local_inventory_storage,
+    resolve_registration_only_storage,
+    run,
+)
 from utils.auth_pipeline.oauth import refresh_oauth_token as _refresh_oauth_token
 
 from utils.proxy_manager import smart_switch_node
@@ -923,9 +927,54 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
             print(f"[{ts()}] [系统] 域名 {mask_email(cur_dom or '')} 注册失败，下一轮重新生成。")
 
     else:
-        with _stats_lock: run_stats["success"] += 1
         token_data    = json.loads(token_json_str)
         account_email = token_data.get("email", "unknown")
+        is_cloak_registration_only = (
+            token_data.get("status") == "仅注册成功"
+            and (
+                bool(run_ctx and run_ctx.get("cloak_oauth_failed"))
+                or token_data.get("register_driver") == "cloakbrowser"
+            )
+        )
+        if is_cloak_registration_only:
+            if run_ctx and run_ctx.get('device_id') and run_ctx.get('user_agent'):
+                token_data['device_id'] = run_ctx['device_id']
+                token_data['user_agent'] = run_ctx['user_agent']
+            token_json_str = json.dumps(token_data, ensure_ascii=False)
+
+            should_retain, mode_label = resolve_registration_only_storage(
+                cpa_upload=cpa_upload,
+                grok2api_upload=grok2api_upload,
+            )
+            image_saved = bool(run_ctx and run_ctx.get("cloak_image_saved"))
+            if should_retain or image_saved:
+                if db_manager.save_account_to_db(account_email, password, token_json_str):
+                    if image_saved:
+                        print(
+                            f"[{ts()}] [WARNING] [IMAGE2API] CloakBrowser 注册成功，"
+                            f"但协议 OAuth 未完成；IMG 凭证已保存在半成品库: "
+                            f"{mask_email(account_email)}"
+                        )
+                    else:
+                        print(
+                            f"[{ts()}] [WARNING] [{mode_label}] CloakBrowser 注册成功，"
+                            f"但协议 OAuth 未完成；已作为半成品写入本地库: "
+                            f"{mask_email(account_email)}"
+                        )
+                else:
+                    print(
+                        f"[{ts()}] [ERROR] [{mode_label}] CloakBrowser 半成品入库失败: "
+                        f"{mask_email(account_email)}"
+                    )
+            else:
+                print(
+                    f"[{ts()}] [WARNING] [{mode_label}] CloakBrowser 注册成功，"
+                    f"但协议 OAuth 未完成；当前模式未开启保留仅注册账号，"
+                    f"已跳过本地入库: {mask_email(account_email)}"
+                )
+            return "half_finished"
+
+        with _stats_lock: run_stats["success"] += 1
 
         if "agentIdentity" in token_data or token_data.get("auth_mode") == "agentIdentity":
             account_email = token_data.get("agentIdentity", {}).get("email", account_email)
@@ -1039,7 +1088,7 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
 
 
 def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, worker_index=None):
-    """按 reg_provider 分发注册实现。默认 openai，grok 走 xAI 协议注册。"""
+    """按 reg_provider / register_driver 分发注册实现。"""
     if run_ctx is None:
         run_ctx = {}
     provider = str(getattr(cfg, "REG_PROVIDER", "openai") or "openai").strip().lower()
@@ -1060,6 +1109,128 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
             )
         finally:
             mark_task_finished()
+    register_driver = str(getattr(cfg, "REGISTER_DRIVER", "protocol") or "protocol").strip().lower()
+    if register_driver == "cloakbrowser":
+        if str(getattr(cfg, "REG_MODE", "email") or "email").strip().lower() != "email":
+            print(f"[{ts()}] [ERROR] CloakBrowser 仅支持邮箱注册，请将注册模式切回邮箱")
+            return None, None
+
+        from utils.auth_pipeline.cloakbrowser import run as cloakbrowser_run
+        from utils.auth_pipeline.register import run_oauth_only
+
+        run_ctx.pop("cloak_oauth_failed", None)
+        run_ctx.pop("cloak_oauth_error", None)
+        run_ctx.pop("cloak_image_saved", None)
+        try:
+            registration = cloakbrowser_run(
+                proxy,
+                run_ctx=run_ctx,
+                assigned_domain=assigned_domain,
+                batch_id=batch_id,
+                worker_index=worker_index,
+            )
+            if not registration:
+                return None, None
+            email = str(registration.get("email") or "").strip()
+            password = str(registration.get("password") or "")
+            access_token = str(registration.get("access_token") or "")
+            if not email or not password:
+                print(f"[{ts()}] [ERROR] CloakBrowser 注册结果缺少邮箱或密码")
+                return None, None
+
+            device_id = str(registration.get("device_id") or "")
+            user_agent = str(registration.get("user_agent") or "")
+            session_info = registration.get("session") if isinstance(registration.get("session"), dict) else {}
+            image_token_data = {
+                "email": email,
+                "status": "image2api",
+                "access_token": access_token,
+                "device_id": device_id,
+                "user_agent": user_agent,
+                "register_driver": "cloakbrowser",
+                "browser_session": session_info,
+            }
+            img_only = bool(getattr(cfg, "IMAGE2API_IMG_ONLY_MODE", False))
+            sync_image2api = bool(getattr(cfg, "ENABLE_IMAGE2API_MODE", False))
+            save_image_local, image_storage_mode = resolve_local_inventory_storage()
+
+            if save_image_local and access_token:
+                if db_manager.save_account_to_db(
+                    email,
+                    password,
+                    json.dumps(image_token_data, ensure_ascii=False),
+                ):
+                    run_ctx["cloak_image_saved"] = True
+                    print(
+                        f"[{ts()}] [INFO] [IMAGE2API] [{image_storage_mode}] "
+                        f"CloakBrowser IMG 凭证已自动保存，"
+                        f"继续协议 OAuth: {mask_email(email)}"
+                    )
+                else:
+                    print(f"[{ts()}] [ERROR] [IMAGE2API] CloakBrowser IMG 凭证保存失败: {mask_email(email)}")
+
+            if sync_image2api:
+                if access_token:
+                    from utils.integrations.image2api_client import Image2APIClient
+
+                    print(f"[{ts()}] [INFO] [IMAGE2API] CloakBrowser 正在同步 IMG 凭证: {mask_email(email)}")
+                    try:
+                        ok, image_msg = Image2APIClient().add_accounts([access_token])
+                    except Exception as image_exc:
+                        ok, image_msg = False, str(image_exc)
+                    if ok:
+                        print(f"[{ts()}] [SUCCESS] [IMAGE2API] IMG 凭证同步成功: {mask_email(email)}")
+                    else:
+                        print(f"[{ts()}] [ERROR] [IMAGE2API] IMG 凭证同步失败: {image_msg}")
+                else:
+                    print(f"[{ts()}] [WARNING] [IMAGE2API] CloakBrowser 未返回 IMG accessToken: {mask_email(email)}")
+
+            if img_only:
+                if not access_token:
+                    print(f"[{ts()}] [ERROR] [IMAGE2API] CloakBrowser 未取得 IMG accessToken: {mask_email(email)}")
+                    return None, None
+                print(
+                    f"[{ts()}] [INFO] [IMAGE2API] CloakBrowser 仅注册提取 IMG 模式，"
+                    f"跳过协议 OAuth: {mask_email(email)}"
+                )
+                return json.dumps(image_token_data, ensure_ascii=False), password
+
+            print(f"[{ts()}] [INFO] CloakBrowser 注册完成，开始协议 OAuth: {mask_email(email)}")
+            try:
+                oauth_result = run_oauth_only(
+                    email,
+                    password,
+                    proxy,
+                    run_ctx=run_ctx,
+                    access_token=access_token,
+                    device_id=device_id,
+                    user_agent=user_agent,
+                )
+            except Exception as oauth_exc:
+                oauth_result = (None, None)
+                run_ctx["cloak_oauth_error"] = str(oauth_exc)
+                print(f"[{ts()}] [WARNING] CloakBrowser 注册后协议 OAuth 异常: {oauth_exc}")
+            if oauth_result and oauth_result[0] and oauth_result[0] != "retry_403":
+                print(f"[{ts()}] [SUCCESS] CloakBrowser 注册 + 协议 OAuth 完成: {mask_email(email)}")
+                return oauth_result
+
+            run_ctx["cloak_oauth_failed"] = True
+            partial_token = {
+                "email": email,
+                "status": "仅注册成功",
+                "access_token": access_token,
+                "device_id": device_id,
+                "user_agent": user_agent,
+                "register_driver": "cloakbrowser",
+                "user": session_info.get("user"),
+                "account": session_info.get("account"),
+                "expires": session_info.get("expires"),
+                "browser_session": session_info,
+            }
+            return json.dumps(partial_token, ensure_ascii=False), password
+        except Exception as exc:
+            print(f"[{ts()}] [ERROR] CloakBrowser 注册异常: {exc}")
+            return None, None
     return run(
         proxy,
         run_ctx=run_ctx,

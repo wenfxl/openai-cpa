@@ -13,12 +13,118 @@ from utils.integrations.smsbower_sms import handle_smsbower_verification
 from utils.integrations.smsbower_sms import get_phone_for_signup as sb_get_phone, wait_code_for_signup as sb_wait_code, report_signup_result as sb_report
 from utils.integrations.fivesim_sms import try_verify_phone_via_fivesim
 from utils.integrations.fivesim_sms import get_phone_for_signup as fs_get_phone, wait_code_for_signup as fs_wait_code, report_signup_result as fs_report
-from utils.auth_core import generate_payload, init_auth, image2api_data, sys_node_allocate, sys_node_release, code_pool,sys_team_domain_verify, _generate_codex_auth
+from utils.auth_core import (
+    generate_payload as _generate_payload_impl,
+    init_auth,
+    image2api_data,
+    sys_node_allocate,
+    sys_node_release,
+    code_pool,
+    sys_team_domain_verify,
+    _generate_codex_auth,
+)
 from utils.integrations.image2api_client import Image2APIClient
 from .http_utils import _ssl_verify, _skip_net_check, _post_with_retry, _oai_headers, _follow_redirect_chain_local
 from .common import _extract_next_url, _parse_workspace_from_auth_cookie, _otp_verify_loop, _create_account_about_you
-from .oauth import generate_oauth_url, submit_callback_url
+from .oauth import (
+    AUTHORIZE_CONTINUE_SUCCESS_STATUSES,
+    ensure_oai_context_url,
+    extract_oauth_next_url,
+    generate_oauth_url,
+    response_json_object,
+    submit_callback_url,
+    summarize_oauth_failure,
+)
 from .user_utils import _generate_password
+
+
+def _uses_original_password_flow(email_api_mode: str, force_original_pwd: bool) -> bool:
+    mode = str(email_api_mode or "").strip().lower()
+    return bool(force_original_pwd and mode in ("openai_cpa", "openai_cpa_cloud"))
+
+
+def _resolve_oauth_takeover(
+        email_api_mode: str,
+        force_original_pwd: bool,
+        password: str,
+        *,
+        has_browser_identity: bool = False,
+) -> bool:
+    if password == "Takeover_NoPassword":
+        return True
+    if password and (has_browser_identity or _uses_original_password_flow(
+        email_api_mode, force_original_pwd
+    )):
+        return False
+    return True
+
+
+def resolve_local_inventory_storage(
+        *,
+        cpa_upload: Optional[bool] = None,
+        grok2api_upload: bool = False,
+) -> tuple:
+    """Resolve whether the active inventory mode saves accounts locally."""
+    use_cpa = bool(getattr(cfg, "ENABLE_CPA_MODE", False)) if cpa_upload is None else bool(cpa_upload)
+    if use_cpa:
+        return bool(getattr(cfg, "SAVE_TO_LOCAL_IN_CPA_MODE", True)), "CPA模式"
+    if grok2api_upload:
+        return bool(getattr(cfg, "SAVE_TO_LOCAL_IN_GROK2API_MODE", True)), "Grok2API模式"
+    if bool(getattr(cfg, "ENABLE_GROK2API_MODE", False)):
+        return bool(getattr(cfg, "SAVE_TO_LOCAL_IN_GROK2API_MODE", True)), "Grok2API模式"
+    if bool(getattr(cfg, "ENABLE_SUB2API_MODE", False)):
+        return bool(getattr(cfg, "SUB2API_SAVE_TO_LOCAL", True)), "Sub2API模式"
+    return bool(getattr(cfg, "NORMAL_SAVE_IMG_TO_LOCAL", False)), "常规模式"
+
+
+def resolve_registration_only_storage(
+        *,
+        cpa_upload: Optional[bool] = None,
+        grok2api_upload: bool = False,
+) -> tuple:
+    """Resolve which existing inventory mode may retain a registration-only account."""
+    save_local, mode_label = resolve_local_inventory_storage(
+        cpa_upload=cpa_upload,
+        grok2api_upload=grok2api_upload,
+    )
+    if mode_label == "CPA模式":
+        retain = bool(getattr(cfg, "CPA_RETAIN_REG_ONLY", False))
+    elif mode_label == "Grok2API模式":
+        retain = bool(getattr(cfg, "GROK2API_RETAIN_REG_ONLY", False))
+    elif mode_label == "Sub2API模式":
+        retain = bool(getattr(cfg, "SUB2API_RETAIN_REG_ONLY", False))
+    else:
+        retain = bool(getattr(cfg, "RETAIN_REG_ONLY", False))
+    return save_local and retain, mode_label
+
+
+def generate_payload(
+        did: str,
+        flow: str,
+        proxy: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        impersonate: str = "chrome110",
+        ctx: Optional[dict] = None,
+) -> str:
+    """Rebuild the Sentinel transport after a transient proxy TLS reset."""
+    attempts = 2 if proxy else 1
+    for attempt in range(attempts):
+        payload = _generate_payload_impl(
+            did=did,
+            flow=flow,
+            proxy=proxy,
+            user_agent=user_agent,
+            impersonate=impersonate,
+            ctx=ctx,
+        )
+        if payload:
+            if attempt:
+                print(f"[{cfg.ts()}] [INFO] Sentinel 会话已重建并恢复")
+            return payload
+        if attempt + 1 < attempts:
+            time.sleep(0.6 + random.random() * 0.6)
+    return ""
+
 
 def run(
     proxy: Optional[str],
@@ -345,7 +451,9 @@ def run(
                         if is_overspeed or "log-in" in continue_url or "/email-verification" in continue_url:
                             is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                             force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
-                            if is_overspeed or (is_openai_cpa == "openai_cpa" and force_original_pwd):
+                            if is_overspeed or _uses_original_password_flow(
+                                is_openai_cpa, force_original_pwd
+                            ):
                                 pass
                             else:
                                 print(f"[{cfg.ts()}] [WARNING] （{masked_login}）该邮箱无需密码注册！准备走【无密码通道】进行接管...")
@@ -526,7 +634,7 @@ def run(
                                 print(f"[{cfg.ts()}] [WARNING] LuckMail 可用性检测异常(忽略并继续): {e}")
                         is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                         force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
-                        if is_openai_cpa == "openai_cpa" and force_original_pwd:
+                        if _uses_original_password_flow(is_openai_cpa, force_original_pwd):
                             old_raw = code_pool.get(email, "")
                             old_code = _extract_otp_code(old_raw)
                         print(f"\n[{cfg.ts()}] [INFO] 正在向 {masked_login} 主动请求发送验证码...")
@@ -557,7 +665,7 @@ def run(
                             if resend_attempt > 0:
                                 is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                                 force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
-                                if is_openai_cpa == "openai_cpa" and force_original_pwd:
+                                if _uses_original_password_flow(is_openai_cpa, force_original_pwd):
                                     code_pool.pop(email, None)
                                     old_raw = code_pool.get(email, "")
                                     old_code = _extract_otp_code(old_raw)
@@ -582,7 +690,7 @@ def run(
                                     print(f"[{cfg.ts()}] [WARNING] （{masked_login}）重新发送请求异常: {e}")
                             is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
                             force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
-                            if is_openai_cpa == "openai_cpa" and force_original_pwd:
+                            if _uses_original_password_flow(is_openai_cpa, force_original_pwd):
                                 code = get_oai_code(email, jwt=email_jwt, proxies=proxies,
                                                 processed_mail_ids=processed_mails,ignore_code=old_code)
                             else:
@@ -707,16 +815,7 @@ def run(
                 print(f"[{cfg.ts()}] [INFO] （{masked_login}）账号已通过，等待 {wait_time} 秒后同步最终状态...")
 
 
-                if cfg.ENABLE_CPA_MODE:
-                    should_retain = cfg.SAVE_TO_LOCAL_IN_CPA_MODE and cfg.CPA_RETAIN_REG_ONLY
-                    mode_label = "CPA模式"
-                elif cfg.ENABLE_SUB2API_MODE:
-                    should_retain = cfg.SUB2API_SAVE_TO_LOCAL and cfg.SUB2API_RETAIN_REG_ONLY
-                    mode_label = "Sub2API模式"
-                else:
-                    should_sync_normal = True
-                    should_retain = should_sync_normal and cfg.RETAIN_REG_ONLY
-                    mode_label = "常规模式"
+                should_retain, mode_label = resolve_registration_only_storage()
 
                 if should_retain:
                     try:
@@ -872,13 +971,40 @@ def run(
                 OAUTH_MAX_RETRIES = 2
 
                 for oauth_attempt in range(OAUTH_MAX_RETRIES):
+                    oauth_log = generate_oauth_url()
+                    auth_session_logging_id = str(uuid.uuid4())
                     s_log = requests.Session(proxies=proxies, impersonate="chrome")
                     s_log.headers.update({"Connection": "close"})
                     s_log.cookies.clear()
                     s_log.timeout = 30
-                    oauth_log = generate_oauth_url()
+                    s_log.cookies.set("oai-did", did, domain=".openai.com")
 
-                    resp, current_url = _follow_redirect_chain_local(s_log, oauth_log.auth_url, proxies)
+                    try:
+                        preflight_resp = s_log.get(
+                            "https://auth.openai.com/log-in",
+                            headers=_oai_headers(did, {"Referer": "https://auth.openai.com/"},
+                                                 is_navigate=True),
+                            proxies=proxies,
+                            verify=_ssl_verify(),
+                            timeout=30,
+                            allow_redirects=True,
+                        )
+                        if int(getattr(preflight_resp, "status_code", 0) or 0) >= 400:
+                            print(
+                                f"[{cfg.ts()}] [WARNING] （{masked_login}）"
+                                f"Auth 登录页预热返回 HTTP {preflight_resp.status_code}"
+                            )
+                    except Exception as e:
+                        print(f"[{cfg.ts()}] [WARNING] （{masked_login}）Auth 登录页预热异常: {e}")
+
+                    s_log.cookies.set("oai-did", did, domain=".openai.com")
+                    log_did = s_log.cookies.get("oai-did") or did
+                    auth_url = ensure_oai_context_url(
+                        oauth_log.auth_url,
+                        device_id=log_did,
+                        auth_session_logging_id=auth_session_logging_id,
+                    )
+                    resp, current_url = _follow_redirect_chain_local(s_log, auth_url, proxies)
                     if "code=" in current_url and "state=" in current_url:
                         token_resp = submit_callback_url(
                             callback_url=current_url,
@@ -888,7 +1014,6 @@ def run(
                             proxies=proxies,
                         ), password
                         return token_resp, password
-                    log_did = s_log.cookies.get("oai-did") or did
 
                     log_ctx = reg_ctx.copy() if reg_ctx else {}
                     log_ctx["session_id"] = str(uuid.uuid4())
@@ -898,7 +1023,7 @@ def run(
                     sentinel_log = generate_payload(did=log_did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
                                                     impersonate="chrome", ctx=log_ctx)
                     log_start_headers = _oai_headers(log_did, {
-                        "Referer": current_url,
+                        "Referer": "https://auth.openai.com/log-in",
                         "content-type": "application/json",
                     })
                     if sentinel_log:
@@ -912,9 +1037,20 @@ def run(
                         proxies=proxies, allow_redirects=False,
                     )
 
-                    if login_start_resp.status_code != 200:
-                        print(f"[{cfg.ts()}] [ERROR] （{masked_login}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}")
+                    login_start_status = int(getattr(login_start_resp, "status_code", 0) or 0)
+                    if login_start_status not in AUTHORIZE_CONTINUE_SUCCESS_STATUSES:
+                        diagnostic = summarize_oauth_failure(login_start_resp)
+                        print(f"[{cfg.ts()}] [ERROR] （{masked_login}）登录环节第一步请求被拒: {diagnostic}")
+                        if login_start_status in (401, 403, 409, 429) and oauth_attempt < OAUTH_MAX_RETRIES - 1:
+                            print(f"[{cfg.ts()}] [INFO] （{masked_login}）正在重建 OAuth 会话并重试一次...")
+                            try:
+                                s_log.close()
+                            except Exception:
+                                pass
+                            time.sleep(random.uniform(1.5, 3.0))
+                            continue
                         return None, None
+                    login_start_json = response_json_object(login_start_resp)
 
                     if is_takeover:
                         # log_send_headers = generate_payload(did=log_did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
@@ -1033,10 +1169,14 @@ def run(
                         resp, current_url = _follow_redirect_chain_local(s_log, next_url, proxies)
 
                     else:
-                        pwd_page_url = str(
-                            (login_start_resp.json() if login_start_resp.status_code == 200 else {})
-                            .get("continue_url") or ""
-                        ).strip()
+                        pwd_page_url = extract_oauth_next_url(login_start_json)
+                        if not pwd_page_url:
+                            print(
+                                f"[{cfg.ts()}] [ERROR] （{masked_login}）"
+                                f"提交邮箱成功但未返回密码页地址: "
+                                f"{summarize_oauth_failure(login_start_resp)}"
+                            )
+                            return None, None
                         resp, current_url = _follow_redirect_chain_local(s_log, pwd_page_url, proxies)
 
                         sentinel_pwd_log = generate_payload(did=log_did, flow="password_verify", proxy=proxy, user_agent=current_ua,
@@ -1409,25 +1549,52 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
 
     is_openai_cpa = getattr(cfg, 'EMAIL_API_MODE', '')
     force_original_pwd = getattr(cfg, 'USE_ORIGINAL_PASSWORD_FLOW', False)
-    if password == "Takeover_NoPassword":
-        is_takeover = True
-    else:
-        if is_openai_cpa == "openai_cpa" and force_original_pwd:
-            is_takeover = False
-        else:
-            is_takeover = True
+    is_takeover = _resolve_oauth_takeover(
+        is_openai_cpa,
+        force_original_pwd,
+        password,
+        has_browser_identity=bool(device_id and user_agent),
+    )
 
     try:
         print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）执行静默获取 Token...")
         OAUTH_MAX_RETRIES = 2
-        oauth_log = generate_oauth_url()
         for oauth_attempt in range(OAUTH_MAX_RETRIES):
+            oauth_log = generate_oauth_url()
+            auth_session_logging_id = str(uuid.uuid4())
             s_log = requests.Session(proxies=proxies, impersonate="chrome")
             s_log.headers.update({"Connection": "close"})
             s_log.cookies.clear()
             s_log.timeout = 30
+            s_log.cookies.set("oai-did", did, domain=".openai.com")
 
-            resp, current_url = _follow_redirect_chain_local(s_log, oauth_log.auth_url, proxies)
+            try:
+                preflight_resp = s_log.get(
+                    "https://auth.openai.com/log-in",
+                    headers=_oai_headers(did, {"Referer": "https://auth.openai.com/"},
+                                         is_navigate=True),
+                    proxies=proxies,
+                    verify=_ssl_verify(),
+                    timeout=30,
+                    allow_redirects=True,
+                )
+                if int(getattr(preflight_resp, "status_code", 0) or 0) >= 400:
+                    print(
+                        f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）"
+                        f"Auth 登录页预热返回 HTTP {preflight_resp.status_code}"
+                    )
+            except Exception as e:
+                print(f"[{cfg.ts()}] [WARNING] （{mask_email(email)}）Auth 登录页预热异常: {e}")
+
+            # Keep the browser's device id stable if the login page issued a new one.
+            s_log.cookies.set("oai-did", did, domain=".openai.com")
+            log_did = s_log.cookies.get("oai-did") or did
+            auth_url = ensure_oai_context_url(
+                oauth_log.auth_url,
+                device_id=log_did,
+                auth_session_logging_id=auth_session_logging_id,
+            )
+            resp, current_url = _follow_redirect_chain_local(s_log, auth_url, proxies)
             if "code=" in current_url and "state=" in current_url:
                 token_resp = submit_callback_url(
                     callback_url=current_url,
@@ -1437,7 +1604,6 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
                     proxies=proxies,
                 )
                 return token_resp, password
-            log_did = s_log.cookies.get("oai-did") or did
 
             log_ctx = reg_ctx.copy() if reg_ctx else {}
             log_ctx["session_id"] = str(uuid.uuid4())
@@ -1447,7 +1613,7 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
             sentinel_log = generate_payload(did=log_did, flow="authorize_continue", proxy=proxy, user_agent=current_ua,
                                             impersonate="chrome", ctx=log_ctx)
             log_start_headers = _oai_headers(log_did, {
-                "Referer": current_url,
+                "Referer": "https://auth.openai.com/log-in",
                 "content-type": "application/json",
             })
             if sentinel_log:
@@ -1461,9 +1627,20 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
                 proxies=proxies, allow_redirects=False,
             )
 
-            if login_start_resp.status_code != 200:
-                print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）登录环节第一步请求被拒: HTTP {login_start_resp.status_code}")
+            login_start_status = int(getattr(login_start_resp, "status_code", 0) or 0)
+            if login_start_status not in AUTHORIZE_CONTINUE_SUCCESS_STATUSES:
+                diagnostic = summarize_oauth_failure(login_start_resp)
+                print(f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）登录环节第一步请求被拒: {diagnostic}")
+                if login_start_status in (401, 403, 409, 429) and oauth_attempt < OAUTH_MAX_RETRIES - 1:
+                    print(f"[{cfg.ts()}] [INFO] （{mask_email(email)}）正在重建 OAuth 会话并重试一次...")
+                    try:
+                        s_log.close()
+                    except Exception:
+                        pass
+                    time.sleep(random.uniform(1.5, 3.0))
+                    continue
                 return None, None
+            login_start_json = response_json_object(login_start_resp)
 
             if is_takeover:
                 if cfg.EMAIL_API_MODE == "luckmail":
@@ -1564,10 +1741,13 @@ def run_oauth_only(email: str, password: str, proxy: Optional[str], run_ctx: dic
                 resp, current_url = _follow_redirect_chain_local(s_log, next_url, proxies)
 
             else:
-                pwd_page_url = str(
-                    (login_start_resp.json() if login_start_resp.status_code == 200 else {})
-                    .get("continue_url") or ""
-                ).strip()
+                pwd_page_url = extract_oauth_next_url(login_start_json)
+                if not pwd_page_url:
+                    print(
+                        f"[{cfg.ts()}] [ERROR] （{mask_email(email)}）"
+                        f"提交邮箱成功但未返回密码页地址: {summarize_oauth_failure(login_start_resp)}"
+                    )
+                    return None, None
                 resp, current_url = _follow_redirect_chain_local(s_log, pwd_page_url, proxies)
 
                 sentinel_pwd_log = generate_payload(did=log_did, flow="password_verify", proxy=proxy,

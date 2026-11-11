@@ -18,6 +18,9 @@ body { background-color: #f3f4f6; }
 [v-cloak] { display: none !important; }
 .fake-password-mask {-webkit-text-security: disc !important;text-security: disc !important;}
 .mask-text {-webkit-text-security: disc !important;text-security: disc !important;}
+.login-title {
+    background-image: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+}
 
 body.theme-dark {
     background-color: #0b0f14 !important;
@@ -256,6 +259,10 @@ body.theme-dark select {
 body.theme-dark input::placeholder,
 body.theme-dark textarea::placeholder {
     color: #718198 !important;
+}
+
+body.theme-dark .login-title {
+    background-image: linear-gradient(135deg, #c7d2fe 0%, #93c5fd 100%) !important;
 }
 
 body.theme-dark ::-webkit-scrollbar-thumb {

@@ -1,28 +1,33 @@
-                        <div v-show="currentTab === 'email'" v-if="config" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-8">
+                        <div v-show="currentTab === 'email'" v-if="config" class="grid grid-cols-1 xl:grid-cols-2 gap-5 md:gap-8">
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60">
                                 <h3 class="text-lg md:text-xl font-black text-blue-600 mb-5 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"></path></svg></span> 基础发信设置</h3>
                                 <label class="block text-slate-700 text-sm font-extrabold mb-2">API 模式选择 (email_api_mode)</label>
-                                <select v-model="config.email_api_mode" @change="if(!['freemail', 'imap', 'cloudmail', 'cloudflare_temp_email'].includes(config.email_api_mode)) config.enable_sub_domains = false;" class="w-full appearance-none bg-slate-50 border-2 border-slate-200 text-blue-700 font-black rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors shadow-sm cursor-pointer pr-10 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232563eb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat">
-                                    <option value="cloudflare_temp_email">cloudflare_temp_email (CF 临时邮箱)</option>
-                                    <option value="imap">imap (直连收件箱)</option>
-                                    <option value="local_microsoft">本地微软邮箱库</option>
-                                    <option value="gmail_fission">Gmail OAuth裂变</option>
-                                    <option value="Gmail_OAuth">Gmail_OAuth授权(cf转发gmail直接选此模式收件)</option>
-                                    <option value="openai_cpa">OpenAI-CPA 内存池</option>
-                                    <option value="freemail">freemail</option>
-                                    <option value="cloudmail">cloudmail</option>
-                                    <option value="mail_curl">mail_curl</option>
-                                    <option value="luckmail">luckmail (LuckMail 接码)</option>
-                                    <option value="tempmail">Tempmail.lol</option>
-                                    <option value="tempmail_org">tempmail_org</option>
-                                    <option value="duckmail">duckmail (DuckMail 鸭子邮箱)</option>
-                                    <option value="generator_email">generator_email</option>
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+                                    <div class="lg:col-span-2">
+                                        <select v-model="config.email_api_mode" @change="if(!['freemail', 'imap', 'cloudmail', 'cloudflare_temp_email', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode)) config.enable_sub_domains = false;" class="w-full appearance-none bg-slate-50 border-2 border-slate-200 text-blue-700 font-black rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors shadow-sm cursor-pointer pr-10 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232563eb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat">
+                                            <option value="cloudflare_temp_email">cloudflare_temp_email (CF 临时邮箱)</option>
+                                            <option value="imap">imap (直连收件箱)</option>
+                                            <option value="local_microsoft">本地微软邮箱库</option>
+                                            <option value="gmail_fission">Gmail OAuth裂变</option>
+                                            <option value="Gmail_OAuth">Gmail_OAuth授权(cf转发gmail直接选此模式收件)</option>
+                                            <option value="openai_cpa">OpenAI-CPA 内存池</option>
+                                            <option value="openai_cpa_cloud">OpenAI-CPA 内存池 云端版</option>
+                                            <option value="freemail">freemail</option>
+                                            <option value="cloudmail">cloudmail</option>
+                                            <option value="mail_curl">mail_curl</option>
+                                            <option value="luckmail">luckmail (LuckMail 接码)</option>
+                                            <option value="tempmail">Tempmail.lol</option>
+                                            <option value="tempmail_org">tempmail_org</option>
+                                            <option value="duckmail">duckmail (DuckMail 鸭子邮箱)</option>
+                                            <option value="generator_email">generator_email</option>
 <!--                                    <option value="temporam">Temporam.com (需填Cookie)</option>-->
-                                    <option value="tmailor">Tmailor.com (需填token)</option>
-                                    <option value="fvia">FviaInboxes (需填authorization)</option>
-                                    <option value="inboxes">Inboxes.com</option>
-                                    <option value="temporarymail">TemporaryMail.com</option>
-                                </select>
+                                            <option value="tmailor">Tmailor.com (需填token)</option>
+                                            <option value="fvia">FviaInboxes (需填authorization)</option>
+                                            <option value="inboxes">Inboxes.com</option>
+                                            <option value="temporarymail">TemporaryMail.com</option>
+                                        </select>
+                                    </div>
+                                </div>
 
                                 <label class="block text-slate-700 text-sm font-extrabold mb-1 mt-6">发信域名池 (mail_domains)</label>
                                 <span class="block text-xs text-slate-400 mb-2 font-medium">支持逗号分隔多域名，此处必须填写你配置在 CF 的主域名</span>
@@ -43,12 +48,12 @@
                                             <h4 class="text-sm font-black text-amber-600 tracking-wide">黄金矿工模式</h4>
                                             <p class="text-xs text-slate-500 mt-1 font-medium">开启后按主域统计异常，并在超限后自动冷却。</p>
                                             <p class="text-[11px] text-slate-400 mt-1">超限域名会暂时停用；关闭后恢复随机使用，不计数、不冷却。</p>
-                                            <p v-if="!['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa'].includes(config.email_api_mode)" class="text-[11px] font-bold text-rose-600 mt-3 bg-rose-50 px-3 py-2 rounded-lg inline-block border border-rose-100 shadow-sm flex items-center gap-1.5">
-                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 当前模式不支持此功能！仅限 cloudflare_temp_email, freemail, cloudmail, openai_cpa。
+                                            <p v-if="!['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode)" class="text-[11px] font-bold text-rose-600 mt-3 bg-rose-50 px-3 py-2 rounded-lg inline-block border border-rose-100 shadow-sm flex items-center gap-1.5">
+                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 当前模式不支持此功能！仅限 cloudflare_temp_email, freemail, cloudmail, openai_cpa, openai_cpa_cloud。
                                             </p>
                                         </div>
-                                        <label class="relative inline-flex items-center shrink-0 mt-3 sm:mt-0" :class="['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa'].includes(config.email_api_mode) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50 grayscale'">
-                                            <input type="checkbox" v-model="config.enable_mail_domain_runtime_control" :disabled="!['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa'].includes(config.email_api_mode)" class="sr-only peer">
+                                        <label class="relative inline-flex items-center shrink-0 mt-3 sm:mt-0" :class="['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50 grayscale'">
+                                            <input type="checkbox" v-model="config.enable_mail_domain_runtime_control" :disabled="!['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode)" class="sr-only peer">
                                             <div class="relative w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-amber-500 shadow-inner transition-colors duration-300"></div>
                                         </label>
                                     </div>
@@ -352,12 +357,12 @@
                                             <h4 class="text-sm font-black text-blue-800 tracking-wide">多级域名泛解析模式</h4>
                                             <p class="text-xs text-slate-500 mt-1 font-medium">开启后将自动使用指定域名层级。</p>
                                             <p class="text-[11px] text-slate-400 mt-1">第一次使用请填写好上方发信域名池后点击下方推送按钮，如果加入新主域也要点推送，推送只需要一次永久生效</p>
-                                            <p v-if="!['freemail', 'imap', 'cloudflare_temp_email', 'cloudmail', 'Gmail_OAuth', 'openai_cpa'].includes(config.email_api_mode)" class="text-[11px] font-bold text-rose-600 mt-3 bg-rose-50 px-3 py-2 rounded-lg inline-block border border-rose-100 shadow-sm flex items-center gap-1.5">
-                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 当前模式不支持此功能！仅限 cloudflare_temp_email, freemail, imap, cloudmail。
+                                            <p v-if="!['freemail', 'imap', 'cloudflare_temp_email', 'cloudmail', 'Gmail_OAuth', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode)" class="text-[11px] font-bold text-rose-600 mt-3 bg-rose-50 px-3 py-2 rounded-lg inline-block border border-rose-100 shadow-sm flex items-center gap-1.5">
+                                                <span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span> 当前模式不支持此功能！仅限 cloudflare_temp_email, freemail, imap, cloudmail, openai_cpa, openai_cpa_cloud。
                                             </p>
                                         </div>
-                                        <label class="relative inline-flex items-center shrink-0 mt-3 sm:mt-0" :class="['freemail', 'imap', 'cloudflare_temp_email', 'cloudmail', 'Gmail_OAuth', 'openai_cpa'].includes(config.email_api_mode) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50 grayscale'">
-                                            <input type="checkbox" v-model="config.enable_sub_domains" :disabled="!['freemail', 'imap', 'cloudflare_temp_email', 'cloudmail', 'Gmail_OAuth', 'openai_cpa'].includes(config.email_api_mode)" class="sr-only peer">
+                                        <label class="relative inline-flex items-center shrink-0 mt-3 sm:mt-0" :class="['freemail', 'imap', 'cloudflare_temp_email', 'cloudmail', 'Gmail_OAuth', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode) ? 'cursor-pointer' : 'cursor-not-allowed opacity-50 grayscale'">
+                                            <input type="checkbox" v-model="config.enable_sub_domains" :disabled="!['freemail', 'imap', 'cloudflare_temp_email', 'cloudmail', 'Gmail_OAuth', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode)" class="sr-only peer">
                                             <div class="relative w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-blue-600 shadow-inner transition-colors duration-300"></div>
                                         </label>
                                     </div>
@@ -663,6 +668,39 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div v-if="config.email_api_mode === 'openai_cpa_cloud' && config.openai_cpa_cloud" class="animate-fade-in mt-5 border-t border-slate-200 pt-5">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-black text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-md border border-emerald-200 shadow-sm uppercase tracking-wider">云端模式</span>
+                                            <span class="text-sm font-black text-slate-700">OpenAI-CPA 内存池 云端版</span>
+                                        </div>
+                                        <a href="https://mail.wfxling.com" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline underline-offset-2">打开云端邮箱</a>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                                        <div class="md:col-span-2">
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">API 地址</label>
+                                            <input v-model.trim="config.openai_cpa_cloud.api_url" type="url" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm font-mono text-sm" placeholder="https://mail.wfxling.com">
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">API Token</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.openai_cpa_cloud ? 'text' : 'password'" v-model.trim="config.openai_cpa_cloud.api_token" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm font-mono text-sm" placeholder="填写云端内存池令牌">
+                                                <button type="button" @click="showPwd.openai_cpa_cloud = !showPwd.openai_cpa_cloud" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-700" title="显示或隐藏 Token">
+                                                    <svg v-if="showPwd.openai_cpa_cloud" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-slate-700 text-xs font-extrabold mb-1.5 uppercase tracking-wider">每次取信条数</label>
+                                            <input v-model.number="config.openai_cpa_cloud.limit" type="number" min="1" max="100" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors shadow-sm text-sm">
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pl-3 border-l-2 border-emerald-300 text-[11px] leading-relaxed text-emerald-800">
+                                        <p class="font-black">该邮箱无须公网环境，注册配置 https://mail.wfxling.com 即可。</p>
+                                    </div>
+                                </div>
+
                                 <div v-if="config.email_api_mode === 'openai_cpa' && config.openai_cpa" class="animate-fade-in space-y-4 mt-2">
                                     <div class="flex items-center gap-2 mb-4">
                                         <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>

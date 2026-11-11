@@ -189,7 +189,7 @@ const ACCOUNT_METHODS = {
                 this.selectedImageAccounts = [];
             },
     async upgradeAllImageAccounts() {
-                if(!confirm("确定要对所有 IMG 账号进行 OAuth 凭证提取吗？该操作将占用所有并发线程。")) return;
+                if(!confirm("确定要对所有半成品账号进行 OAuth 凭证提取吗？该操作将占用所有并发线程。")) return;
                 this.isUpgradingOAuthAll = true;
                 await this.triggerOAuthUpgrade("ALL");
                 this.isUpgradingOAuthAll = false;

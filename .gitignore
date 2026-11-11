@@ -32,6 +32,8 @@ test_register5.py
 aitest.py
 register.py.bak
 .codex/
+.codex-tmp/
+.cloakbrowser/
 AGENTS.md
 stop_openai_cpa.ps1
 openai_totp.py

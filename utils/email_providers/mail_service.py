@@ -1,3 +1,4 @@
+import hashlib
 import imaplib
 import json
 import random
@@ -323,7 +324,13 @@ def is_mail_domain_disabled(domain: str) -> bool:
 
 def is_mail_domain_runtime_control_enabled(mode: Optional[str] = None) -> bool:
     current_mode = str(mode or getattr(cfg, 'EMAIL_API_MODE', '') or '').strip()
-    if current_mode not in {"cloudflare_temp_email", "freemail", "cloudmail", "openai_cpa"}:
+    if current_mode not in {
+        "cloudflare_temp_email",
+        "freemail",
+        "cloudmail",
+        "openai_cpa",
+        "openai_cpa_cloud",
+    }:
         return False
     return bool(getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False))
 
@@ -1367,6 +1374,13 @@ def get_email_and_token(
             print(f"[{cfg.ts()}] [ERROR] 项目专属邮箱 OPENAI-CPA 未填写通讯密钥，无法生成邮箱！")
             return None, None
 
+    if mode == "openai_cpa_cloud":
+        if not getattr(cfg, 'OPENAI_CPA_CLOUD_API_TOKEN', ""):
+            print(f"[{cfg.ts()}] [ERROR] OpenAI-CPA 云端内存池未填写 API Token，无法生成邮箱！")
+            return None, None
+        print(f"[{cfg.ts()}] [INFO] OpenAI-CPA 云端内存池分配邮箱: {mask_email(email_str)}")
+        return email_str, ""
+
     if mode == "cloudmail":
         if getattr(cfg, 'CM_LOCAL_WEBHOOK', False):
             print(
@@ -1540,6 +1554,106 @@ def _extract_mail_fields(mail: dict) -> dict:
     return {"sender": sender, "subject": subject, "body": body_text, "raw": raw}
 
 
+_OPENAI_CPA_CLOUD_LIST_KEYS = (
+    "messages",
+    "data",
+    "items",
+    "results",
+    "emails",
+    "mails",
+    "list",
+)
+_OPENAI_CPA_CLOUD_MESSAGE_KEYS = {
+    "id",
+    "message_id",
+    "mail_id",
+    "uid",
+    "subject",
+    "from",
+    "source",
+    "content",
+    "text",
+    "body",
+    "body_text",
+    "body_html",
+    "html",
+    "html_content",
+    "raw",
+    "created_at",
+    "timestamp",
+}
+
+
+def _openai_cpa_cloud_message_list(payload: Any, depth: int = 0) -> list[dict]:
+    """Normalize the common list envelopes used by mailbox APIs."""
+    if depth > 4 or payload is None:
+        return []
+    if isinstance(payload, list):
+        messages = []
+        for item in payload:
+            if isinstance(item, dict):
+                messages.append(item)
+            elif isinstance(item, str) and item.strip():
+                messages.append({"content": item})
+        return messages
+    if isinstance(payload, str):
+        return [{"content": payload}] if payload.strip() else []
+    if not isinstance(payload, dict):
+        return []
+
+    for key in _OPENAI_CPA_CLOUD_LIST_KEYS:
+        value = payload.get(key)
+        if isinstance(value, (list, dict)):
+            messages = _openai_cpa_cloud_message_list(value, depth + 1)
+            if messages:
+                return messages
+
+    if _OPENAI_CPA_CLOUD_MESSAGE_KEYS.intersection(payload.keys()):
+        return [payload]
+    return []
+
+
+def _openai_cpa_cloud_message_text(mail: dict) -> str:
+    parsed = _extract_mail_fields(mail)
+    parts = [parsed.get("subject", ""), parsed.get("sender", ""), parsed.get("body", "")]
+    for key in (
+        "body_text",
+        "bodyText",
+        "body_html",
+        "bodyHtml",
+        "html_content",
+        "htmlContent",
+        "snippet",
+        "preview",
+        "raw",
+    ):
+        value = mail.get(key)
+        if isinstance(value, str):
+            parts.append(_clean_html_to_text(value))
+        elif isinstance(value, (dict, list)):
+            parts.append(json.dumps(value, ensure_ascii=False))
+    return "\n".join(str(part).strip() for part in parts if str(part or "").strip())
+
+
+def _openai_cpa_cloud_message_id(mail: dict, content: str) -> str:
+    for key in ("id", "message_id", "mail_id", "uid", "uuid"):
+        value = str(mail.get(key) or "").strip()
+        if value:
+            return value
+    fingerprint = "\n".join(
+        str(mail.get(key) or "")
+        for key in ("subject", "from", "source", "created_at", "timestamp")
+    )
+    fingerprint = f"{fingerprint}\n{content}".strip()
+    return hashlib.sha256(fingerprint.encode("utf-8", errors="replace")).hexdigest()[:24]
+
+
+def _openai_cpa_cloud_messages_endpoint(api_url: str) -> str:
+    base = str(api_url or "https://mail.wfxling.com").strip().rstrip("/")
+    if base.endswith("/api/messages"):
+        return base
+    return f"{base}/api/messages"
+
 
 def _is_grok_registration_mode() -> bool:
     """Grok/xAI 注册时，邮件发件人与验证码形态都不同于 OpenAI。"""
@@ -1707,6 +1821,10 @@ def get_oai_code(
         else:
             print(f"[{cfg.ts()}] [ERROR] ({mask_email(email)}) 邮递员等待超时，未收到验证码。")
             return ""
+
+    if mode == "openai_cpa_cloud" and not getattr(cfg, 'OPENAI_CPA_CLOUD_API_TOKEN', ""):
+        print(f"[{cfg.ts()}] [ERROR] OpenAI-CPA 云端内存池未配置 API Token，无法取信。")
+        return ""
 
     for attempt in range(max_attempts):
         if getattr(cfg, 'GLOBAL_STOP', False): return ""
@@ -2439,6 +2557,56 @@ def get_oai_code(
                         return ""
                     except ImportError:
                         print(f"[{cfg.ts()}] [ERROR] 无法导入内存池！")
+            elif mode == "openai_cpa_cloud":
+                api_url = getattr(cfg, 'OPENAI_CPA_CLOUD_API_URL', "https://mail.wfxling.com")
+                api_token = str(getattr(cfg, 'OPENAI_CPA_CLOUD_API_TOKEN', "") or "").strip()
+                try:
+                    limit = int(getattr(cfg, 'OPENAI_CPA_CLOUD_LIMIT', 20) or 20)
+                except (TypeError, ValueError):
+                    limit = 20
+                limit = max(1, min(100, limit))
+                auth_value = api_token if api_token.lower().startswith("bearer ") else f"Bearer {api_token}"
+                res = requests.post(
+                    _openai_cpa_cloud_messages_endpoint(api_url),
+                    headers={
+                        "Authorization": auth_value,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json={"email": email, "limit": limit},
+                    proxies=mail_proxies,
+                    verify=_ssl_verify(),
+                    timeout=15,
+                )
+                if res.status_code != 200:
+                    detail = str(getattr(res, "text", "") or "").strip()[:300]
+                    print(
+                        f"[{cfg.ts()}] [ERROR] OpenAI-CPA 云端内存池取信失败 "
+                        f"(HTTP {res.status_code}){': ' + detail if detail else ''}"
+                    )
+                else:
+                    messages = _openai_cpa_cloud_message_list(res.json())
+                    for mail in messages:
+                        content = _openai_cpa_cloud_message_text(mail)
+                        mail_id = _openai_cpa_cloud_message_id(mail, content)
+                        if not mail_id or mail_id in processed_mail_ids:
+                            continue
+                        if not _mail_matches_otp_sender(content):
+                            continue
+                        code = _extract_otp_code(content)
+                        if not code:
+                            match = re.search(pattern, content)
+                            code = match.group(1) if match else ""
+                        if not code:
+                            continue
+                        processed_mail_ids.add(mail_id)
+                        if ignore_code and code == str(ignore_code):
+                            continue
+                        print(
+                            f"[{cfg.ts()}] [SUCCESS] OpenAI-CPA 云端内存池 "
+                            f"({mask_email(email)}) 提取成功: {code}"
+                        )
+                        return code
             elif mode == "freemail":
                 if getattr(cfg, 'FREEMAIL_LOCAL_WEBHOOK', False):
                     try:

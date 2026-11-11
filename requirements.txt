@@ -21,3 +21,5 @@ quart>=0.19
 camoufox>=0.4
 patchright>=1.50
 rich>=13
+cloakbrowser[geoip]<0.7
+playwright>=1.49.0

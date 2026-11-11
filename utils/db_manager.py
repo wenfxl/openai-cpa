@@ -317,8 +317,11 @@ def get_image_accounts_page(page: int = 1, page_size: int = 50, search: str = No
     try:
         with get_db_conn() as conn:
             c = get_cursor(conn)
-            conditions = ["token_data LIKE ?", "is_active = 1"]
-            params = ['%"image2api"%']
+            conditions = [
+                "(token_data LIKE ? OR token_data LIKE ?)",
+                "is_active = 1",
+            ]
+            params = ['%"image2api"%', '%"仅注册成功"%']
 
             if search:
                 conditions.append("(email LIKE ? OR password LIKE ?)")
@@ -347,7 +350,11 @@ def get_image_accounts_page(page: int = 1, page_size: int = 50, search: str = No
                     "password": r[1],
                     "created_at": r[2],
                     "token_data": r[3],
-                    "status": "image2api",
+                    "status": (
+                        "image2api"
+                        if '"image2api"' in str(r[3] or "")
+                        else "仅注册成功"
+                    ),
                     "is_active": r[4] if r[4] is not None else 1,
                     "push_platform": r[5],
                     "push_time": r[6]

@@ -237,7 +237,7 @@ def init_config():
                 print(f"[{ts()}] [WARNING] 自动补全配置文件写入失败: {e}")
 
     return user_config
-APP_VERSION = "v18.2.0"
+APP_VERSION = "v19.0.0"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False
@@ -471,6 +471,27 @@ FVIA_TOKEN: str = ""
 TMAILOR_CURRENT_TOKEN: str = ""
 REG_MODE: str = "email"
 REG_PROVIDER: str = "openai"
+REGISTER_DRIVER: str = "protocol"
+CLOAK_HEADLESS: bool = True
+CLOAK_HUMANIZE: bool = True
+CLOAK_GEOIP: bool = True
+CLOAK_LOCALE: str = ""
+CLOAK_TIMEZONE: str = ""
+CLOAK_USE_PROXY: bool = True
+CLOAK_LICENSE_KEY: str = ""
+CLOAK_FINGERPRINT_SEED: str = ""
+CLOAK_USER_DATA_DIR: str = ""
+CLOAK_CACHE_DIR: str = ""
+CLOAK_DOWNLOAD_URL: str = ""
+CLOAK_AUTO_UPDATE: bool = False
+CLOAK_EXTRA_ARGS: list = []
+CLOAK_NAVIGATION_TIMEOUT: int = 90
+CLOAK_ACTION_TIMEOUT: int = 30
+CLOAK_PROFILE_TIMEOUT: int = 60
+CLOAK_SESSION_TIMEOUT: int = 90
+CLOAK_KEEP_BROWSER_OPEN: bool = False
+CLOAK_REGISTRATION_NAME: str = ""
+CLOAK_REGISTRATION_BIRTHDAY: str = ""
 # Grok
 GROK_OAUTH_TIMEOUT: float = 180.0
 DB_TYPE: str = "sqlite"
@@ -487,6 +508,9 @@ GMAIL_OAUTH_SUFFIX_LEN_MAX: int = 8
 DISABLE_FORCED_TAKEOVER: bool = True
 OPENAI_CPA_WEBHOOK_SECRET = ""
 USE_ORIGINAL_PASSWORD_FLOW: bool = False
+OPENAI_CPA_CLOUD_API_URL: str = "https://mail.wfxling.com"
+OPENAI_CPA_CLOUD_API_TOKEN: str = ""
+OPENAI_CPA_CLOUD_LIMIT: int = 20
 CF_API_EMAIL: str = ""
 CF_API_KEY: str = ""
 DOMAIN_REGISTER: dict = {}
@@ -591,6 +615,13 @@ def reload_all_configs(new_config_dict=None):
     global CLUSTER_SYNC_STALE_FILE_MAX_AGE_HOURS, CLUSTER_SYNC_MAX_FILE_SIZE_MB, CLUSTER_SYNC_MAX_RECORDS, CLUSTER_SYNC_REQUIRE_CUSTOM_SECRET
     global REG_MODE
     global REG_PROVIDER
+    global REGISTER_DRIVER
+    global CLOAK_HEADLESS, CLOAK_HUMANIZE, CLOAK_GEOIP, CLOAK_LOCALE, CLOAK_TIMEZONE
+    global CLOAK_USE_PROXY, CLOAK_LICENSE_KEY, CLOAK_FINGERPRINT_SEED, CLOAK_USER_DATA_DIR
+    global CLOAK_CACHE_DIR, CLOAK_DOWNLOAD_URL, CLOAK_AUTO_UPDATE
+    global CLOAK_EXTRA_ARGS, CLOAK_NAVIGATION_TIMEOUT, CLOAK_ACTION_TIMEOUT
+    global CLOAK_PROFILE_TIMEOUT, CLOAK_SESSION_TIMEOUT, CLOAK_KEEP_BROWSER_OPEN
+    global CLOAK_REGISTRATION_NAME, CLOAK_REGISTRATION_BIRTHDAY
     # Grok 仅加载可配置项；其余固定常量不在此处改写
     global GROK_OAUTH_TIMEOUT, DISCARD_ON_DOWNGRADE
     global LOCAL_MS_ENABLE_FISSION, LOCAL_MS_MASTER_EMAIL, LOCAL_MS_PASSWORD, LOCAL_MS_CLIENT_ID, LOCAL_MS_REFRESH_TOKEN, LOCAL_MS_POOL_FISSION
@@ -612,6 +643,7 @@ def reload_all_configs(new_config_dict=None):
     global HERO_SMS_REUSE_PHONE, HERO_SMS_REUSE_MAX
     global FIVESIM_REUSE_PHONE, FIVESIM_REUSE_MAX
     global OPENAI_CPA_WEBHOOK_SECRET, USE_ORIGINAL_PASSWORD_FLOW
+    global OPENAI_CPA_CLOUD_API_URL, OPENAI_CPA_CLOUD_API_TOKEN, OPENAI_CPA_CLOUD_LIMIT
     global TEAM_MODE_ENABLE, TEAM_MODE_OVERSPEED
     global ENABLE_CODEX_AGENT_IDENTITY
     base_yaml_config = init_config()
@@ -827,6 +859,15 @@ def reload_all_configs(new_config_dict=None):
     _ocpa = _c.get("openai_cpa", {})
     OPENAI_CPA_WEBHOOK_SECRET = str(_ocpa.get("webhook_secret", "")).strip()
     USE_ORIGINAL_PASSWORD_FLOW = bool(_ocpa.get("use_original_password_flow", False))
+    _ocpa_cloud = _c.get("openai_cpa_cloud", {})
+    if not isinstance(_ocpa_cloud, dict):
+        _ocpa_cloud = {}
+    OPENAI_CPA_CLOUD_API_URL = (
+        str(_ocpa_cloud.get("api_url") or "https://mail.wfxling.com").strip().rstrip("/")
+    )
+    OPENAI_CPA_CLOUD_API_TOKEN = str(_ocpa_cloud.get("api_token") or "").strip()
+    OPENAI_CPA_CLOUD_LIMIT = safe_int(_ocpa_cloud.get("limit", 20), default=20, minimum=1)
+    OPENAI_CPA_CLOUD_LIMIT = min(100, OPENAI_CPA_CLOUD_LIMIT)
 
     DEFAULT_PROXY = format_docker_url(_c.get("default_proxy", ""))
     GROK_INSPECT_PROXY = format_docker_url(_c.get("check_proxy", ""))
@@ -1110,6 +1151,36 @@ def reload_all_configs(new_config_dict=None):
     REG_PROVIDER = str(_c.get("reg_provider", "openai")).strip().lower()
     if REG_PROVIDER not in {"openai", "grok"}:
         REG_PROVIDER = "openai"
+
+    REGISTER_DRIVER = str(_c.get("register_driver", "protocol")).strip().lower()
+    if REGISTER_DRIVER not in {"protocol", "cloakbrowser"}:
+        REGISTER_DRIVER = "protocol"
+
+    _cloak = _c.get("cloakbrowser", {})
+    if not isinstance(_cloak, dict):
+        _cloak = {}
+    CLOAK_HEADLESS = safe_bool(_cloak.get("headless", True), default=True)
+    CLOAK_HUMANIZE = safe_bool(_cloak.get("humanize", True), default=True)
+    CLOAK_GEOIP = safe_bool(_cloak.get("geoip", True), default=True)
+    CLOAK_LOCALE = str(_cloak.get("locale") or "").strip()
+    CLOAK_TIMEZONE = str(_cloak.get("timezone") or "").strip()
+    CLOAK_USE_PROXY = safe_bool(_cloak.get("use_proxy", True), default=True)
+    CLOAK_LICENSE_KEY = str(_cloak.get("license_key") or "").strip()
+    CLOAK_FINGERPRINT_SEED = str(_cloak.get("fingerprint_seed") or "").strip()
+    CLOAK_USER_DATA_DIR = str(_cloak.get("user_data_dir") or "").strip()
+    CLOAK_CACHE_DIR = str(_cloak.get("cache_dir") or "").strip()
+    CLOAK_DOWNLOAD_URL = str(_cloak.get("download_url") or "").strip()
+    CLOAK_AUTO_UPDATE = safe_bool(_cloak.get("auto_update", False), default=False)
+    raw_extra_args = _cloak.get("extra_args", [])
+    CLOAK_EXTRA_ARGS = [str(item).strip() for item in raw_extra_args if str(item).strip()] \
+        if isinstance(raw_extra_args, list) else []
+    CLOAK_NAVIGATION_TIMEOUT = safe_int(_cloak.get("navigation_timeout", 90), 90, minimum=10)
+    CLOAK_ACTION_TIMEOUT = safe_int(_cloak.get("action_timeout", 30), 30, minimum=5)
+    CLOAK_PROFILE_TIMEOUT = safe_int(_cloak.get("profile_timeout", 60), 60, minimum=10)
+    CLOAK_SESSION_TIMEOUT = safe_int(_cloak.get("session_timeout", 90), 90, minimum=10)
+    CLOAK_KEEP_BROWSER_OPEN = safe_bool(_cloak.get("keep_browser_open", False), default=False)
+    CLOAK_REGISTRATION_NAME = str(_cloak.get("registration_name") or "").strip()
+    CLOAK_REGISTRATION_BIRTHDAY = str(_cloak.get("registration_birthday") or "").strip()
 
     # Grok
     _grok = _c.get("grok", {}) if isinstance(_c.get("grok"), dict) else {}

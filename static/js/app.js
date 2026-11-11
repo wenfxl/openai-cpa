@@ -183,6 +183,7 @@ createApp({
                 showMailboxesPlaintext: false,
                 db_pass: false,
                 master_rt: false,
+                openai_cpa_cloud: false,
                 image2api_url: true,
                 image2api_key: false,
                 grok2api_url: true,
@@ -349,7 +350,7 @@ createApp({
             this.fetchMailboxes();
         },
         'config.email_api_mode'(nextMode) {
-            const supportedModes = ['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa'];
+            const supportedModes = ['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud'];
             if (!supportedModes.includes(String(nextMode || '').trim())) {
                 this.config.enable_mail_domain_runtime_control = false;
                 this.mailDomainRuntimeStats = [];
@@ -2420,6 +2421,37 @@ async exportSub2Api() {
             }
             await this.saveConfig();
             this.showToast(`注册平台已切换为: ${next === 'grok' ? 'Grok/xAI' : 'OpenAI(默认)'}`, 'info');
+        },
+        async changeRegisterDriver(driver) {
+            if (!this.config) return;
+            const next = driver === 'cloakbrowser' ? 'cloakbrowser' : 'protocol';
+            this.config.register_driver = next;
+            if (next === 'cloakbrowser') {
+                this.config.reg_mode = 'email';
+                if (!this.config.cloakbrowser || typeof this.config.cloakbrowser !== 'object') {
+                    this.config.cloakbrowser = {
+                        headless: true,
+                        humanize: true,
+                        geoip: true,
+                        locale: '',
+                        timezone: '',
+                        use_proxy: true,
+                        license_key: '',
+                        fingerprint_seed: '',
+                        user_data_dir: '',
+                        extra_args: [],
+                        navigation_timeout: 90,
+                        action_timeout: 30,
+                        profile_timeout: 60,
+                        session_timeout: 90,
+                        keep_browser_open: false,
+                        registration_name: '',
+                        registration_birthday: ''
+                    };
+                }
+            }
+            await this.saveConfig();
+            this.showToast(`注册驱动已切换为: ${next === 'cloakbrowser' ? 'CloakBrowser' : '纯协议'}`, 'info');
         },
         async changeRegMode(mode) {
             if (!this.config) return;

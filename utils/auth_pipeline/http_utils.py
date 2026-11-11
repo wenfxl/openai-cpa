@@ -143,26 +143,39 @@ def _follow_redirect_chain_local(
         start_url: str,
         proxies: Any = None,
         max_redirects: int = 12,
+        request_retries: int = 2,
 ) -> Tuple[Any, str]:
     current_url = start_url
     response = None
     for _ in range(max_redirects):
-        try:
-            response = session.get(
-                current_url,
-                allow_redirects=False,
-                proxies=proxies,
-                verify=_ssl_verify(),
-                timeout=15,
+        last_error = None
+        for attempt in range(max(0, request_retries) + 1):
+            try:
+                response = session.get(
+                    current_url,
+                    allow_redirects=False,
+                    proxies=proxies,
+                    verify=_ssl_verify(),
+                    timeout=15,
+                )
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt < request_retries:
+                    time.sleep(0.35 * (attempt + 1))
+        if last_error is not None:
+            print(
+                f"[{cfg.ts()}] [WARNING] OAuth 跳转请求遇到网络/TLS异常，"
+                f"重试后仍失败: {last_error}"
             )
-            if response.status_code not in (301, 302, 303, 307, 308):
-                return response, current_url
-            loc = response.headers.get("Location", "")
-            if not loc:
-                return response, current_url
-            current_url = urllib.parse.urljoin(current_url, loc)
-            if "code=" in current_url and "state=" in current_url:
-                return None, current_url
-        except Exception:
+            return None, current_url
+        if response.status_code not in (301, 302, 303, 307, 308):
+            return response, current_url
+        loc = response.headers.get("Location", "")
+        if not loc:
+            return response, current_url
+        current_url = urllib.parse.urljoin(current_url, loc)
+        if "code=" in current_url and "state=" in current_url:
             return None, current_url
     return response, current_url

@@ -7,12 +7,38 @@
 reg_mode: "email"
 # 注册平台切换: openai(默认) | grok
 reg_provider: "openai"
+# 注册驱动: protocol(默认，纯协议) | cloakbrowser(CloakBrowser 浏览器注册)
+register_driver: "protocol"
 grok:
   oauth_timeout: 180
-# 可选值: "imap" / "freemail" / "cloudflare_temp_email" / "cloudmail" / "mail_curl" / "luckmail"
+cloakbrowser:
+  headless: true
+  humanize: true
+  # CloakBrowser 强制使用 GeoIP；运行前必须按 README 下载浏览器和 GeoIP
+  geoip: true
+  locale: ""
+  timezone: ""
+  use_proxy: true
+  license_key: ""
+  fingerprint_seed: ""
+  user_data_dir: ""
+  # 留空使用 ~/.cloakbrowser；安装命令的 --cache-dir 必须与此目录一致
+  cache_dir: ""
+  download_url: ""
+  auto_update: false
+  extra_args: []
+  navigation_timeout: 90
+  action_timeout: 30
+  profile_timeout: 60
+  session_timeout: 90
+  keep_browser_open: false
+  # 留空则自动生成
+  registration_name: ""
+  registration_birthday: ""
+# 可选值: "imap" / "freemail" / "cloudflare_temp_email" / "cloudmail" / "mail_curl" / "luckmail" / "openai_cpa_cloud"
 email_api_mode: "cloudflare_temp_email"
 
-# [基础配置: cloudflare_temp_email / imap / cloudmail 共享]
+# [基础配置: cloudflare_temp_email / imap / cloudmail / openai_cpa_cloud 共享]
 # 你的域名 (支持逗号分隔多域名随机轮换) 如果只有一个域名就只填一个域名
 
 mail_domains: "domain1.com,domain2.xyz,domain3.net"
@@ -56,6 +82,13 @@ admin_auth: ""
 openai_cpa:
   webhook_secret: "wenfxl_secret_key"
   use_original_password_flow: false
+
+# [模式 "openai_cpa_cloud" 专属配置]
+# 云端内存池邮箱，无需公网回调环境。
+openai_cpa_cloud:
+  api_url: "https://mail.wfxling.com"
+  api_token: ""
+  limit: 20
 
 # [模式 "imap" 专属配置] (CF Catch-all 转发接收端)
 imap:

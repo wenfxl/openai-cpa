@@ -266,12 +266,54 @@ const MAINTENANCE_METHODS = {
                     if (!this.config.temporam) {
                         this.config.temporam = { cookie: '' };
                     }
+                    if (!this.config.openai_cpa_cloud || typeof this.config.openai_cpa_cloud !== 'object' || Array.isArray(this.config.openai_cpa_cloud)) {
+                        this.config.openai_cpa_cloud = {};
+                    }
+                    if (!this.config.openai_cpa_cloud.api_url) {
+                        this.config.openai_cpa_cloud.api_url = 'https://mail.wfxling.com';
+                    }
+                    if (this.config.openai_cpa_cloud.api_token === undefined) {
+                        this.config.openai_cpa_cloud.api_token = '';
+                    }
+                    if (!Number.isFinite(Number(this.config.openai_cpa_cloud.limit))) {
+                        this.config.openai_cpa_cloud.limit = 20;
+                    }
                     if (!this.config.reg_mode) {
                             this.config.reg_mode = 'email';
                         }
                     if (!this.config.reg_provider) {
                             this.config.reg_provider = 'openai';
                         }
+                    if (!['protocol', 'cloakbrowser'].includes(this.config.register_driver)) {
+                        this.config.register_driver = 'protocol';
+                    }
+                    if (!this.config.cloakbrowser || typeof this.config.cloakbrowser !== 'object' || Array.isArray(this.config.cloakbrowser)) {
+                        this.config.cloakbrowser = {};
+                    }
+                    const cloakDefaults = {
+                        headless: true,
+                        humanize: true,
+                        geoip: true,
+                        locale: '',
+                        timezone: '',
+                        use_proxy: true,
+                        license_key: '',
+                        fingerprint_seed: '',
+                        user_data_dir: '',
+                        extra_args: [],
+                        navigation_timeout: 90,
+                        action_timeout: 30,
+                        profile_timeout: 60,
+                        session_timeout: 90,
+                        keep_browser_open: false,
+                        registration_name: '',
+                        registration_birthday: ''
+                    };
+                    Object.entries(cloakDefaults).forEach(([key, value]) => {
+                        if (this.config.cloakbrowser[key] === undefined) {
+                            this.config.cloakbrowser[key] = Array.isArray(value) ? [] : value;
+                        }
+                    });
                     if (!this.config.grok || typeof this.config.grok !== 'object') {
                             this.config.grok = {
                                 oauth_timeout: 180
@@ -424,6 +466,12 @@ const MAINTENANCE_METHODS = {
                         if (maxLen < minLen) maxLen = minLen;
                         this.config.local_microsoft.suffix_len_min = minLen;
                         this.config.local_microsoft.suffix_len_max = maxLen;
+                    }
+                    if (this.config.openai_cpa_cloud) {
+                        this.config.openai_cpa_cloud.api_url = String(this.config.openai_cpa_cloud.api_url || 'https://mail.wfxling.com').trim().replace(/\/+$/, '');
+                        this.config.openai_cpa_cloud.api_token = String(this.config.openai_cpa_cloud.api_token || '').trim();
+                        const cloudLimit = parseInt(this.config.openai_cpa_cloud.limit, 10);
+                        this.config.openai_cpa_cloud.limit = Math.max(1, Math.min(100, Number.isFinite(cloudLimit) ? cloudLimit : 20));
                     }
                     this.config.enable_mail_domain_runtime_control = normalizeBooleanLike(this.config.enable_mail_domain_runtime_control, false);
                     this.config.enable_mail_domain_grouping = normalizeBooleanLike(this.config.enable_mail_domain_grouping, false);

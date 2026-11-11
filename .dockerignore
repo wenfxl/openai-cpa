@@ -17,6 +17,8 @@ venv/
 data/
 *.db
 *.sqlite3
+cloakbrowser-runtime/
+.cloakbrowser/
 
 docker-compose.yaml
 docker-compose.yml
