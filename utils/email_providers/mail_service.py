@@ -330,6 +330,7 @@ def is_mail_domain_runtime_control_enabled(mode: Optional[str] = None) -> bool:
         "cloudmail",
         "openai_cpa",
         "openai_cpa_cloud",
+        "remail",
     }:
         return False
     return bool(getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False))
@@ -1019,6 +1020,18 @@ def get_email_and_token(
     mode = cfg.EMAIL_API_MODE
     mail_proxies = proxies if cfg.USE_PROXY_FOR_EMAIL else None
 
+    if mode == "remail":
+        try:
+            from utils.email_providers.remail_service import pick_account
+
+            account = pick_account(proxies=mail_proxies)
+            set_last_email(account.email)
+            print(f"[{cfg.ts()}] [INFO] Remail 分配邮箱: {mask_email(account.email)}")
+            return account.email, account.service_token
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] Remail 获取邮箱异常: {e}")
+            return None, None
+
     if mode == "mail_curl":
         try:
             url = f"{cfg.MC_API_BASE}/api/remail?key={cfg.MC_KEY}"
@@ -1665,6 +1678,18 @@ def _mail_matches_otp_sender(*parts: Any, platform: str = "") -> bool:
     if not blob.strip():
         return False
     plat = str(platform or _get_otp_platform_ctx() or "").strip().lower()
+    if plat in {"x_com", "x.com", "twitter"}:
+        keys = (
+            "x.com",
+            "twitter",
+            "info@x.com",
+            "noreply@x.com",
+            "support@x.com",
+            "verify@x.com",
+            "verification",
+            "security",
+        )
+        return any(k in blob for k in keys)
     if plat in {"domain_register", "dpdns", "domain"}:
         keys = (
             "domain_register",
@@ -1714,6 +1739,18 @@ def _extract_otp_code(content: str, platform: str = "") -> str:
     if not content:
         return ""
     plat = str(platform or _get_otp_platform_ctx() or "").strip().lower()
+    if plat in {"x_com", "x.com", "twitter"}:
+        patterns = [
+            r"(?i)(?:verification|confirmation|security|login)\s+code(?:\s+is)?[:\s-]*([A-Z0-9]{6,8})",
+            r"(?i)(?:your|the)\s+(?:x|twitter)\s+code\s+is[:\s-]*([A-Z0-9]{6,8})",
+            r"(?i)code[:\s-]+([A-Z0-9]{6,8})",
+            r"(?<![\w])(\d{6,8})(?![\w])",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, content)
+            if match:
+                return str(match.group(1)).strip()
+        return ""
     if plat in {"domain_register", "dpdns", "domain", "generic"}:
         patterns = [
             r"(?i)(?:verification|verify|security|login|sign[- ]?up)?\s*code[:\s-]+(\d{6})",
@@ -1784,7 +1821,7 @@ def get_oai_code(
     otp_platform = str(platform or "").strip().lower()
     _set_otp_platform_ctx(otp_platform)
 
-    print(f"\n[{cfg.ts()}] [INFO] 等待接收验证码 ({mask_email(email)})" + (f" platform={otp_platform}" if otp_platform else "") + "...")
+    print(f"\n[{cfg.ts()}] [INFO] 等待接收验证码 ({mask_email(email)})" +  "...")
 
     if processed_mail_ids is None:
         processed_mail_ids = set()
@@ -1824,6 +1861,24 @@ def get_oai_code(
 
     if mode == "openai_cpa_cloud" and not getattr(cfg, 'OPENAI_CPA_CLOUD_API_TOKEN', ""):
         print(f"[{cfg.ts()}] [ERROR] OpenAI-CPA 云端内存池未配置 API Token，无法取信。")
+        return ""
+
+    if mode == "remail":
+        try:
+            from utils.email_providers.remail_service import fetch_latest_otp
+
+            code = fetch_latest_otp(
+                email,
+                after_ts=None,
+                max_wait=max(30, max_attempts * 3),
+                poll_interval=3,
+                proxies=mail_proxies,
+            )
+            if code:
+                print(f"[{cfg.ts()}] [SUCCESS] Remail ({mask_email(email)})" + "邮箱提取成功: " + code)
+                return code
+        except Exception as e:
+            print(f"[{cfg.ts()}] [ERROR] Remail 取信异常: {e}")
         return ""
 
     for attempt in range(max_attempts):

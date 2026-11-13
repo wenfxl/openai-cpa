@@ -4,7 +4,7 @@
                                 <label class="block text-slate-700 text-sm font-extrabold mb-2">API 模式选择 (email_api_mode)</label>
                                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
                                     <div class="lg:col-span-2">
-                                        <select v-model="config.email_api_mode" @change="if(!['freemail', 'imap', 'cloudmail', 'cloudflare_temp_email', 'openai_cpa', 'openai_cpa_cloud'].includes(config.email_api_mode)) config.enable_sub_domains = false;" class="w-full appearance-none bg-slate-50 border-2 border-slate-200 text-blue-700 font-black rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors shadow-sm cursor-pointer pr-10 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232563eb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat">
+                                        <select v-model="config.email_api_mode" @change="if(!['freemail', 'imap', 'cloudmail', 'cloudflare_temp_email', 'openai_cpa', 'openai_cpa_cloud', 'remail'].includes(config.email_api_mode)) config.enable_sub_domains = false;" class="w-full appearance-none bg-slate-50 border-2 border-slate-200 text-blue-700 font-black rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors shadow-sm cursor-pointer pr-10 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232563eb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat">
                                             <option value="cloudflare_temp_email">cloudflare_temp_email (CF 临时邮箱)</option>
                                             <option value="imap">imap (直连收件箱)</option>
                                             <option value="local_microsoft">本地微软邮箱库</option>
@@ -12,6 +12,7 @@
                                             <option value="Gmail_OAuth">Gmail_OAuth授权(cf转发gmail直接选此模式收件)</option>
                                             <option value="openai_cpa">OpenAI-CPA 内存池</option>
                                             <option value="openai_cpa_cloud">OpenAI-CPA 内存池 云端版</option>
+                                            <option value="remail">Remail 接码 (按项目下单)</option>
                                             <option value="freemail">freemail</option>
                                             <option value="cloudmail">cloudmail</option>
                                             <option value="mail_curl">mail_curl</option>
@@ -699,6 +700,64 @@
                                     <div class="mt-4 pl-3 border-l-2 border-emerald-300 text-[11px] leading-relaxed text-emerald-800">
                                         <p class="font-black">该邮箱无须公网环境，注册配置 https://mail.wfxling.com 即可。</p>
                                     </div>
+                                </div>
+
+                                <div v-if="config.email_api_mode === 'remail' && config.remail" class="animate-fade-in mt-5 border-t border-slate-200 pt-5">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-black text-sky-800 bg-sky-100 px-3 py-1.5 rounded-md border border-sky-200 shadow-sm uppercase tracking-wider">Remail</span>
+                                            <span class="text-sm font-black text-slate-700">按项目下单并取验证码</span>
+                                        </div>
+                                        <a href="https://remail.aishop6.com/docs" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-sky-700 hover:text-sky-900 underline underline-offset-2">打开 Remail 文档</a>
+                                    </div>
+                                    <p class="text-xs text-slate-500 font-medium leading-relaxed mb-4">每次注册会创建一个 Remail 订单，邮箱和 service token 会一起保存到本地上下文，后续轮询 <span class="font-mono">/v1/pickup</span> 取码。</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">API 地址</label>
+                                            <input v-model.trim="config.remail.api_base" type="url" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors shadow-sm font-mono text-sm" placeholder="https://remail.aishop6.com">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">API Key</label>
+                                            <div class="relative">
+                                                <input :type="showPwd.remail ? 'text' : 'password'" v-model.trim="config.remail.api_key" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors shadow-sm font-mono text-sm" placeholder="rk- 开头">
+                                                <button type="button" @click="showPwd.remail = !showPwd.remail" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-700" title="显示或隐藏 API Key">
+                                                    <svg v-if="showPwd.remail" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">项目 ID</label>
+                                            <input v-model.number="config.remail.project_id" type="number" min="0" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-sm text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">邮箱后缀</label>
+                                            <input v-model.trim="config.remail.email_suffix" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-sm font-mono text-sm" placeholder="outlook.com">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">服务模式</label>
+                                            <select v-model="config.remail.service_mode" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-sm text-sm">
+                                                <option value="purchase">purchase (长效购买)</option>
+                                                <option value="code">code (短效接码)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">库存策略</label>
+                                            <select v-model="config.remail.supply_policy" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-sm text-sm">
+                                                <option value="public_only">public_only (公开库存)</option>
+                                                <option value="private_first">private_first (优先私有)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">订单等待秒数</label>
+                                            <input v-model.number="config.remail.order_wait_seconds" type="number" min="0" max="300" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-sm text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">请求超时 (秒)</label>
+                                            <input v-model.number="config.remail.request_timeout" type="number" min="1" max="120" class="w-full appearance-none bg-white border border-slate-200 text-slate-700 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-sm text-sm">
+                                        </div>
+                                    </div>
+                                    <p class="mt-4 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">Remail 订单需要可用的项目库存和余额；API Key 只用于下单，取码使用订单专属 service token。</p>
                                 </div>
 
                                 <div v-if="config.email_api_mode === 'openai_cpa' && config.openai_cpa" class="animate-fade-in space-y-4 mt-2">
