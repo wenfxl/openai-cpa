@@ -40,7 +40,7 @@ from .user_utils import _generate_password
 
 def _uses_original_password_flow(email_api_mode: str, force_original_pwd: bool) -> bool:
     mode = str(email_api_mode or "").strip().lower()
-    return bool(force_original_pwd and mode in ("openai_cpa", "openai_cpa_cloud"))
+    return bool(force_original_pwd and mode in ("openai_cpa", "openai_cpa_cloud", "remail"))
 
 
 def _resolve_oauth_takeover(

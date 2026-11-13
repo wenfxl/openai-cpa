@@ -5,7 +5,8 @@
 # https://github.com/s12ryt/mail-curl
 
 reg_mode: "email"
-# 注册平台切换: openai(默认) | grok
+# 注册平台切换: openai(默认) | grok | x_com
+# x_com 仅使用 CloakBrowser 注册，只保存邮箱与密码；不会执行 OAuth
 reg_provider: "openai"
 # 注册驱动: protocol(默认，纯协议) | cloakbrowser(CloakBrowser 浏览器注册)
 register_driver: "protocol"
@@ -16,8 +17,11 @@ cloakbrowser:
   humanize: true
   # CloakBrowser 强制使用 GeoIP；运行前必须按 README 下载浏览器和 GeoIP
   geoip: true
+  # 留空时 ChatGPT 和 X.com 均显式使用 en-US；GeoIP 继续提供时区/出口 IP
   locale: ""
   timezone: ""
+  # X.com 专用界面语言；显式 locale 为空时生效，并与 GeoIP 时区/出口 IP 共存
+  x_com_locale: "en-US"
   use_proxy: true
   license_key: ""
   fingerprint_seed: ""
@@ -89,6 +93,18 @@ openai_cpa_cloud:
   api_url: "https://mail.wfxling.com"
   api_token: ""
   limit: 20
+
+# [模式 "remail" 专属配置]
+# Remail 是按项目下单并取验证码的接码服务，不需要公网回调地址。
+remail:
+  api_base: "https://remail.aishop6.com"
+  api_key: ""
+  project_id: 2
+  email_suffix: "outlook.com"
+  service_mode: "purchase"
+  supply_policy: "public_only"
+  order_wait_seconds: 30
+  request_timeout: 20
 
 # [模式 "imap" 专属配置] (CF Catch-all 转发接收端)
 imap:

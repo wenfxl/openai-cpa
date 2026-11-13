@@ -6,6 +6,7 @@ import random
 import string
 import shutil
 import urllib.parse
+from datetime import datetime as _backup_datetime
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from utils.proxy_manager import reload_proxy_config
@@ -15,6 +16,26 @@ CONFIG_FILE_LOCK = threading.Lock()
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 CONFIG_PATH = os.path.join(BASE_DIR, "data", "config.yaml")
+CONFIG_BACKUP_DIR = os.path.join(BASE_DIR, "data", "config-backups")
+
+
+def backup_config_file(reason: str = "save") -> Optional[str]:
+    """Keep a timestamped copy before any full config rewrite."""
+    if not os.path.exists(CONFIG_PATH):
+        return None
+    try:
+        os.makedirs(CONFIG_BACKUP_DIR, exist_ok=True)
+        stamp = _backup_datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        safe_reason = "".join(
+            ch if ch.isalnum() or ch in {"-", "_"} else "_"
+            for ch in str(reason or "save").strip()
+        )[:40] or "save"
+        target = os.path.join(CONFIG_BACKUP_DIR, f"config-{stamp}-{safe_reason}.yaml")
+        shutil.copy2(CONFIG_PATH, target)
+        return target
+    except Exception as exc:
+        print(f"[{ts()}] [WARNING] config backup failed: {exc}")
+        return None
 
 
 def ts() -> str:
@@ -227,17 +248,10 @@ def init_config():
         with open(template_path, "r", encoding="utf-8") as f:
             default_config = yaml.safe_load(f) or {}
 
-        if deep_update_config(default_config, user_config):
-            print(f"[{ts()}] [系统] 检测到旧版配置缺失新参数，已自动补齐并生效！")
-            try:
-                with CONFIG_FILE_LOCK:
-                    with open(config_path, "w", encoding="utf-8") as f:
-                        yaml.dump(user_config, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
-            except Exception as e:
-                print(f"[{ts()}] [WARNING] 自动补全配置文件写入失败: {e}")
+        deep_update_config(default_config, user_config)
 
     return user_config
-APP_VERSION = "v19.0.0"
+APP_VERSION = "v19.0.1"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False
@@ -475,6 +489,7 @@ REGISTER_DRIVER: str = "protocol"
 CLOAK_HEADLESS: bool = True
 CLOAK_HUMANIZE: bool = True
 CLOAK_GEOIP: bool = True
+CLOAK_X_COM_LOCALE: str = "en-US"
 CLOAK_LOCALE: str = ""
 CLOAK_TIMEZONE: str = ""
 CLOAK_USE_PROXY: bool = True
@@ -511,6 +526,14 @@ USE_ORIGINAL_PASSWORD_FLOW: bool = False
 OPENAI_CPA_CLOUD_API_URL: str = "https://mail.wfxling.com"
 OPENAI_CPA_CLOUD_API_TOKEN: str = ""
 OPENAI_CPA_CLOUD_LIMIT: int = 20
+REMAIL_API_BASE: str = "https://remail.aishop6.com"
+REMAIL_API_KEY: str = ""
+REMAIL_PROJECT_ID: int = 2
+REMAIL_EMAIL_SUFFIX: str = "outlook.com"
+REMAIL_SERVICE_MODE: str = "purchase"
+REMAIL_SUPPLY_POLICY: str = "public_only"
+REMAIL_ORDER_WAIT_SECONDS: int = 30
+REMAIL_REQUEST_TIMEOUT: int = 20
 CF_API_EMAIL: str = ""
 CF_API_KEY: str = ""
 DOMAIN_REGISTER: dict = {}
@@ -617,6 +640,7 @@ def reload_all_configs(new_config_dict=None):
     global REG_PROVIDER
     global REGISTER_DRIVER
     global CLOAK_HEADLESS, CLOAK_HUMANIZE, CLOAK_GEOIP, CLOAK_LOCALE, CLOAK_TIMEZONE
+    global CLOAK_X_COM_LOCALE
     global CLOAK_USE_PROXY, CLOAK_LICENSE_KEY, CLOAK_FINGERPRINT_SEED, CLOAK_USER_DATA_DIR
     global CLOAK_CACHE_DIR, CLOAK_DOWNLOAD_URL, CLOAK_AUTO_UPDATE
     global CLOAK_EXTRA_ARGS, CLOAK_NAVIGATION_TIMEOUT, CLOAK_ACTION_TIMEOUT
@@ -644,6 +668,8 @@ def reload_all_configs(new_config_dict=None):
     global FIVESIM_REUSE_PHONE, FIVESIM_REUSE_MAX
     global OPENAI_CPA_WEBHOOK_SECRET, USE_ORIGINAL_PASSWORD_FLOW
     global OPENAI_CPA_CLOUD_API_URL, OPENAI_CPA_CLOUD_API_TOKEN, OPENAI_CPA_CLOUD_LIMIT
+    global REMAIL_API_BASE, REMAIL_API_KEY, REMAIL_PROJECT_ID, REMAIL_EMAIL_SUFFIX
+    global REMAIL_SERVICE_MODE, REMAIL_SUPPLY_POLICY, REMAIL_ORDER_WAIT_SECONDS, REMAIL_REQUEST_TIMEOUT
     global TEAM_MODE_ENABLE, TEAM_MODE_OVERSPEED
     global ENABLE_CODEX_AGENT_IDENTITY
     base_yaml_config = init_config()
@@ -675,6 +701,7 @@ def reload_all_configs(new_config_dict=None):
         _c = new_config_dict
         try:
             with CONFIG_FILE_LOCK:
+                backup_config_file("reload_save")
                 with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                     yaml.dump(new_config_dict, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
         except Exception:
@@ -868,6 +895,30 @@ def reload_all_configs(new_config_dict=None):
     OPENAI_CPA_CLOUD_API_TOKEN = str(_ocpa_cloud.get("api_token") or "").strip()
     OPENAI_CPA_CLOUD_LIMIT = safe_int(_ocpa_cloud.get("limit", 20), default=20, minimum=1)
     OPENAI_CPA_CLOUD_LIMIT = min(100, OPENAI_CPA_CLOUD_LIMIT)
+
+    _remail = _c.get("remail", {})
+    if not isinstance(_remail, dict):
+        _remail = {}
+    REMAIL_API_BASE = str(
+        _remail.get("api_base") or "https://remail.aishop6.com"
+    ).strip().rstrip("/")
+    REMAIL_API_KEY = str(_remail.get("api_key") or "").strip()
+    REMAIL_PROJECT_ID = safe_int(_remail.get("project_id", 2), default=2, minimum=0)
+    REMAIL_EMAIL_SUFFIX = str(_remail.get("email_suffix") or "outlook.com").strip()
+    REMAIL_SERVICE_MODE = str(_remail.get("service_mode") or "purchase").strip().lower()
+    if REMAIL_SERVICE_MODE not in {"purchase", "code"}:
+        REMAIL_SERVICE_MODE = "purchase"
+    REMAIL_SUPPLY_POLICY = str(_remail.get("supply_policy") or "public_only").strip().lower()
+    if REMAIL_SUPPLY_POLICY not in {"public_only", "private_first"}:
+        REMAIL_SUPPLY_POLICY = "public_only"
+    REMAIL_ORDER_WAIT_SECONDS = safe_int(
+        _remail.get("order_wait_seconds", 30), default=30, minimum=0
+    )
+    REMAIL_REQUEST_TIMEOUT = safe_int(
+        _remail.get("request_timeout", 20), default=20, minimum=1
+    )
+    REMAIL_ORDER_WAIT_SECONDS = min(300, REMAIL_ORDER_WAIT_SECONDS)
+    REMAIL_REQUEST_TIMEOUT = min(120, REMAIL_REQUEST_TIMEOUT)
 
     DEFAULT_PROXY = format_docker_url(_c.get("default_proxy", ""))
     GROK_INSPECT_PROXY = format_docker_url(_c.get("check_proxy", ""))
@@ -1149,12 +1200,15 @@ def reload_all_configs(new_config_dict=None):
     REG_MODE = str(_c.get("reg_mode", "email")).strip().lower()
 
     REG_PROVIDER = str(_c.get("reg_provider", "openai")).strip().lower()
-    if REG_PROVIDER not in {"openai", "grok"}:
+    if REG_PROVIDER not in {"openai", "grok", "x_com"}:
         REG_PROVIDER = "openai"
 
     REGISTER_DRIVER = str(_c.get("register_driver", "protocol")).strip().lower()
     if REGISTER_DRIVER not in {"protocol", "cloakbrowser"}:
         REGISTER_DRIVER = "protocol"
+    if REG_PROVIDER == "x_com":
+        REGISTER_DRIVER = "cloakbrowser"
+        REG_MODE = "email"
 
     _cloak = _c.get("cloakbrowser", {})
     if not isinstance(_cloak, dict):
@@ -1164,6 +1218,7 @@ def reload_all_configs(new_config_dict=None):
     CLOAK_GEOIP = safe_bool(_cloak.get("geoip", True), default=True)
     CLOAK_LOCALE = str(_cloak.get("locale") or "").strip()
     CLOAK_TIMEZONE = str(_cloak.get("timezone") or "").strip()
+    CLOAK_X_COM_LOCALE = str(_cloak.get("x_com_locale") or "en-US").strip() or "en-US"
     CLOAK_USE_PROXY = safe_bool(_cloak.get("use_proxy", True), default=True)
     CLOAK_LICENSE_KEY = str(_cloak.get("license_key") or "").strip()
     CLOAK_FINGERPRINT_SEED = str(_cloak.get("fingerprint_seed") or "").strip()

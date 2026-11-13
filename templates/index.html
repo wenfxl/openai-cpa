@@ -293,6 +293,10 @@
                                             :class="config.reg_provider === 'grok' ? 'is-active-grok' : ''">
                                         Grok
                                     </button>
+                                    <button type="button" @click="changeRegProvider('x_com')"
+                                            :class="config.reg_provider === 'x_com' ? 'is-active-grok' : ''">
+                                        X.com
+                                    </button>
                                 </div>
                                 <div v-show="(config.reg_provider || 'openai') === 'openai'" class="console-seg">
                                     <button type="button" @click="changeRegisterDriver('protocol')"

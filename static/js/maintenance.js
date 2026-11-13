@@ -278,6 +278,24 @@ const MAINTENANCE_METHODS = {
                     if (!Number.isFinite(Number(this.config.openai_cpa_cloud.limit))) {
                         this.config.openai_cpa_cloud.limit = 20;
                     }
+                    if (!this.config.remail || typeof this.config.remail !== 'object' || Array.isArray(this.config.remail)) {
+                        this.config.remail = {};
+                    }
+                    const remailDefaults = {
+                        api_base: 'https://remail.aishop6.com',
+                        api_key: '',
+                        project_id: 2,
+                        email_suffix: 'outlook.com',
+                        service_mode: 'purchase',
+                        supply_policy: 'public_only',
+                        order_wait_seconds: 30,
+                        request_timeout: 20
+                    };
+                    Object.entries(remailDefaults).forEach(([key, value]) => {
+                        if (this.config.remail[key] === undefined || this.config.remail[key] === null) {
+                            this.config.remail[key] = value;
+                        }
+                    });
                     if (!this.config.reg_mode) {
                             this.config.reg_mode = 'email';
                         }
@@ -286,6 +304,10 @@ const MAINTENANCE_METHODS = {
                         }
                     if (!['protocol', 'cloakbrowser'].includes(this.config.register_driver)) {
                         this.config.register_driver = 'protocol';
+                    }
+                    if (this.config.reg_provider === 'x_com') {
+                        this.config.register_driver = 'cloakbrowser';
+                        this.config.reg_mode = 'email';
                     }
                     if (!this.config.cloakbrowser || typeof this.config.cloakbrowser !== 'object' || Array.isArray(this.config.cloakbrowser)) {
                         this.config.cloakbrowser = {};
@@ -472,6 +494,39 @@ const MAINTENANCE_METHODS = {
                         this.config.openai_cpa_cloud.api_token = String(this.config.openai_cpa_cloud.api_token || '').trim();
                         const cloudLimit = parseInt(this.config.openai_cpa_cloud.limit, 10);
                         this.config.openai_cpa_cloud.limit = Math.max(1, Math.min(100, Number.isFinite(cloudLimit) ? cloudLimit : 20));
+                    }
+                    if (this.config.remail) {
+                        this.config.remail.api_base = String(this.config.remail.api_base || 'https://remail.aishop6.com').trim().replace(/\/+$/, '');
+                        this.config.remail.api_key = String(this.config.remail.api_key || '').trim();
+                        this.config.remail.project_id = Math.max(0, parseInt(this.config.remail.project_id, 10) || 0);
+                        this.config.remail.email_suffix = String(this.config.remail.email_suffix || 'outlook.com').trim();
+                        this.config.remail.service_mode = ['purchase', 'code'].includes(String(this.config.remail.service_mode || '').trim()) ? String(this.config.remail.service_mode).trim() : 'purchase';
+                        this.config.remail.supply_policy = ['public_only', 'private_first'].includes(String(this.config.remail.supply_policy || '').trim()) ? String(this.config.remail.supply_policy).trim() : 'public_only';
+                        this.config.remail.order_wait_seconds = Math.max(0, Math.min(300, parseInt(this.config.remail.order_wait_seconds, 10) || 0));
+                        this.config.remail.request_timeout = Math.max(1, Math.min(120, parseInt(this.config.remail.request_timeout, 10) || 20));
+                    }
+                    if (this.config.cloakbrowser) {
+                        const cloakTimeouts = {
+                            navigation_timeout: [90, 10, 600],
+                            action_timeout: [30, 5, 600],
+                            profile_timeout: [60, 10, 600],
+                            session_timeout: [90, 10, 600]
+                        };
+                        Object.entries(cloakTimeouts).forEach(([key, [fallback, minimum, maximum]]) => {
+                            let value = parseInt(this.config.cloakbrowser[key], 10);
+                            if (!Number.isFinite(value)) value = fallback;
+                            this.config.cloakbrowser[key] = Math.max(minimum, Math.min(maximum, value));
+                        });
+                        ['headless', 'humanize', 'geoip', 'use_proxy', 'keep_browser_open'].forEach(key => {
+                            this.config.cloakbrowser[key] = normalizeBooleanLike(
+                                this.config.cloakbrowser[key],
+                                key !== 'keep_browser_open'
+                            );
+                        });
+                        ['locale', 'timezone', 'license_key', 'registration_name', 'registration_birthday']
+                            .forEach(key => {
+                                this.config.cloakbrowser[key] = String(this.config.cloakbrowser[key] || '').trim();
+                            });
                     }
                     this.config.enable_mail_domain_runtime_control = normalizeBooleanLike(this.config.enable_mail_domain_runtime_control, false);
                     this.config.enable_mail_domain_grouping = normalizeBooleanLike(this.config.enable_mail_domain_grouping, false);

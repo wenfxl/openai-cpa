@@ -929,6 +929,37 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
     else:
         token_data    = json.loads(token_json_str)
         account_email = token_data.get("email", "unknown")
+        is_x_com_registration = (
+            str(token_data.get("provider") or "").strip().lower() == "x_com"
+            or str(token_data.get("status") or "").strip().lower() == "x_com_registered"
+        )
+        if is_x_com_registration:
+            with _stats_lock:
+                run_stats["success"] += 1
+            should_sync, mode_label = resolve_local_inventory_storage(
+                cpa_upload=cpa_upload,
+                grok2api_upload=grok2api_upload,
+            )
+            token_json_str = json.dumps(token_data, ensure_ascii=False)
+            if should_sync:
+                if db_manager.save_account_to_db(account_email, password, token_json_str):
+                    print(
+                        f"[{ts()}] [SUCCESS] [{mode_label}] "
+                        f"X.com 账号密码已存入: {mask_email(account_email)}"
+                    )
+                else:
+                    print(
+                        f"[{ts()}] [ERROR] [{mode_label}] "
+                        f"X.com 账号入库失败: {mask_email(account_email)}"
+                    )
+                    return "failed"
+            else:
+                print(
+                    f"[{ts()}] [WARNING] [{mode_label}] "
+                    f"当前模式未开启本地保存，已跳过 X.com 入库: "
+                    f"{mask_email(account_email)}"
+                )
+            return "success"
         is_cloak_registration_only = (
             token_data.get("status") == "仅注册成功"
             and (
@@ -951,24 +982,24 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
                 if db_manager.save_account_to_db(account_email, password, token_json_str):
                     if image_saved:
                         print(
-                            f"[{ts()}] [WARNING] [IMAGE2API] CloakBrowser 注册成功，"
+                            f"[{ts()}] [WARNING] [IMAGE2API] Cloak 注册成功，"
                             f"但协议 OAuth 未完成；IMG 凭证已保存在半成品库: "
                             f"{mask_email(account_email)}"
                         )
                     else:
                         print(
-                            f"[{ts()}] [WARNING] [{mode_label}] CloakBrowser 注册成功，"
+                            f"[{ts()}] [WARNING] [{mode_label}] Cloak 注册成功，"
                             f"但协议 OAuth 未完成；已作为半成品写入本地库: "
                             f"{mask_email(account_email)}"
                         )
                 else:
                     print(
-                        f"[{ts()}] [ERROR] [{mode_label}] CloakBrowser 半成品入库失败: "
+                        f"[{ts()}] [ERROR] [{mode_label}] Cloak 半成品入库失败: "
                         f"{mask_email(account_email)}"
                     )
             else:
                 print(
-                    f"[{ts()}] [WARNING] [{mode_label}] CloakBrowser 注册成功，"
+                    f"[{ts()}] [WARNING] [{mode_label}] Cloak 注册成功，"
                     f"但协议 OAuth 未完成；当前模式未开启保留仅注册账号，"
                     f"已跳过本地入库: {mask_email(account_email)}"
                 )
@@ -1110,12 +1141,52 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
         finally:
             mark_task_finished()
     register_driver = str(getattr(cfg, "REGISTER_DRIVER", "protocol") or "protocol").strip().lower()
-    if register_driver == "cloakbrowser":
+    if provider == "x_com":
+        if register_driver != "cloakbrowser":
+            print(f"[{ts()}] [ERROR] X.com 仅支持 Cloak 浏览器注册，请切换注册驱动", flush=True)
+            return None, None
         if str(getattr(cfg, "REG_MODE", "email") or "email").strip().lower() != "email":
-            print(f"[{ts()}] [ERROR] CloakBrowser 仅支持邮箱注册，请将注册模式切回邮箱")
+            print(f"[{ts()}] [ERROR] X.com 仅支持邮箱注册，请将注册模式切回邮箱", flush=True)
             return None, None
 
-        from utils.auth_pipeline.cloakbrowser import run as cloakbrowser_run
+        from utils.auth_pipeline.cloak_x_com import run as run_x_com
+
+        try:
+            registration = run_x_com(
+                proxy,
+                run_ctx=run_ctx,
+                assigned_domain=assigned_domain,
+                batch_id=batch_id,
+                worker_index=worker_index,
+            )
+        except Exception as exc:
+            print(f"[{ts()}] [ERROR] X.com 注册异常: {exc}", flush=True)
+            return None, None
+        email = str((registration or {}).get("email") or "").strip()
+        password = str((registration or {}).get("password") or "")
+        if not email or not password:
+            print(f"[{ts()}] [ERROR] X.com 注册结果缺少邮箱或密码")
+            return None, None
+        token_data = {
+            "email": email,
+            "provider": "x_com",
+            "status": "x_com_registered",
+            "register_driver": "cloakbrowser",
+            "confirmation": str((registration or {}).get("confirmation") or ""),
+            "has_auth_token": bool((registration or {}).get("has_auth_token")),
+        }
+        print(f"[{ts()}] [SUCCESS] X.com 账号注册完成，仅保存邮箱与密码: {mask_email(email)}")
+        return json.dumps(token_data, ensure_ascii=False), password
+
+    if register_driver == "cloakbrowser":
+        if str(getattr(cfg, "REG_MODE", "email") or "email").strip().lower() != "email":
+            print(f"[{ts()}] [ERROR] Cloak 仅支持邮箱注册，请将注册模式切回邮箱")
+            return None, None
+
+        from utils.auth_pipeline.cloak_chatgpt import (
+            AccountEmailBlocked,
+            run as cloakbrowser_run,
+        )
         from utils.auth_pipeline.register import run_oauth_only
 
         run_ctx.pop("cloak_oauth_failed", None)
@@ -1135,7 +1206,7 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
             password = str(registration.get("password") or "")
             access_token = str(registration.get("access_token") or "")
             if not email or not password:
-                print(f"[{ts()}] [ERROR] CloakBrowser 注册结果缺少邮箱或密码")
+                print(f"[{ts()}] [ERROR] Cloak 注册结果缺少邮箱或密码")
                 return None, None
 
             device_id = str(registration.get("device_id") or "")
@@ -1163,17 +1234,17 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
                     run_ctx["cloak_image_saved"] = True
                     print(
                         f"[{ts()}] [INFO] [IMAGE2API] [{image_storage_mode}] "
-                        f"CloakBrowser IMG 凭证已自动保存，"
+                        f"Cloak IMG 凭证已自动保存，"
                         f"继续协议 OAuth: {mask_email(email)}"
                     )
                 else:
-                    print(f"[{ts()}] [ERROR] [IMAGE2API] CloakBrowser IMG 凭证保存失败: {mask_email(email)}")
+                    print(f"[{ts()}] [ERROR] [IMAGE2API] Cloak IMG 凭证保存失败: {mask_email(email)}")
 
             if sync_image2api:
                 if access_token:
                     from utils.integrations.image2api_client import Image2APIClient
 
-                    print(f"[{ts()}] [INFO] [IMAGE2API] CloakBrowser 正在同步 IMG 凭证: {mask_email(email)}")
+                    print(f"[{ts()}] [INFO] [IMAGE2API] Cloak 正在同步 IMG 凭证: {mask_email(email)}")
                     try:
                         ok, image_msg = Image2APIClient().add_accounts([access_token])
                     except Exception as image_exc:
@@ -1183,19 +1254,19 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
                     else:
                         print(f"[{ts()}] [ERROR] [IMAGE2API] IMG 凭证同步失败: {image_msg}")
                 else:
-                    print(f"[{ts()}] [WARNING] [IMAGE2API] CloakBrowser 未返回 IMG accessToken: {mask_email(email)}")
+                    print(f"[{ts()}] [WARNING] [IMAGE2API] Cloak 未返回 IMG accessToken: {mask_email(email)}")
 
             if img_only:
                 if not access_token:
-                    print(f"[{ts()}] [ERROR] [IMAGE2API] CloakBrowser 未取得 IMG accessToken: {mask_email(email)}")
+                    print(f"[{ts()}] [ERROR] [IMAGE2API] Cloak 未取得 IMG accessToken: {mask_email(email)}")
                     return None, None
                 print(
-                    f"[{ts()}] [INFO] [IMAGE2API] CloakBrowser 仅注册提取 IMG 模式，"
+                    f"[{ts()}] [INFO] [IMAGE2API] Cloak 仅注册提取 IMG 模式，"
                     f"跳过协议 OAuth: {mask_email(email)}"
                 )
                 return json.dumps(image_token_data, ensure_ascii=False), password
 
-            print(f"[{ts()}] [INFO] CloakBrowser 注册完成，开始协议 OAuth: {mask_email(email)}")
+            print(f"[{ts()}] [INFO] Cloak 注册完成，开始协议 OAuth: {mask_email(email)}")
             try:
                 oauth_result = run_oauth_only(
                     email,
@@ -1209,9 +1280,9 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
             except Exception as oauth_exc:
                 oauth_result = (None, None)
                 run_ctx["cloak_oauth_error"] = str(oauth_exc)
-                print(f"[{ts()}] [WARNING] CloakBrowser 注册后协议 OAuth 异常: {oauth_exc}")
+                print(f"[{ts()}] [WARNING] Cloak 注册后协议 OAuth 异常: {oauth_exc}")
             if oauth_result and oauth_result[0] and oauth_result[0] != "retry_403":
-                print(f"[{ts()}] [SUCCESS] CloakBrowser 注册 + 协议 OAuth 完成: {mask_email(email)}")
+                print(f"[{ts()}] [SUCCESS] Cloak 注册 + 协议 OAuth 完成: {mask_email(email)}")
                 return oauth_result
 
             run_ctx["cloak_oauth_failed"] = True
@@ -1228,8 +1299,12 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
                 "browser_session": session_info,
             }
             return json.dumps(partial_token, ensure_ascii=False), password
+        except AccountEmailBlocked:
+            run_ctx["account_email_blocked"] = True
+            print(f"[{ts()}] [WARNING] 当前邮箱被禁止创建账户")
+            return None, None
         except Exception as exc:
-            print(f"[{ts()}] [ERROR] CloakBrowser 注册异常: {exc}")
+            print(f"[{ts()}] [ERROR] Cloak 注册异常: {exc}")
             return None, None
     return run(
         proxy,
@@ -1592,6 +1667,7 @@ def normal_main_loop(args, stop_event: threading.Event, executor=None):
                 should_preallocate_domains = (
                     current_batch > 1
                     and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                    and str(getattr(cfg, 'EMAIL_API_MODE', '') or '').strip().lower() != 'remail'
                 )
                 preallocated_domains = []
                 batch_id = None
@@ -1914,6 +1990,7 @@ async def cpa_main_loop(args, async_stop_event: asyncio.Event, executor=None):
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
                         and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                        and str(getattr(cfg, 'EMAIL_API_MODE', '') or '').strip().lower() != 'remail'
                     ):
                         batch_id = int(time.time() * 1000)
                         domain_pool = mail_service.get_configured_main_domains_snapshot()
@@ -2175,6 +2252,7 @@ async def sub2api_main_loop(args, async_stop_event: asyncio.Event, executor=None
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
                         and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                        and str(getattr(cfg, 'EMAIL_API_MODE', '') or '').strip().lower() != 'remail'
                     ):
                         batch_id = int(time.time() * 1000)
                         domain_pool = mail_service.get_configured_main_domains_snapshot()
@@ -2416,6 +2494,7 @@ async def grok2api_main_loop(args, async_stop_event: asyncio.Event, executor=Non
                         cfg.ENABLE_MULTI_THREAD_REG
                         and batch_size > 1
                         and getattr(cfg, 'ENABLE_MAIL_DOMAIN_RUNTIME_CONTROL', False)
+                        and str(getattr(cfg, 'EMAIL_API_MODE', '') or '').strip().lower() != 'remail'
                     ):
                         batch_id = int(time.time() * 1000)
                         domain_pool = mail_service.get_configured_main_domains_snapshot()

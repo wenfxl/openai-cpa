@@ -560,5 +560,96 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-t-8 border-t-rose-400 bg-gradient-to-br from-rose-50/20 to-white lg:col-span-2" v-if="config.cloakbrowser && config.register_driver === 'cloakbrowser'">
+                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 pb-4 border-b border-rose-100">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-rose-700 flex items-center gap-2 tracking-tight">
+                                            <span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a3 3 0 100-6 3 3 0 000 6zM9 13a3 3 0 100-6 3 3 0 000 6zM9 21a3 3 0 100-6 3 3 0 000 6zM12 7l-3 3M12 7l3 3M10 16l2-2 2 2"></path></svg></span>
+                                            CloakBrowser 注册参数
+                                        </h3>
+                                        <p v-if="config.reg_provider === 'x_com'" class="text-xs text-slate-500 font-medium mt-2">X.com 仅执行浏览器注册，只保存邮箱与密码，不执行 OAuth。</p>
+                                        <p v-else class="text-xs text-slate-500 font-medium mt-2">仅影响浏览器注册；协议 OAuth 和原有存库流程保持不变。</p>
+                                    </div>
+                                    <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black shadow-sm">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.55)]"></span>
+                                        当前驱动
+                                    </span>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+                                    <div class="bg-rose-50/40 p-5 rounded-2xl border border-rose-100 shadow-inner">
+                                        <div class="text-xs font-black text-rose-800 uppercase tracking-wider mb-4">运行与浏览器</div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <label class="flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-rose-100 shadow-sm cursor-pointer">
+                                                <span>
+                                                    <span class="block text-xs font-black text-slate-700">显示浏览器窗口</span>
+                                                    <span class="block text-[10px] text-slate-400 mt-0.5">关闭后无界面运行</span>
+                                                </span>
+                                                <input type="checkbox" :checked="!config.cloakbrowser.headless" @change="config.cloakbrowser.headless = !$event.target.checked" class="sr-only peer">
+                                                <span class="relative w-11 h-6 shrink-0 bg-slate-200 rounded-full peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></span>
+                                            </label>
+                                            <label class="flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-rose-100 shadow-sm cursor-pointer">
+                                                <span>
+                                                    <span class="block text-xs font-black text-slate-700">拟人化操作</span>
+                                                    <span class="block text-[10px] text-slate-400 mt-0.5">加入自然点击和停顿</span>
+                                                </span>
+                                                <input type="checkbox" v-model="config.cloakbrowser.humanize" class="sr-only peer">
+                                                <span class="relative w-11 h-6 shrink-0 bg-slate-200 rounded-full peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></span>
+                                            </label>
+                                            <label class="flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-rose-100 shadow-sm cursor-pointer">
+                                                <span>
+                                                    <span class="block text-xs font-black text-slate-700">GeoIP 匹配</span>
+                                                    <span class="block text-[10px] text-slate-400 mt-0.5">语言和时区跟随代理出口</span>
+                                                </span>
+                                                <input type="checkbox" v-model="config.cloakbrowser.geoip" class="sr-only peer">
+                                                <span class="relative w-11 h-6 shrink-0 bg-slate-200 rounded-full peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></span>
+                                            </label>
+                                            <label class="flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-rose-100 shadow-sm cursor-pointer">
+                                                <span>
+                                                    <span class="block text-xs font-black text-slate-700">浏览器使用代理</span>
+                                                    <span class="block text-[10px] text-slate-400 mt-0.5">沿用当前注册代理</span>
+                                                </span>
+                                                <input type="checkbox" v-model="config.cloakbrowser.use_proxy" class="sr-only peer">
+                                                <span class="relative w-11 h-6 shrink-0 bg-slate-200 rounded-full peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></span>
+                                            </label>
+                                        </div>
+                                        <label class="mt-4 flex items-center justify-between gap-3 bg-white px-4 py-3 rounded-xl border border-rose-100 shadow-sm cursor-pointer">
+                                            <span>
+                                                <span class="block text-xs font-black text-slate-700">失败时保留浏览器</span>
+                                                <span class="block text-[10px] text-slate-400 mt-0.5">便于观察页面，后续任务前需手动关闭</span>
+                                            </span>
+                                            <input type="checkbox" v-model="config.cloakbrowser.keep_browser_open" class="sr-only peer">
+                                            <span class="relative w-11 h-6 shrink-0 bg-slate-200 rounded-full peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 shadow-inner">
+                                        <div class="text-xs font-black text-slate-700 uppercase tracking-wider mb-4">超时控制（秒）</div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="block text-[11px] text-slate-600 font-black mb-2">页面导航超时</label>
+                                                <input type="number" min="10" max="600" v-model.number="config.cloakbrowser.navigation_timeout" class="w-full bg-slate-50 border border-slate-200 text-slate-800 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
+                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">打开 {{ config.reg_provider === 'x_com' ? 'X.com' : 'ChatGPT' }} 页面时允许的最长加载时间。</p>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-rose-200 shadow-sm">
+                                                <label class="block text-[11px] text-rose-700 font-black mb-2">页面操作超时</label>
+                                                <input type="number" min="5" max="600" v-model.number="config.cloakbrowser.action_timeout" class="w-full bg-rose-50 border border-rose-200 text-rose-900 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
+                                                <p class="text-[10px] text-rose-500/80 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '等待 X.com 邮箱、验证码、资料和密码页的时间。' : '等待邮箱框、密码框和页面按钮的时间。' }}</p>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="block text-[11px] text-slate-600 font-black mb-2">资料页超时</label>
+                                                <input type="number" min="10" max="600" v-model.number="config.cloakbrowser.profile_timeout" class="w-full bg-slate-50 border border-slate-200 text-slate-800 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
+                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '填写 X.com 注册资料并完成提交的时间。' : '填写姓名、年龄和完成资料提交的时间。' }}</p>
+                                            </div>
+                                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <label class="block text-[11px] text-slate-600 font-black mb-2">会话读取超时</label>
+                                                <input type="number" min="10" max="600" v-model.number="config.cloakbrowser.session_timeout" class="w-full bg-slate-50 border border-slate-200 text-slate-800 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
+                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '注册完成后确认登录 Cookie 和页面状态的时间。' : '注册完成后读取 accessToken 和会话的时间。' }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
                         </div>
 

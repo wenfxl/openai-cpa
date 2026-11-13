@@ -298,8 +298,9 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                     "password": r[1],
                     "created_at": r[2],
                     "status": "image2api" if '"image2api"' in str(r[3] or "") else (
-                        "有凭证" if '"refresh_token"' in str(r[3] or "") else (
-                            "仅注册成功" if '"仅注册成功"' in str(r[3] or "") else "未知")),
+                        "X.com" if '"provider": "x_com"' in str(r[3] or "") else (
+                            "有凭证" if '"refresh_token"' in str(r[3] or "") else (
+                                "仅注册成功" if '"仅注册成功"' in str(r[3] or "") else "未知"))),
                     "is_active": r[4] if r[4] is not None else 1,
                     "push_platform": r[5],
                     "push_time": r[6]

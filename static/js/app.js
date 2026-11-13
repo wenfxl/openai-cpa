@@ -184,6 +184,7 @@ createApp({
                 db_pass: false,
                 master_rt: false,
                 openai_cpa_cloud: false,
+                remail: false,
                 image2api_url: true,
                 image2api_key: false,
                 grok2api_url: true,
@@ -350,7 +351,7 @@ createApp({
             this.fetchMailboxes();
         },
         'config.email_api_mode'(nextMode) {
-            const supportedModes = ['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud'];
+            const supportedModes = ['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud', 'remail'];
             if (!supportedModes.includes(String(nextMode || '').trim())) {
                 this.config.enable_mail_domain_runtime_control = false;
                 this.mailDomainRuntimeStats = [];
@@ -2410,8 +2411,12 @@ async exportSub2Api() {
         },
         async changeRegProvider(provider) {
             if (!this.config) return;
-            const next = (provider === 'grok') ? 'grok' : 'openai';
+            const next = ['grok', 'x_com'].includes(provider) ? provider : 'openai';
             this.config.reg_provider = next;
+            if (next === 'x_com') {
+                this.config.register_driver = 'cloakbrowser';
+                this.config.reg_mode = 'email';
+            }
             if (!this.config.grok || typeof this.config.grok !== 'object') {
                 this.config.grok = {
                             oauth_timeout: 180
@@ -2420,10 +2425,14 @@ async exportSub2Api() {
                 if (this.config.grok.oauth_timeout === undefined) this.config.grok.oauth_timeout = 180;
             }
             await this.saveConfig();
-            this.showToast(`注册平台已切换为: ${next === 'grok' ? 'Grok/xAI' : 'OpenAI(默认)'}`, 'info');
+            this.showToast(`注册平台已切换为: ${next === 'grok' ? 'Grok/xAI' : (next === 'x_com' ? 'X.com' : 'OpenAI(默认)')}`, 'info');
         },
         async changeRegisterDriver(driver) {
             if (!this.config) return;
+            if (this.config.reg_provider === 'x_com') {
+                this.showToast('X.com 固定使用 CloakBrowser 注册', 'warning');
+                return;
+            }
             const next = driver === 'cloakbrowser' ? 'cloakbrowser' : 'protocol';
             this.config.register_driver = next;
             if (next === 'cloakbrowser') {
@@ -2435,6 +2444,7 @@ async exportSub2Api() {
                         geoip: true,
                         locale: '',
                         timezone: '',
+                        x_com_locale: 'en-US',
                         use_proxy: true,
                         license_key: '',
                         fingerprint_seed: '',

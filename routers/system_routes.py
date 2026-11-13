@@ -911,6 +911,10 @@ async def clear_mail_domain_runtime_domain_cooldown(req: DomainRuntimeActionReq,
 @router.post("/api/config")
 async def save_config(new_config: dict, token: str = Depends(verify_token)):
     try:
+        try:
+            cfg.backup_config_file("web_save")
+        except Exception as exc:
+            print(f"[{ts()}] [WARNING] Web config backup failed: {exc}")
         current_config = getattr(core_engine.cfg, '_c', {}).copy()
         if isinstance(new_config.get("sub2api_mode"), dict):
             new_config["sub2api_mode"].pop("min_remaining_weekly_percent", None)
