@@ -251,7 +251,7 @@ def init_config():
         deep_update_config(default_config, user_config)
 
     return user_config
-APP_VERSION = "v19.0.1"
+APP_VERSION = "v19.0.2"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False
@@ -504,6 +504,7 @@ CLOAK_NAVIGATION_TIMEOUT: int = 90
 CLOAK_ACTION_TIMEOUT: int = 30
 CLOAK_PROFILE_TIMEOUT: int = 60
 CLOAK_SESSION_TIMEOUT: int = 90
+CLOAK_VOICE_CAPTCHA_RETRIES: int = 3
 CLOAK_KEEP_BROWSER_OPEN: bool = False
 CLOAK_REGISTRATION_NAME: str = ""
 CLOAK_REGISTRATION_BIRTHDAY: str = ""
@@ -644,7 +645,8 @@ def reload_all_configs(new_config_dict=None):
     global CLOAK_USE_PROXY, CLOAK_LICENSE_KEY, CLOAK_FINGERPRINT_SEED, CLOAK_USER_DATA_DIR
     global CLOAK_CACHE_DIR, CLOAK_DOWNLOAD_URL, CLOAK_AUTO_UPDATE
     global CLOAK_EXTRA_ARGS, CLOAK_NAVIGATION_TIMEOUT, CLOAK_ACTION_TIMEOUT
-    global CLOAK_PROFILE_TIMEOUT, CLOAK_SESSION_TIMEOUT, CLOAK_KEEP_BROWSER_OPEN
+    global CLOAK_PROFILE_TIMEOUT, CLOAK_SESSION_TIMEOUT, CLOAK_VOICE_CAPTCHA_RETRIES
+    global CLOAK_KEEP_BROWSER_OPEN
     global CLOAK_REGISTRATION_NAME, CLOAK_REGISTRATION_BIRTHDAY
     # Grok 仅加载可配置项；其余固定常量不在此处改写
     global GROK_OAUTH_TIMEOUT, DISCARD_ON_DOWNGRADE
@@ -1200,13 +1202,13 @@ def reload_all_configs(new_config_dict=None):
     REG_MODE = str(_c.get("reg_mode", "email")).strip().lower()
 
     REG_PROVIDER = str(_c.get("reg_provider", "openai")).strip().lower()
-    if REG_PROVIDER not in {"openai", "grok", "x_com"}:
+    if REG_PROVIDER not in {"openai", "grok", "x_com", "huaweicloud"}:
         REG_PROVIDER = "openai"
 
     REGISTER_DRIVER = str(_c.get("register_driver", "protocol")).strip().lower()
     if REGISTER_DRIVER not in {"protocol", "cloakbrowser"}:
         REGISTER_DRIVER = "protocol"
-    if REG_PROVIDER == "x_com":
+    if REG_PROVIDER in {"x_com", "huaweicloud"}:
         REGISTER_DRIVER = "cloakbrowser"
         REG_MODE = "email"
 
@@ -1233,6 +1235,16 @@ def reload_all_configs(new_config_dict=None):
     CLOAK_ACTION_TIMEOUT = safe_int(_cloak.get("action_timeout", 30), 30, minimum=5)
     CLOAK_PROFILE_TIMEOUT = safe_int(_cloak.get("profile_timeout", 60), 60, minimum=10)
     CLOAK_SESSION_TIMEOUT = safe_int(_cloak.get("session_timeout", 90), 90, minimum=10)
+    CLOAK_VOICE_CAPTCHA_RETRIES = int(
+        min(
+            20,
+            safe_int(
+                _cloak.get("voice_captcha_retries", 3),
+                3,
+                minimum=1,
+            ),
+        )
+    )
     CLOAK_KEEP_BROWSER_OPEN = safe_bool(_cloak.get("keep_browser_open", False), default=False)
     CLOAK_REGISTRATION_NAME = str(_cloak.get("registration_name") or "").strip()
     CLOAK_REGISTRATION_BIRTHDAY = str(_cloak.get("registration_birthday") or "").strip()

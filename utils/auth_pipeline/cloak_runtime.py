@@ -447,6 +447,7 @@ def launch_browser(
     locale: str = "",
     timezone_name: str = "",
     geoip: bool = True,
+    mute_audio: bool = False,
 ) -> tuple[Any, Any, Any, Any]:
     configure_runtime()
     try:
@@ -490,6 +491,10 @@ def launch_browser(
     if proxy_url:
         options["proxy"] = proxy_url
     extra_args = list(getattr(cfg, "CLOAK_EXTRA_ARGS", []) or [])
+    if mute_audio and "--mute-audio" not in extra_args:
+        extra_args.append("--mute-audio")
+    if mute_audio and "--autoplay-policy=no-user-gesture-required" not in extra_args:
+        extra_args.append("--autoplay-policy=no-user-gesture-required")
     fingerprint_seed = str(getattr(cfg, "CLOAK_FINGERPRINT_SEED", "") or "").strip()
     if fingerprint_seed:
         extra_args.append(f"--fingerprint={fingerprint_seed}")

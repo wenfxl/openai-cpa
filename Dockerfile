@@ -10,6 +10,7 @@ ARG NO_PROXY
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    ffmpeg \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \

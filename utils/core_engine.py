@@ -933,6 +933,37 @@ def handle_registration_result(result: Any, cpa_upload: bool = False, run_ctx: d
             str(token_data.get("provider") or "").strip().lower() == "x_com"
             or str(token_data.get("status") or "").strip().lower() == "x_com_registered"
         )
+        is_huaweicloud_registration = (
+            str(token_data.get("provider") or "").strip().lower() == "huaweicloud"
+        )
+        if is_huaweicloud_registration:
+            with _stats_lock:
+                run_stats["success"] += 1
+            should_sync, mode_label = resolve_local_inventory_storage(
+                cpa_upload=cpa_upload,
+                grok2api_upload=grok2api_upload,
+            )
+            token_json_str = json.dumps(token_data, ensure_ascii=False)
+            if should_sync:
+                if db_manager.save_account_to_db(account_email, password, token_json_str):
+                    print(
+                        f"[{ts()}] [SUCCESS] [{mode_label}] "
+                        f"华为云账号密码已存入账号库存: {mask_email(account_email)}"
+                    )
+                else:
+                    print(
+                        f"[{ts()}] [ERROR] [{mode_label}] "
+                        f"华为云账号入库失败: {mask_email(account_email)}"
+                    )
+                    return "failed"
+            else:
+                print(
+                    f"[{ts()}] [WARNING] [{mode_label}] "
+                    f"当前模式未开启仅注册账号保存，已跳过华为云入库: "
+                    f"{mask_email(account_email)}"
+                )
+                return "half_finished"
+            return "success"
         if is_x_com_registration:
             with _stats_lock:
                 run_stats["success"] += 1
@@ -1123,6 +1154,43 @@ def dispatch_register(proxy, run_ctx=None, assigned_domain=None, batch_id=None, 
     if run_ctx is None:
         run_ctx = {}
     provider = str(getattr(cfg, "REG_PROVIDER", "openai") or "openai").strip().lower()
+    if provider == "huaweicloud":
+        if str(getattr(cfg, "REG_MODE", "email") or "email").strip().lower() != "email":
+            print(f"[{ts()}] [ERROR] 华为云仅支持邮箱注册，请将注册模式切回邮箱", flush=True)
+            return None, None
+
+        from utils.auth_pipeline.cloak_huaweicloud import run as run_huaweicloud
+
+        try:
+            registration = run_huaweicloud(
+                proxy,
+                run_ctx=run_ctx,
+                assigned_domain=assigned_domain,
+                batch_id=batch_id,
+                worker_index=worker_index,
+            )
+        except Exception as exc:
+            print(f"[{ts()}] [ERROR] 华为云注册异常: {exc}", flush=True)
+            return None, None
+        email = str((registration or {}).get("email") or "").strip()
+        password = str((registration or {}).get("password") or "")
+        success_url = str((registration or {}).get("url") or "").strip()
+        if not email or not password:
+            print(f"[{ts()}] [ERROR] 华为云注册结果缺少邮箱或密码")
+            return None, None
+        if "account-intl.huaweicloud.com" not in success_url or "#/complete" not in success_url:
+            print(f"[{ts()}] [ERROR] 华为云未进入账号中心完成页: {success_url or '-'}")
+            return None, None
+        token_data = {
+            "email": email,
+            "provider": "huaweicloud",
+            "status": "huaweicloud_registered",
+            "register_driver": "cloakbrowser",
+            "registration_url": success_url,
+        }
+        print(f"[{ts()}] [SUCCESS] 华为云账号注册完成，仅保存邮箱与密码: {mask_email(email)}")
+        return json.dumps(token_data, ensure_ascii=False), password
+
     if provider == "grok":
         import os
         from utils.grok_auth.browser_recycler import mark_task_finished, recycle_before_next_task

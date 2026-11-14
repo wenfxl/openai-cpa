@@ -5,8 +5,8 @@
 # https://github.com/s12ryt/mail-curl
 
 reg_mode: "email"
-# 注册平台切换: openai(默认) | grok | x_com
-# x_com 仅使用 CloakBrowser 注册，只保存邮箱与密码；不会执行 OAuth
+# 注册平台切换: openai(默认) | grok | x_com | huaweicloud
+# x_com / huaweicloud 仅使用 CloakBrowser 注册，只保存邮箱与密码；不会执行 OAuth
 reg_provider: "openai"
 # 注册驱动: protocol(默认，纯协议) | cloakbrowser(CloakBrowser 浏览器注册)
 register_driver: "protocol"
@@ -35,6 +35,8 @@ cloakbrowser:
   action_timeout: 30
   profile_timeout: 60
   session_timeout: 90
+  #语音验证码自动识别失败后的重试次数
+  voice_captcha_retries: 3
   keep_browser_open: false
   # 留空则自动生成
   registration_name: ""

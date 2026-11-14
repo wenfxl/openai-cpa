@@ -2411,9 +2411,9 @@ async exportSub2Api() {
         },
         async changeRegProvider(provider) {
             if (!this.config) return;
-            const next = ['grok', 'x_com'].includes(provider) ? provider : 'openai';
+            const next = ['grok', 'x_com', 'huaweicloud'].includes(provider) ? provider : 'openai';
             this.config.reg_provider = next;
-            if (next === 'x_com') {
+            if (['x_com', 'huaweicloud'].includes(next)) {
                 this.config.register_driver = 'cloakbrowser';
                 this.config.reg_mode = 'email';
             }
@@ -2425,12 +2425,17 @@ async exportSub2Api() {
                 if (this.config.grok.oauth_timeout === undefined) this.config.grok.oauth_timeout = 180;
             }
             await this.saveConfig();
-            this.showToast(`注册平台已切换为: ${next === 'grok' ? 'Grok/xAI' : (next === 'x_com' ? 'X.com' : 'OpenAI(默认)')}`, 'info');
+            const providerLabels = {
+                grok: 'Grok/xAI',
+                x_com: 'X.com',
+                huaweicloud: '华为云'
+            };
+            this.showToast(`注册平台已切换为: ${providerLabels[next] || 'OpenAI(默认)'}`, 'info');
         },
         async changeRegisterDriver(driver) {
             if (!this.config) return;
-            if (this.config.reg_provider === 'x_com') {
-                this.showToast('X.com 固定使用 CloakBrowser 注册', 'warning');
+            if (['x_com', 'huaweicloud'].includes(this.config.reg_provider)) {
+                this.showToast('该平台固定使用 CloakBrowser 注册', 'warning');
                 return;
             }
             const next = driver === 'cloakbrowser' ? 'cloakbrowser' : 'protocol';
@@ -2454,6 +2459,7 @@ async exportSub2Api() {
                         action_timeout: 30,
                         profile_timeout: 60,
                         session_timeout: 90,
+                        voice_captcha_retries: 3,
                         keep_browser_open: false,
                         registration_name: '',
                         registration_birthday: ''

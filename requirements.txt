@@ -23,3 +23,5 @@ patchright>=1.50
 rich>=13
 cloakbrowser[geoip]<0.7
 playwright>=1.49.0
+vosk==0.3.45
+sherpa-onnx==2.0.1

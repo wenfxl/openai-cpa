@@ -1707,6 +1707,18 @@ def _mail_matches_otp_sender(*parts: Any, platform: str = "") -> bool:
         if re.search(r"(?<!\d)\d{6}(?!\d)", blob):
             return True
         return False
+    if plat in {"huaweicloud", "huawei_cloud", "huawei"}:
+        keys = (
+            "huaweicloud",
+            "huawei cloud",
+            "huawei",
+            "noreply",
+            "no-reply",
+            "verification",
+            "verify",
+            "security",
+        )
+        return any(k in blob for k in keys)
     if _is_grok_registration_mode() and plat not in {"openai", "chatgpt"}:
         keys = (
             "x.ai",
@@ -1764,6 +1776,18 @@ def _extract_otp_code(content: str, platform: str = "") -> str:
             if m:
                 return m.group(1)
         return ""
+    if plat in {"huaweicloud", "huawei_cloud", "huawei"}:
+        patterns = [
+            r"(?i)(?:verification|verify|security|login|sign[- ]?up)?\s*code"
+            r"(?:\s+is)?[:\s-]*([A-Z0-9]{4,8})",
+            r"(?i)(?:huawei|huaweicloud)[^\d]{0,80}(\d{4,8})",
+            r"(?<!\d)(\d{4,8})(?!\d)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, content)
+            if match:
+                return str(match.group(1)).strip()
+        return ""
     if _is_grok_registration_mode():
         try:
             from utils.grok_auth.otp import extract_xai_code
@@ -1802,12 +1826,14 @@ def get_oai_code(
         proxies: Any = None,
         processed_mail_ids: set = None,
         pattern: str = OTP_CODE_PATTERN,
-        max_attempts: int = 20,
+        max_attempts: Optional[int] = None,
         ignore_code=None,
         platform: str = "",
 ) -> str:
     """轮询各邮箱服务商收取验证码。"""
-    max_attempts = getattr(cfg, 'OTP_POLL_MAX_ATTEMPTS', 20)
+    if max_attempts is None:
+        max_attempts = getattr(cfg, 'OTP_POLL_MAX_ATTEMPTS', 20)
+    max_attempts = max(1, int(max_attempts or 1))
     mailbox_id = jwt
     mail_proxies = proxies if cfg.USE_PROXY_FOR_EMAIL else None
     proxy_str = None

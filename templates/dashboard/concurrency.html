@@ -568,6 +568,7 @@
                                             CloakBrowser 注册参数
                                         </h3>
                                         <p v-if="config.reg_provider === 'x_com'" class="text-xs text-slate-500 font-medium mt-2">X.com 仅执行浏览器注册，只保存邮箱与密码，不执行 OAuth。</p>
+                                        <p v-else-if="config.reg_provider === 'huaweicloud'" class="text-xs text-slate-500 font-medium mt-2">华为云仅执行浏览器注册，只保存邮箱与密码，不执行 OAuth 或 IMG 提取。</p>
                                         <p v-else class="text-xs text-slate-500 font-medium mt-2">仅影响浏览器注册；协议 OAuth 和原有存库流程保持不变。</p>
                                     </div>
                                     <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black shadow-sm">
@@ -629,22 +630,27 @@
                                             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                                                 <label class="block text-[11px] text-slate-600 font-black mb-2">页面导航超时</label>
                                                 <input type="number" min="10" max="600" v-model.number="config.cloakbrowser.navigation_timeout" class="w-full bg-slate-50 border border-slate-200 text-slate-800 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
-                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">打开 {{ config.reg_provider === 'x_com' ? 'X.com' : 'ChatGPT' }} 页面时允许的最长加载时间。</p>
+                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">打开 {{ config.reg_provider === 'x_com' ? 'X.com' : (config.reg_provider === 'huaweicloud' ? '华为云' : 'ChatGPT') }} 页面时允许的最长加载时间。</p>
                                             </div>
                                             <div class="bg-white p-4 rounded-xl border border-rose-200 shadow-sm">
                                                 <label class="block text-[11px] text-rose-700 font-black mb-2">页面操作超时</label>
                                                 <input type="number" min="5" max="600" v-model.number="config.cloakbrowser.action_timeout" class="w-full bg-rose-50 border border-rose-200 text-rose-900 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
-                                                <p class="text-[10px] text-rose-500/80 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '等待 X.com 邮箱、验证码、资料和密码页的时间。' : '等待邮箱框、密码框和页面按钮的时间。' }}</p>
+                                                <p class="text-[10px] text-rose-500/80 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '等待 X.com 邮箱、验证码、资料和密码页的时间。' : (config.reg_provider === 'huaweicloud' ? '等待华为云邮箱、验证弹窗、验证码和提交结果的时间。' : '等待邮箱框、密码框和页面按钮的时间。') }}</p>
                                             </div>
                                             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                                                 <label class="block text-[11px] text-slate-600 font-black mb-2">资料页超时</label>
                                                 <input type="number" min="10" max="600" v-model.number="config.cloakbrowser.profile_timeout" class="w-full bg-slate-50 border border-slate-200 text-slate-800 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
-                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '填写 X.com 注册资料并完成提交的时间。' : '填写姓名、年龄和完成资料提交的时间。' }}</p>
+                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '填写 X.com 注册资料并完成提交的时间。' : (config.reg_provider === 'huaweicloud' ? '本流程未使用该超时项。' : '填写姓名、年龄和完成资料提交的时间。') }}</p>
                                             </div>
                                             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                                                 <label class="block text-[11px] text-slate-600 font-black mb-2">会话读取超时</label>
                                                 <input type="number" min="10" max="600" v-model.number="config.cloakbrowser.session_timeout" class="w-full bg-slate-50 border border-slate-200 text-slate-800 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
-                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '注册完成后确认登录 Cookie 和页面状态的时间。' : '注册完成后读取 accessToken 和会话的时间。' }}</p>
+                                                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">{{ config.reg_provider === 'x_com' ? '注册完成后确认登录 Cookie 和页面状态的时间。' : (config.reg_provider === 'huaweicloud' ? '等待华为云注册提交后进入账号中心完成页的时间。' : '注册完成后读取 accessToken 和会话的时间。') }}</p>
+                                            </div>
+                                            <div v-if="config.reg_provider === 'huaweicloud'" class="bg-white p-4 rounded-xl border border-rose-200 shadow-sm sm:col-span-2">
+                                                <label class="block text-[11px] text-rose-700 font-black mb-2">语音验证码重试次数</label>
+                                                <input type="number" min="1" max="20" v-model.number="config.cloakbrowser.voice_captcha_retries" class="w-full bg-rose-50 border border-rose-200 text-rose-900 font-black rounded-lg py-2.5 px-3 text-center focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400">
+                                                <p class="text-[10px] text-rose-500/80 mt-2 leading-relaxed">语音识别或提交失败时刷新验证并重试；默认 3 次。</p>
                                             </div>
                                         </div>
                                     </div>

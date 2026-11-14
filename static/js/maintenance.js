@@ -305,7 +305,7 @@ const MAINTENANCE_METHODS = {
                     if (!['protocol', 'cloakbrowser'].includes(this.config.register_driver)) {
                         this.config.register_driver = 'protocol';
                     }
-                    if (this.config.reg_provider === 'x_com') {
+                    if (['x_com', 'huaweicloud'].includes(this.config.reg_provider)) {
                         this.config.register_driver = 'cloakbrowser';
                         this.config.reg_mode = 'email';
                     }
@@ -327,6 +327,7 @@ const MAINTENANCE_METHODS = {
                         action_timeout: 30,
                         profile_timeout: 60,
                         session_timeout: 90,
+                        voice_captcha_retries: 3,
                         keep_browser_open: false,
                         registration_name: '',
                         registration_birthday: ''
@@ -517,6 +518,9 @@ const MAINTENANCE_METHODS = {
                             if (!Number.isFinite(value)) value = fallback;
                             this.config.cloakbrowser[key] = Math.max(minimum, Math.min(maximum, value));
                         });
+                        let voiceRetries = parseInt(this.config.cloakbrowser.voice_captcha_retries, 10);
+                        if (!Number.isFinite(voiceRetries)) voiceRetries = 3;
+                        this.config.cloakbrowser.voice_captcha_retries = Math.max(1, Math.min(20, voiceRetries));
                         ['headless', 'humanize', 'geoip', 'use_proxy', 'keep_browser_open'].forEach(key => {
                             this.config.cloakbrowser[key] = normalizeBooleanLike(
                                 this.config.cloakbrowser[key],

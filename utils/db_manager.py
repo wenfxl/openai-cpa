@@ -238,6 +238,32 @@ def delete_accounts_by_emails(emails: list) -> bool:
         return False
 
 
+def _account_display_status(raw_token: Any) -> str:
+    text = str(raw_token or "")
+    try:
+        token_data = json.loads(text)
+    except (TypeError, ValueError):
+        token_data = {}
+    if not isinstance(token_data, dict):
+        token_data = {}
+
+    provider = str(token_data.get("provider") or "").strip().lower()
+    status = str(token_data.get("status") or "").strip()
+    status_lower = status.lower()
+
+    if provider == "x_com" or status_lower == "x_com_registered":
+        return "X.com"
+    if provider == "huaweicloud" or status_lower == "huaweicloud_registered":
+        return "华为云"
+    if provider == "image2api" or status_lower == "image2api" or '"image2api"' in text:
+        return "image2api"
+    if token_data.get("refresh_token") or '"refresh_token"' in text:
+        return "有凭证"
+    if status == "仅注册成功":
+        return "仅注册成功"
+    return "未知"
+
+
 def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", search: str = None, status_filter: str = "all") -> dict:
     try:
         with get_db_conn() as conn:
@@ -246,8 +272,15 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
             params = []
 
             if hide_reg == "1":
-                conditions.append("token_data NOT LIKE ?")
-                params.append('%"仅注册成功"%')
+                conditions.append(
+                    "NOT (token_data LIKE ? "
+                    "AND token_data NOT LIKE ? AND token_data NOT LIKE ?)"
+                )
+                params.extend([
+                    '%"仅注册成功"%',
+                    '%"provider"%huaweicloud%',
+                    '%"provider"%HuaweiCloud%',
+                ])
             if search:
                 conditions.append("(email LIKE ? OR password LIKE ?)")
                 search_term = f"%{search}%"
@@ -269,8 +302,15 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                 conditions.append("(token_data LIKE ? AND token_data NOT LIKE ?)")
                 params.extend(['%"refresh_token"%', '%"image2api"%'])
             elif status_filter == "reg_only":
-                conditions.append("token_data LIKE ?")
-                params.append('%"仅注册成功"%')
+                conditions.append(
+                    "token_data LIKE ? "
+                    "AND token_data NOT LIKE ? AND token_data NOT LIKE ?"
+                )
+                params.extend([
+                    '%"仅注册成功"%',
+                    '%"provider"%huaweicloud%',
+                    '%"provider"%HuaweiCloud%',
+                ])
             elif status_filter == "imgsub2api":
                 conditions.append("token_data LIKE ?")
                 params.append('%"image2api"%')
@@ -297,10 +337,7 @@ def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", s
                     "email": r[0],
                     "password": r[1],
                     "created_at": r[2],
-                    "status": "image2api" if '"image2api"' in str(r[3] or "") else (
-                        "X.com" if '"provider": "x_com"' in str(r[3] or "") else (
-                            "有凭证" if '"refresh_token"' in str(r[3] or "") else (
-                                "仅注册成功" if '"仅注册成功"' in str(r[3] or "") else "未知"))),
+                    "status": _account_display_status(r[3]),
                     "is_active": r[4] if r[4] is not None else 1,
                     "push_platform": r[5],
                     "push_time": r[6]
@@ -319,10 +356,15 @@ def get_image_accounts_page(page: int = 1, page_size: int = 50, search: str = No
         with get_db_conn() as conn:
             c = get_cursor(conn)
             conditions = [
-                "(token_data LIKE ? OR token_data LIKE ?)",
+                "(token_data LIKE ? OR (token_data LIKE ? AND token_data NOT LIKE ? AND token_data NOT LIKE ?))",
                 "is_active = 1",
             ]
-            params = ['%"image2api"%', '%"仅注册成功"%']
+            params = [
+                '%"image2api"%',
+                '%"仅注册成功"%',
+                '%"provider"%huaweicloud%',
+                '%"provider"%HuaweiCloud%',
+            ]
 
             if search:
                 conditions.append("(email LIKE ? OR password LIKE ?)")
@@ -351,11 +393,7 @@ def get_image_accounts_page(page: int = 1, page_size: int = 50, search: str = No
                     "password": r[1],
                     "created_at": r[2],
                     "token_data": r[3],
-                    "status": (
-                        "image2api"
-                        if '"image2api"' in str(r[3] or "")
-                        else "仅注册成功"
-                    ),
+                    "status": _account_display_status(r[3]),
                     "is_active": r[4] if r[4] is not None else 1,
                     "push_platform": r[5],
                     "push_time": r[6]
@@ -923,7 +961,7 @@ def get_inventory_stats() -> dict:
 
                                 SUM(CASE WHEN token_data LIKE ? AND token_data NOT LIKE ? THEN 1 ELSE 0 END) as with_token_count,
                                 SUM(CASE WHEN token_data LIKE ? AND token_data NOT LIKE ? THEN 1 ELSE 0 END) as credential_count,
-                                SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as reg_only_count,
+                                SUM(CASE WHEN token_data LIKE ? AND token_data NOT LIKE ? AND token_data NOT LIKE ? THEN 1 ELSE 0 END) as reg_only_count,
                                 SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as imgsub2api_count,
                                 SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as image2api_count
                             FROM accounts
@@ -933,7 +971,7 @@ def get_inventory_stats() -> dict:
                 '%SUB2API%', '%SUB2API%', '%SUB2API%',
                 '%"refresh_token"%', '%"image2api"%',
                 '%"access_token"%', '%"image2api"%',
-                '%"仅注册成功"%',
+                '%"仅注册成功"%', '%"provider"%huaweicloud%', '%"provider"%HuaweiCloud%',
                 '%"image2api"%',
                 '%"image2api"%'
             )
