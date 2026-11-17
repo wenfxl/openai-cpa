@@ -28,6 +28,10 @@ HUAWEI_START_URL = (
 )
 HUAWEI_SUCCESS_HOST = "account-intl.huaweicloud.com"
 HUAWEI_SUCCESS_MARKER = "#/complete"
+HUAWEI_SIGNUP_RESPONSE_PATH = (
+    "/registerui/rest/cbc/cbccustomerregservice/"
+    "v1/account/portal/register/normal"
+)
 HUAWEI_AUDIO_ROOT = runtime.PROJECT_ROOT / "data" / "cloak_audio" / "huaweicloud"
 HUAWEI_ERROR_MARKERS = (
     "verification code is incorrect",
@@ -1049,9 +1053,98 @@ def _agree_terms(page: Any) -> None:
         raise RuntimeError("华为云服务协议勾选失败")
 
 
-def _submit_signup(page: Any) -> None:
-    if not _click_text_button(page, "Sign Up"):
-        raise RuntimeError("华为云 Sign Up 按钮不可用")
+def _find_response_message(payload: Any, depth: int = 0) -> list[str]:
+    if depth > 5 or payload is None:
+        return []
+    if isinstance(payload, str):
+        return [_text(payload, 1000)] if payload.strip() else []
+    if isinstance(payload, list):
+        messages: list[str] = []
+        for item in payload:
+            messages.extend(_find_response_message(item, depth + 1))
+        return messages
+    if not isinstance(payload, dict):
+        return []
+
+    messages: list[str] = []
+    for key, value in payload.items():
+        lowered = str(key or "").lower()
+        if lowered in {
+            "message",
+            "error_message",
+            "errormessage",
+            "error_msg",
+            "errormsg",
+            "msg",
+            "description",
+        }:
+            if isinstance(value, (str, int, float)):
+                text = _text(value, 1000)
+                if text:
+                    messages.append(text)
+    for value in payload.values():
+        if isinstance(value, (dict, list)):
+            messages.extend(_find_response_message(value, depth + 1))
+    return list(dict.fromkeys(messages))
+
+
+def _signup_response_details(response: Any) -> dict[str, Any]:
+    try:
+        if HUAWEI_SIGNUP_RESPONSE_PATH not in str(response.url).lower():
+            return {}
+    except Exception:
+        return {}
+
+    result: dict[str, Any] = {"url": str(getattr(response, "url", "") or "")}
+    try:
+        result["status"] = int(response.status)
+    except Exception:
+        result["status"] = 0
+
+    try:
+        body = response.text()
+    except Exception:
+        body = ""
+    text = _text(body, 5000)
+    if text:
+        result["body"] = text
+
+    try:
+        payload = response.json()
+    except Exception:
+        payload = None
+    if payload is not None:
+        result["payload"] = payload
+        messages = _find_response_message(payload)
+    else:
+        messages = []
+    if not messages and text:
+        messages = [text]
+    if messages:
+        result["message"] = " | ".join(messages)[:3000]
+    return result
+
+
+def _submit_signup(
+    page: Any,
+    response_result: Optional[dict] = None,
+) -> Optional[Any]:
+    def handle_response(response: Any) -> None:
+        if response_result is None or response_result.get("seen"):
+            return
+        details = _signup_response_details(response)
+        if details:
+            details["seen"] = True
+            response_result.update(details)
+
+    page.on("response", handle_response)
+    try:
+        if not _click_text_button(page, "Sign Up"):
+            raise RuntimeError("华为云 Sign Up 按钮不可用")
+    except Exception:
+        page.remove_listener("response", handle_response)
+        raise
+    return handle_response
 
 
 def _is_success_url(url: str) -> bool:
@@ -1059,7 +1152,11 @@ def _is_success_url(url: str) -> bool:
     return HUAWEI_SUCCESS_HOST in value and HUAWEI_SUCCESS_MARKER in value
 
 
-def _wait_signup_result(page: Any, timeout: float) -> str:
+def _wait_signup_result(
+    page: Any,
+    timeout: float,
+    response_result: Optional[dict] = None,
+) -> str:
     deadline = time.time() + max(10.0, timeout)
     while time.time() < deadline:
         _check_stop()
@@ -1079,6 +1176,15 @@ def _wait_signup_result(page: Any, timeout: float) -> str:
         ]
         combined = " | ".join([body, *errors])
         lowered = combined.lower()
+        response_message = _text((response_result or {}).get("message"), 3000)
+        response_status = int((response_result or {}).get("status") or 0)
+        if response_message or (
+            response_status and not 200 <= response_status < 300
+        ):
+            detail = response_message or f"HTTP {response_status}"
+            if response_status:
+                detail = f"HTTP {response_status}: {detail}"
+            raise HuaweiAccountRejected(f"华为云账号创建失败 ({detail})")
         if any(marker in lowered for marker in HUAWEI_ERROR_MARKERS):
             raise HuaweiAccountRejected(f"华为云账号创建失败: {combined}")
         time.sleep(0.8)
@@ -1179,11 +1285,17 @@ def _run_sync(
 
         _fill_password(page, password)
         _agree_terms(page)
-        _submit_signup(page)
-        success_url = _wait_signup_result(
-            page,
-            timeout=float(max(30, getattr(cfg, "CLOAK_SESSION_TIMEOUT", 90))),
-        )
+        signup_response: dict[str, Any] = {}
+        response_handler = _submit_signup(page, signup_response)
+        try:
+            success_url = _wait_signup_result(
+                page,
+                timeout=float(max(30, getattr(cfg, "CLOAK_SESSION_TIMEOUT", 90))),
+                response_result=signup_response,
+            )
+        finally:
+            if response_handler is not None:
+                page.remove_listener("response", response_handler)
         run_ctx["huaweicloud_registration_acknowledged"] = True
         _log(f"华为云注册完成: {mask_email(email)}")
         return {

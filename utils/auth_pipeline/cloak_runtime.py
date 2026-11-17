@@ -463,20 +463,14 @@ def launch_browser(
 
     # CloakBrowser starts and owns its Playwright instance inside launch().
     playwright = None
-    raw_proxy = str(proxy or "").strip()
-    if not raw_proxy:
-        raise RuntimeError(
-            "Cloak 注册未配置代理。请先配置 default_proxy，"
-            "避免使用本机公网 IP 注册。"
-        )
-    if not bool(getattr(cfg, "CLOAK_USE_PROXY", True)):
-        raise RuntimeError(
-            "Cloak 已配置代理，但 use_proxy 已关闭；"
-            "为避免暴露本机出口 IP，已拒绝直连。"
-        )
+    use_proxy = bool(getattr(cfg, "CLOAK_USE_PROXY", True))
+    raw_proxy = str(proxy or "").strip() if use_proxy else ""
     proxy_url = normalize_browser_proxy(raw_proxy)
-    if not proxy_url:
-        raise RuntimeError("Cloak 代理地址无效，请检查 default_proxy。")
+    if use_proxy and not proxy_url:
+        raise RuntimeError(
+            "Cloak 已开启浏览器代理，但未找到可用代理地址。"
+            "请配置 default_proxy，或关闭“浏览器使用代理”。"
+        )
     options = {
         "headless": bool(getattr(cfg, "CLOAK_HEADLESS", True)),
         "humanize": bool(getattr(cfg, "CLOAK_HUMANIZE", True)),
@@ -533,7 +527,7 @@ def launch_browser(
         page.set_default_navigation_timeout(navigation_timeout_ms())
         return playwright, browser, context, page
 
-    log("正在启动引擎")
+    log(f"正在启动引擎")
     return _start()
 
 
