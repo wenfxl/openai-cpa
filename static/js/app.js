@@ -31,16 +31,204 @@ function normalizeMailDomainCsv(value) {
         });
 }
 
+function replaceTabHash(tabId) {
+    const nextHash = `#${tabId}`;
+    if (window.location.hash === nextHash) return;
+    if (window.history?.replaceState) {
+        window.history.replaceState(
+            window.history.state,
+            '',
+            `${window.location.pathname}${window.location.search}${nextHash}`
+        );
+        return;
+    }
+    window.location.hash = tabId;
+}
+
+const INVENTORY_LAST_TAB_KEY = 'ui_last_inventory_tab';
+const INVENTORY_TAB_IDS = [
+    'accounts',
+    'x_com_accounts',
+    'huawei_accounts',
+    'image_accounts',
+    'cloud',
+    'team_accounts',
+    'mailboxes'
+];
+const SETTINGS_LAST_TAB_KEY = 'ui_last_settings_tab';
+const SETTINGS_TAB_IDS = [
+    'email',
+    'domain_register',
+    'sms',
+    'proxy',
+    'relay',
+    'notify',
+    'concurrency'
+];
+const MAINTENANCE_LAST_TAB_KEY = 'ui_last_maintenance_tab';
+const MAINTENANCE_TAB_IDS = [
+    'maintenance_overview',
+    'maintenance_storage',
+    'maintenance_cleanup',
+    'maintenance_update'
+];
+
+const EMAIL_API_MODE_OPTIONS = [
+    {
+        value: 'cloudflare_temp_email',
+        label: 'Cloudflare 临时邮箱',
+        description: 'CF Email Routing 临时收件',
+        group: '域名临时邮箱'
+    },
+    {
+        value: 'imap',
+        label: 'IMAP 收件箱',
+        description: '连接已有邮箱收件',
+        group: '常规邮箱'
+    },
+    {
+        value: 'local_microsoft',
+        label: '本地微软邮箱库',
+        description: '使用本地微软账号',
+        group: '常规邮箱'
+    },
+    {
+        value: 'Gmail_OAuth',
+        label: 'Gmail OAuth 授权',
+        description: 'CF 转发 Gmail 收件',
+        group: '常规邮箱'
+    },
+    {
+        value: 'gmail_fission',
+        label: 'Gmail OAuth 裂变',
+        description: 'Gmail 主号裂变别名',
+        group: '常规邮箱'
+    },
+    {
+        value: 'openai_cpa',
+        label: 'OpenAI-CPA 内存池',
+        description: '本地 CPA 邮箱池',
+        group: '专属配套邮箱服务'
+    },
+    {
+        value: 'openai_cpa_cloud',
+        label: 'OpenAI-CPA 云端版',
+        description: '云端 CPA 邮箱池',
+        group: '专属配套邮箱服务'
+    },
+    {
+        value: 'remail',
+        label: 'Remail 接码',
+        description: '按项目下单取码',
+        group: '购买接码'
+    },
+    {
+        value: 'luckmail',
+        label: 'LuckMail 接码',
+        description: 'LuckMail 邮箱服务',
+        group: '购买接码'
+    },
+    {
+        value: 'freemail',
+        label: 'Freemail',
+        description: 'Freemail 邮箱服务',
+        group: '域名临时邮箱'
+    },
+    {
+        value: 'cloudmail',
+        label: 'CloudMail',
+        description: 'CloudMail 临时邮箱',
+        group: '域名临时邮箱'
+    },
+    {
+        value: 'mail_curl',
+        label: 'Mail Curl',
+        description: '自定义 HTTP 收件',
+        group: '域名临时邮箱'
+    },
+    {
+        value: 'tempmail',
+        label: 'Tempmail.lol',
+        description: 'Tempmail.lol 临时邮箱',
+        group: '第三方服务'
+    },
+    {
+        value: 'tempmail_org',
+        label: 'Tempmail.org',
+        description: 'Tempmail.org 临时邮箱',
+        group: '第三方服务'
+    },
+    {
+        value: 'duckmail',
+        label: 'DuckMail',
+        description: 'DuckMail 临时邮箱',
+        group: '第三方服务'
+    },
+    {
+        value: 'generator_email',
+        label: 'Generator Email',
+        description: 'Generator 邮箱服务',
+        group: '第三方服务'
+    },
+    {
+        value: 'tmailor',
+        label: 'Tmailor',
+        description: '需要填写 Token',
+        group: '第三方服务'
+    },
+    {
+        value: 'fvia',
+        label: 'FviaInboxes',
+        description: '需要填写 Authorization',
+        group: '第三方服务'
+    },
+    {
+        value: 'inboxes',
+        label: 'Inboxes.com',
+        description: 'Inboxes 临时邮箱',
+        group: '第三方服务'
+    },
+    {
+        value: 'temporarymail',
+        label: 'TemporaryMail.com',
+        description: 'TemporaryMail 临时邮箱',
+        group: '第三方服务'
+    }
+];
+
+function getRememberedInventoryTab() {
+    const tabId = localStorage.getItem(INVENTORY_LAST_TAB_KEY);
+    return INVENTORY_TAB_IDS.includes(tabId) ? tabId : null;
+}
+
+function getRememberedSettingsTab() {
+    const tabId = localStorage.getItem(SETTINGS_LAST_TAB_KEY);
+    return SETTINGS_TAB_IDS.includes(tabId) ? tabId : null;
+}
+
+function getRememberedMaintenanceTab() {
+    const tabId = localStorage.getItem(MAINTENANCE_LAST_TAB_KEY);
+    return MAINTENANCE_TAB_IDS.includes(tabId) ? tabId : null;
+}
+
 createApp({
     data() {
         return {
             appVersion: '检查中...',
             isLoggedIn: !!localStorage.getItem('auth_token'),
             loginPassword: '',
-            currentTab: window.location.hash.replace('#', '') || 'console',
+            currentTab: (window.location.hash.replace('#', '') === 'settings')
+                ? (getRememberedSettingsTab() || 'email')
+                : (window.location.hash.replace('#', '') === 'maintenance'
+                    ? (getRememberedMaintenanceTab() || 'maintenance_overview')
+                    : (window.location.hash.replace('#', '') || 'console')),
+            lastInventoryTabId: getRememberedInventoryTab() || 'accounts',
+            lastSettingsTabId: getRememberedSettingsTab() || 'email',
+            lastMaintenanceTabId: getRememberedMaintenanceTab() || 'maintenance_overview',
             currentLanguage: getInitialLanguage(),
             languageObserver: null,
             isDarkMode: localStorage.getItem('ui_theme_mode') === 'dark',
+            emailApiModeQuery: '',
 			showAccountsPlaintext: false,
             isRunning: false,
             isLoadingConfig: false,
@@ -160,7 +348,8 @@ createApp({
                     reg_only: 0,
                     imgsub2api: 0
                 },
-                cloud: { total: 0, cpa: 0, sub2api: 0, image2api: 0, grok2api: 0, enabled: 0 }
+                cloud: { total: 0, cpa: 0, sub2api: 0, image2api: 0, grok2api: 0, enabled: 0 },
+                sources: { x_com: 0, huawei: 0 }
             },
             statsTimer: null,
 
@@ -335,6 +524,13 @@ createApp({
             totalImageAccounts: 0,
             isUpgradingOAuthAll: false,
             isUpgradingSelected: false,
+            sourceAccounts: [],
+            selectedSourceAccounts: [],
+            searchSourceAccounts: '',
+            sourcePage: 1,
+            sourcePageSize: 10,
+            totalSourceAccounts: 0,
+            sourceFetchSequence: 0,
         };
     },
     watch: {
@@ -349,6 +545,10 @@ createApp({
         searchMailboxes() {
             this.mailboxPage = 1;
             this.fetchMailboxes();
+        },
+        searchSourceAccounts() {
+            this.sourcePage = 1;
+            this.fetchSourceAccounts();
         },
         'config.email_api_mode'(nextMode) {
             const supportedModes = ['cloudflare_temp_email', 'freemail', 'cloudmail', 'openai_cpa', 'openai_cpa_cloud', 'remail'];
@@ -369,8 +569,17 @@ createApp({
         }
         window.addEventListener('hashchange', () => {
             const tab = window.location.hash.replace('#', '');
-            if (tab && this.tabs.some(t => t.id === tab)) {
-                this.switchTab(tab);
+            if (tab === 'inventory') {
+                replaceTabHash(this.inventoryHomeTab);
+                return;
+            }
+            if (['settings', 'maintenance'].includes(tab)
+                || (tab && (this.tabs.some(t => t.id === tab) || this.inventoryTabIds.includes(tab)))) {
+                if ((tab !== this.currentTab && !(tab === 'settings' && this.isSettingsTab))
+                    && !(tab === 'maintenance' && this.isMaintenanceTab)
+                    || tab === 'inventory') {
+                    this.switchTab(tab);
+                }
             }
         });
         this.timer = setInterval(() => {
@@ -391,6 +600,215 @@ createApp({
         visibleTabs() {
             return (this.tabs || []).filter(t => !t.plugin || (t.plugin === 'domain_register' && this.domainRegisterEnabled));
         },
+        settingsTabIds() {
+            return SETTINGS_TAB_IDS;
+        },
+        inventoryTabIds() {
+            return INVENTORY_TAB_IDS;
+        },
+        maintenanceTabIds() {
+            return MAINTENANCE_TAB_IDS;
+        },
+        inventoryCategories() {
+            const labels = {
+                accounts: '本地账号',
+                x_com_accounts: 'X.com 库存',
+                huawei_accounts: '华为云库存',
+                image_accounts: '半成品库存',
+                cloud: '云端库存',
+                team_accounts: 'Team 账号库',
+                mailboxes: '微软邮箱库'
+            };
+            const icons = {
+                x_com_accounts: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 5l14 14M19 5L5 19"></path></svg>',
+                huawei_accounts: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 8.5h16M4 15.5h16M8.5 4v16M15.5 4v16"></path></svg>'
+            };
+            const byId = new Map((this.visibleTabs || []).map(tab => [tab.id, tab]));
+            return this.inventoryTabIds
+                .map(id => {
+                    const tab = byId.get(id);
+                    if (tab) return { ...tab, name: labels[id] || tab.name };
+                    if (icons[id]) {
+                        return { id, name: labels[id], icon: icons[id], plugin: null };
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+        },
+        isInventoryTab() {
+            return this.inventoryTabIds.includes(this.currentTab);
+        },
+        inventoryHomeTab() {
+            if (this.inventoryCategories.some(tab => tab.id === this.lastInventoryTabId)) {
+                return this.lastInventoryTabId;
+            }
+            return this.inventoryCategories[0]?.id || 'accounts';
+        },
+        isInventorySourceTab() {
+            return ['x_com_accounts', 'huawei_accounts'].includes(this.currentTab);
+        },
+        currentInventorySource() {
+            const sourceMap = {
+                x_com_accounts: {
+                    source: 'x_com',
+                    name: 'X.com 库存',
+                    description: '仅显示由 X.com 注册流程写入的账号，与本地 OpenAI 账号分开管理。',
+                    count: this.inventoryStats?.sources?.x_com || 0
+                },
+                huawei_accounts: {
+                    source: 'huawei',
+                    name: '华为云库存',
+                    description: '仅显示由华为云注册流程写入的账号，不会进入本地账号统计。',
+                    count: this.inventoryStats?.sources?.huawei || 0
+                }
+            };
+            return sourceMap[this.currentTab] || sourceMap.x_com_accounts;
+        },
+        settingsCategories() {
+            const labels = {
+                email: '邮箱配置',
+                domain_register: '域名注册',
+                sms: '手机接码',
+                proxy: '网络代理',
+                relay: '中转管仓',
+                notify: '消息通知',
+                concurrency: '系统设置'
+            };
+            const byId = new Map((this.visibleTabs || []).map(tab => [tab.id, tab]));
+            return this.settingsTabIds
+                .map(id => {
+                    const tab = byId.get(id);
+                    return tab ? { ...tab, name: labels[id] || tab.name } : null;
+                })
+                .filter(Boolean);
+        },
+        isSettingsTab() {
+            return this.settingsTabIds.includes(this.currentTab)
+                && !this.maintenanceTabIds.includes(this.currentTab);
+        },
+        maintenanceCategories() {
+            const labels = {
+                maintenance_overview: '运行状态',
+                maintenance_storage: '数据存储',
+                maintenance_cleanup: '清理维护',
+                maintenance_update: '版本更新'
+            };
+            const icons = {
+                maintenance_overview: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 19h16M6 16V9m4 7V5m4 11v-4m4 4V7"></path></svg>',
+                maintenance_storage: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7c0-1.1 3.6-2 8-2s8 .9 8 2-3.6 2-8 2-8-.9-8-2zm0 5c0 1.1 3.6 2 8 2s8-.9 8-2M4 7v10c0 1.1 3.6 2 8 2s8-.9 8-2V7"></path></svg>',
+                maintenance_cleanup: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>',
+                maintenance_update: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h10M7 12h6m-8 9h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>'
+            };
+            return this.maintenanceTabIds.map(id => ({ id, name: labels[id], icon: icons[id] }));
+        },
+        isMaintenanceTab() {
+            return this.maintenanceTabIds.includes(this.currentTab);
+        },
+        maintenanceHomeTab() {
+            if (this.maintenanceCategories.some(tab => tab.id === this.lastMaintenanceTabId)) {
+                return this.lastMaintenanceTabId;
+            }
+            return 'maintenance_overview';
+        },
+        settingsHomeTab() {
+            if (this.settingsCategories.some(tab => tab.id === this.lastSettingsTabId)) {
+                return this.lastSettingsTabId;
+            }
+            return this.settingsCategories[0]?.id || 'email';
+        },
+        navigationGroups() {
+            const settingsTab = {
+                id: 'settings',
+                name: '设置',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>'
+            };
+            const inventoryTab = {
+                id: 'inventory',
+                name: '账号库存',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>'
+            };
+            const maintenanceTab = {
+                id: 'maintenance',
+                name: '系统维护',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.7 6.3a4 4 0 01-5 5L5 16l3 3 4.7-4.7a4 4 0 015-5l-3.2 3.2-2.2-2.2 3.3-3.3z"></path></svg>'
+            };
+            const groups = [
+                { label: '工作区', ids: ['console', 'cluster'] },
+                { label: '账号与资源', tabs: [inventoryTab] },
+                { label: '系统', tabs: [settingsTab, maintenanceTab] }
+            ];
+            const visible = this.visibleTabs || [];
+            const byId = new Map(visible.map(tab => [tab.id, tab]));
+            const grouped = groups
+                .map(group => ({
+                    label: group.label,
+                    tabs: group.tabs
+                        ? group.tabs.filter(tab => (
+                            tab.id === 'inventory'
+                                ? this.inventoryCategories.length > 0
+                                : tab.id === 'maintenance'
+                                    ? this.maintenanceCategories.length > 0
+                                    : tab.id !== 'settings' || this.settingsCategories.length > 0
+                        ))
+                        : (group.ids || []).map(id => byId.get(id)).filter(Boolean)
+                }))
+                .filter(group => group.tabs.length > 0);
+            const assigned = new Set(grouped.flatMap(group => group.tabs.map(tab => tab.id)));
+            const settingsIds = new Set(this.settingsTabIds);
+            const inventoryIds = new Set(this.inventoryTabIds);
+            const remaining = visible.filter(tab => (
+                !assigned.has(tab.id)
+                && !settingsIds.has(tab.id)
+                && !inventoryIds.has(tab.id)
+            ));
+            if (remaining.length > 0) {
+                grouped.push({ label: '其他', tabs: remaining });
+            }
+            return grouped;
+        },
+        navigationTabId() {
+            return tab => tab.id === 'accounts' ? 'inventory' : tab.id;
+        },
+        currentTabInfo() {
+            if (this.isSettingsTab) {
+                return this.settingsCategories.find(tab => tab.id === this.currentTab) || null;
+            }
+            if (this.isInventoryTab) {
+                return this.inventoryCategories.find(tab => tab.id === this.currentTab) || null;
+            }
+            if (this.isMaintenanceTab) {
+                return this.maintenanceCategories.find(tab => tab.id === this.currentTab) || null;
+            }
+            return (this.visibleTabs || []).find(tab => tab.id === this.currentTab) || (this.tabs || [])[0] || null;
+        },
+        currentTabLabel() {
+            return this.currentTabInfo ? this.t(this.currentTabInfo.name) : '控制台';
+        },
+        currentTabDescription() {
+            const descriptions = {
+                console: '监控本轮注册任务，查看进度与实时日志。',
+                cluster: '集中查看节点健康状态与同步任务。',
+                email: '发信渠道、域名策略与邮件资源。',
+                mailboxes: '管理微软邮箱库存及授权状态。',
+                team_accounts: '查看 Team 账号库存与最近同步结果。',
+                accounts: '检索、筛选并处理本地账号资产。',
+                x_com_accounts: '管理 X.com 注册来源的账号库存。',
+                huawei_accounts: '管理华为云注册来源的账号库存。',
+                image_accounts: '管理半成品账号库存与凭证。',
+                cloud: '查看已推送到云端的账号与同步状态。',
+                sms: '接码平台、项目与余额。',
+                proxy: '代理订阅、节点与连通性。',
+                relay: 'CPA、Sub2API 等中转服务。',
+                notify: '推送渠道与通知参数。',
+                domain_register: '批量注册域名与 NS 回写。',
+                concurrency: '并发参数、时延与常规模式边界。',
+                maintenance_overview: '内存预测、进程状态与资源占用。',
+                maintenance_storage: '数据库引擎、连接参数与存储状态。',
+                maintenance_cleanup: '磁盘、日志与临时文件维护。',
+                maintenance_update: 'Git 版本状态、同步与项目更新。'
+            };
+            return descriptions[this.currentTab] || '管理当前工作区的配置与运行状态。';
+        },
 
         totalPages() {
             return Math.ceil(this.totalAccounts / this.pageSize) || 1;
@@ -402,6 +820,12 @@ createApp({
                 res = res.filter(a => a.email && a.email.toLowerCase().includes(term));
             }
             return res;
+        },
+        filteredSourceAccounts() {
+            return this.sourceAccounts;
+        },
+        totalSourcePages() {
+            return Math.ceil(this.totalSourceAccounts / this.sourcePageSize) || 1;
         },
         filteredCloud() {
             return this.cloudAccounts;
@@ -503,6 +927,54 @@ createApp({
         },
         grokMode() {
             return !!this.config && this.config.reg_provider === 'grok';
+        },
+        emailApiModeOptions() {
+            const rawCurrentMode = String(this.config?.email_api_mode || '').trim();
+            const currentMode = EMAIL_API_MODE_OPTIONS.find(option => (
+                option.value.toLowerCase() === rawCurrentMode.toLowerCase()
+            ))?.value || rawCurrentMode;
+            const options = EMAIL_API_MODE_OPTIONS.map(option => ({ ...option }));
+            if (currentMode && !options.some(option => option.value === currentMode)) {
+                options.unshift({
+                    value: currentMode,
+                    label: currentMode,
+                    description: '当前保存的自定义模式',
+                    group: '当前模式'
+                });
+            }
+            options.forEach(option => {
+                option.selected = option.value === currentMode;
+            });
+            const query = String(this.emailApiModeQuery || '').trim().toLowerCase();
+            if (!query) return options;
+            return options.filter(option => (
+                option.label.toLowerCase().includes(query)
+                || option.value.toLowerCase().includes(query)
+                || option.description.toLowerCase().includes(query)
+            ));
+        },
+        emailApiModeGroups() {
+            const groups = [];
+            for (const option of this.emailApiModeOptions) {
+                let group = groups.find(item => item.name === option.group);
+                if (!group) {
+                    group = { name: option.group, options: [] };
+                    groups.push(group);
+                }
+                group.options.push(option);
+            }
+            return groups;
+        },
+        currentEmailApiModeOption() {
+            const rawCurrentMode = String(this.config?.email_api_mode || '').trim();
+            const currentMode = EMAIL_API_MODE_OPTIONS.find(option => (
+                option.value.toLowerCase() === rawCurrentMode.toLowerCase()
+            ))?.value || rawCurrentMode;
+            return this.emailApiModeOptions.find(option => option.value === currentMode) || {
+                value: currentMode,
+                label: currentMode || '未选择 API 模式',
+                description: '请选择邮箱服务通道'
+            };
         }
     },
     methods: {
@@ -517,6 +989,36 @@ createApp({
         ...CLOUDFLARE_METHODS,
         t(text) {
             return translateText(text, this.currentLanguage);
+        },
+        selectEmailApiMode(mode, event) {
+            if (!this.config || !mode) return;
+            this.config.email_api_mode = mode;
+            if (!['freemail', 'imap', 'cloudmail', 'cloudflare_temp_email', 'openai_cpa', 'openai_cpa_cloud', 'remail'].includes(mode)) {
+                this.config.enable_sub_domains = false;
+            }
+            this.emailApiModeQuery = '';
+            const picker = event?.currentTarget?.closest('details');
+            if (picker) {
+                picker.open = false;
+                picker.querySelector('summary')?.focus();
+            }
+        },
+        closeEmailApiModePicker(event) {
+            const picker = event?.currentTarget;
+            if (!picker) return;
+            picker.open = false;
+            this.emailApiModeQuery = '';
+            picker.querySelector('summary')?.focus();
+        },
+        closeEmailApiModeOnFocusOut(event) {
+            const picker = event?.currentTarget;
+            if (!picker) return;
+            window.setTimeout(() => {
+                if (!picker.contains(document.activeElement)) {
+                    picker.open = false;
+                    this.emailApiModeQuery = '';
+                }
+            }, 0);
         },
         targetLanguageLabel() {
             return this.currentLanguage === TRADITIONAL_LANGUAGE ? '简体中文' : '繁體中文';
@@ -872,6 +1374,9 @@ createApp({
             }
             this.initSSE();
             this.fetchAccounts();
+            if (this.isInventorySourceTab) {
+                this.fetchSourceAccounts();
+            }
             if (this.currentTab === 'cloud') {
 			    this.fetchCloudAccounts();
 			}
@@ -897,7 +1402,7 @@ createApp({
             if (this.currentTab === 'proxy') {
                 this.fetchClashPool();
             }
-            if (this.currentTab === 'concurrency') {
+            if (this.maintenanceTabIds.includes(this.currentTab)) {
                 this.fetchMemoryPrediction();
                 this.fetchGitSyncStatus(false);
                 this.fetchCleanupStatus(false);
@@ -1147,7 +1652,7 @@ createApp({
                 this.currentPage = 1;
             }
             try {
-                let url = `/api/accounts?page=${this.currentPage}&page_size=${this.pageSize}`;
+                let url = `/api/accounts?page=${this.currentPage}&page_size=${this.pageSize}&source=local`;
                 if (this.hideRegisterOnlyAccounts) {
                     url += '&hide_reg=1';
                 }
@@ -1174,6 +1679,187 @@ createApp({
                 console.error("获取账号列表失败:", e);
             }
         },
+        async fetchSourceAccounts(isManual = false) {
+            if (!this.isInventorySourceTab) return;
+            if (isManual) this.sourcePage = 1;
+            const sequence = ++this.sourceFetchSequence;
+            const source = this.currentInventorySource.source;
+            let url = `/api/accounts?page=${this.sourcePage}&page_size=${this.sourcePageSize}&source=${source}`;
+            if (this.searchSourceAccounts.trim()) {
+                url += `&search=${encodeURIComponent(this.searchSourceAccounts.trim())}`;
+            }
+            try {
+                const res = await this.authFetch(url);
+                const data = await res.json();
+                if (sequence !== this.sourceFetchSequence) return;
+                if (data.status === 'success') {
+                    this.sourceAccounts = Array.isArray(data.data) ? data.data : [];
+                    this.totalSourceAccounts = Number(data.total || 0);
+                    this.selectedSourceAccounts = this.selectedSourceAccounts.filter(email => (
+                        this.sourceAccounts.some(account => account.email === email)
+                    ));
+                    if (isManual) this.showToast(`${this.currentTabLabel}已刷新`, 'success');
+                } else {
+                    this.showToast(data.message || '来源库存加载失败', 'error');
+                }
+            } catch (e) {
+                if (sequence === this.sourceFetchSequence) {
+                    console.error('获取来源账号失败:', e);
+                    this.showToast('来源库存加载失败', 'error');
+                }
+            }
+        },
+        changeSourcePage(newPage) {
+            if (!newPage || isNaN(newPage)) newPage = 1;
+            newPage = Math.max(1, Math.min(newPage, this.totalSourcePages));
+            if (newPage === this.sourcePage) return;
+            this.sourcePage = newPage;
+            this.selectedSourceAccounts = [];
+            this.fetchSourceAccounts();
+        },
+        changeSourcePageSize() {
+            this.sourcePage = 1;
+            this.selectedSourceAccounts = [];
+            this.fetchSourceAccounts();
+        },
+        toggleAllSourceAccounts(event) {
+            const visibleEmails = this.filteredSourceAccounts.map(account => account.email);
+            if (event.target.checked) {
+                this.selectedSourceAccounts = visibleEmails;
+            } else {
+                const visible = new Set(visibleEmails);
+                this.selectedSourceAccounts = this.selectedSourceAccounts.filter(email => !visible.has(email));
+            }
+        },
+        exportSourceAccountsToTxt() {
+            if (this.selectedSourceAccounts.length === 0) return;
+            const lines = this.sourceAccounts
+                .filter(account => this.selectedSourceAccounts.includes(account.email))
+                .map(account => `${account.email}----${account.password}`);
+            this.downloadTextFile(lines.join('\n'), `${this.currentInventorySource.source}_accounts.txt`);
+            this.showToast(`已导出 ${lines.length} 个账号`, 'success');
+        },
+        async exportSelectedSourceAccounts() {
+            if (this.selectedSourceAccounts.length === 0) return;
+            try {
+                const res = await this.authFetch('/api/accounts/export_selected', {
+                    method: 'POST',
+                    body: JSON.stringify({ emails: this.selectedSourceAccounts })
+                });
+                const result = await res.json();
+                if (result.status !== 'success' || !Array.isArray(result.data) || result.data.length === 0) {
+                    this.showToast(result.message || '未能导出所选账号', 'warning');
+                    return;
+                }
+                this.downloadJsonBundle(result.data, `${this.currentInventorySource.source}_cpa_export`);
+                this.showToast(`已导出 ${result.data.length} 个账号凭证`, 'success');
+            } catch (e) {
+                console.error('来源账号凭证导出失败:', e);
+                this.showToast('凭证导出失败', 'error');
+            }
+        },
+        downloadTextFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        },
+        async downloadJsonBundle(items, prefix) {
+            if (items.length === 1) {
+                const blob = new Blob([JSON.stringify(items[0], null, 2)], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${prefix}_${Date.now()}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                return;
+            }
+            const zip = new JSZip();
+            items.forEach((item, index) => {
+                zip.file(`${prefix}_${index + 1}.json`, JSON.stringify(item, null, 2));
+            });
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${prefix}_${Date.now()}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        },
+        async bulkPushSourceAccounts(action) {
+            if (this.selectedSourceAccounts.length === 0) return;
+            const platformKey = action === 'push' ? 'cpa_mode' : 'sub2api_mode';
+            const platformLabel = action === 'push' ? 'CPA' : 'Sub2API';
+            if (!this.config?.[platformKey]?.enable) {
+                this.showToast(`请先开启 ${platformLabel} 并完成配置`, 'warning');
+                return;
+            }
+            const confirmed = await this.customConfirm(
+                `确定将选中的 ${this.selectedSourceAccounts.length} 个${this.currentTabLabel}账号推送到 ${platformLabel}？`
+            );
+            if (!confirmed) return;
+            try {
+                const res = await this.authFetch('/api/account/action', {
+                    method: 'POST',
+                    body: JSON.stringify({ emails: [...this.selectedSourceAccounts], action })
+                });
+                const result = await res.json();
+                this.showToast(result.message, result.status);
+                if (result.status === 'success') {
+                    this.selectedSourceAccounts = [];
+                    this.fetchSourceAccounts();
+                    this.fetchInventoryStats();
+                }
+            } catch (e) {
+                this.showToast('批量推送请求异常', 'error');
+            }
+        },
+        bulkPushSourceCPA() {
+            return this.bulkPushSourceAccounts('push');
+        },
+        bulkPushSourceSub2API() {
+            return this.bulkPushSourceAccounts('push_sub2api');
+        },
+        async triggerSourceAccountAction(account, action) {
+            await this.triggerAccountAction(account, action);
+            if (this.isInventorySourceTab) {
+                this.fetchSourceAccounts();
+            }
+        },
+        async deleteSelectedSourceAccounts() {
+            if (this.selectedSourceAccounts.length === 0) return;
+            const confirmed = await this.customConfirm(
+                `确定删除选中的 ${this.selectedSourceAccounts.length} 个${this.currentTabLabel}账号？此操作无法恢复。`
+            );
+            if (!confirmed) return;
+            try {
+                const res = await this.authFetch('/api/accounts/delete', {
+                    method: 'POST',
+                    body: JSON.stringify({ emails: this.selectedSourceAccounts })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    this.showToast(`已删除 ${this.selectedSourceAccounts.length} 个账号`, 'success');
+                    this.selectedSourceAccounts = [];
+                    this.fetchSourceAccounts();
+                    this.fetchInventoryStats();
+                } else {
+                    this.showToast(result.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                this.showToast('删除请求异常', 'error');
+            }
+        },
 		changePage(newPage) {
             if (!newPage || isNaN(newPage)) newPage = 1;
             newPage = Math.max(1, Math.min(newPage, this.totalPages));
@@ -1192,13 +1878,71 @@ createApp({
 
             this.fetchAccounts(false);
         },
-        switchTab(tabId) {
+        openInventory() {
+            const tabId = this.inventoryHomeTab;
+            this.switchTab(tabId, { replaceHash: true });
+        },
+        openSettings() {
+            const tabId = this.settingsHomeTab;
+            this.switchTab(tabId, { replaceHash: true });
+        },
+        openMaintenance() {
+            const tabId = this.maintenanceHomeTab;
+            this.switchTab(tabId, { replaceHash: true });
+        },
+        switchTab(tabId, options = {}) {
             if (!this.isLoggedIn) return;
+            const requestedTab = tabId;
+            if (tabId === 'settings') {
+                tabId = this.settingsHomeTab;
+            }
+            if (tabId === 'maintenance') {
+                tabId = this.maintenanceHomeTab;
+            }
+            if (tabId === 'inventory') {
+                tabId = this.inventoryHomeTab;
+            }
+            if (this.settingsTabIds.includes(tabId)
+                && !this.settingsCategories.some(tab => tab.id === tabId)) {
+                tabId = this.settingsHomeTab;
+            }
+            if (this.inventoryTabIds.includes(tabId)
+                && !this.inventoryCategories.some(tab => tab.id === tabId)) {
+                tabId = this.inventoryHomeTab;
+            }
+            if (this.maintenanceTabIds.includes(tabId)
+                && !this.maintenanceCategories.some(tab => tab.id === tabId)) {
+                tabId = this.maintenanceHomeTab;
+            }
+            if (requestedTab === 'inventory') {
+                tabId = this.inventoryHomeTab;
+            }
+            if (requestedTab === 'maintenance') {
+                tabId = this.maintenanceHomeTab;
+            }
             this.currentTab = tabId;
             if (this.isMobileViewport()) {
                 this.toggleMobileNav(false);
             }
-            window.location.hash = tabId;
+            if (!options.preserveHash) {
+                if (options.replaceHash) {
+                    replaceTabHash(tabId);
+                } else {
+                    window.location.hash = tabId;
+                }
+            }
+            if (this.inventoryTabIds.includes(tabId)) {
+                this.lastInventoryTabId = tabId;
+                localStorage.setItem(INVENTORY_LAST_TAB_KEY, tabId);
+            }
+            if (this.settingsTabIds.includes(tabId)) {
+                this.lastSettingsTabId = tabId;
+                localStorage.setItem(SETTINGS_LAST_TAB_KEY, tabId);
+            }
+            if (this.maintenanceTabIds.includes(tabId)) {
+                this.lastMaintenanceTabId = tabId;
+                localStorage.setItem(MAINTENANCE_LAST_TAB_KEY, tabId);
+            }
             if (tabId === 'domain_register') {
                 this.refreshDomainRegisterStatus();
                 this.ensureDomainRegisterStatusPolling();
@@ -1211,6 +1955,11 @@ createApp({
 			}
             if (tabId === 'accounts') {
                 this.fetchAccounts();
+            }
+            if (tabId === 'x_com_accounts' || tabId === 'huawei_accounts') {
+                this.sourcePage = 1;
+                this.selectedSourceAccounts = [];
+                this.fetchSourceAccounts();
             }
 			if (tabId === 'email') {
 				this.fetchConfig();
@@ -1231,9 +1980,13 @@ createApp({
                 this.fetchClashPool();
             }
             if (tabId === 'concurrency') {
+                this.fetchConfig();
+            }
+            if (this.maintenanceTabIds.includes(tabId)) {
                 this.fetchMemoryPrediction();
                 this.fetchGitSyncStatus(false);
                 this.fetchCleanupStatus(false);
+                this.fetchConfig();
             }
             if (tabId === 'team_accounts') {
                 this.fetchTeamAccounts();
@@ -1305,6 +2058,15 @@ createApp({
             } finally {
 				this.isDeletingAccounts = false;
 			}
+        },
+        toggleAll(event) {
+            const visibleEmails = this.filteredAccounts.map(account => account.email);
+            if (event.target.checked) {
+                this.selectedAccounts = visibleEmails;
+            } else {
+                const visibleSet = new Set(visibleEmails);
+                this.selectedAccounts = this.selectedAccounts.filter(email => !visibleSet.has(email));
+            }
         },
         toggleAllCloud(e) {
             if (e.target.checked) {

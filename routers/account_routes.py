@@ -240,8 +240,23 @@ def parse_sub2api_proxy(proxy_url: str):
         return None
 
 @router.get("/api/accounts")
-async def get_accounts(page: int = Query(1), page_size: int = Query(50), hide_reg: str = Query("0"), search: Optional[str] = Query(None), status_filter: str = Query("all"), token: str = Depends(verify_token)):
-    result = db_manager.get_accounts_page(page, page_size, hide_reg=hide_reg, search=search, status_filter=status_filter)
+async def get_accounts(
+    page: int = Query(1),
+    page_size: int = Query(50),
+    hide_reg: str = Query("0"),
+    search: Optional[str] = Query(None),
+    status_filter: str = Query("all"),
+    source: str = Query("local"),
+    token: str = Depends(verify_token),
+):
+    result = db_manager.get_accounts_page(
+        page,
+        page_size,
+        hide_reg=hide_reg,
+        search=search,
+        status_filter=status_filter,
+        source=source,
+    )
     return {"status": "success", "data": result["data"], "total": result["total"], "page": page, "page_size": page_size}
 
 

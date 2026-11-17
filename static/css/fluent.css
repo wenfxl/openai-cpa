@@ -1,0 +1,6864 @@
+:root {
+    --fluent-accent: #0f6cbd;
+    --fluent-accent-hover: #115ea3;
+    --fluent-accent-pressed: #0c3b5e;
+    --fluent-accent-soft: #ebf3fb;
+    --fluent-accent-soft-hover: #e1eef9;
+    --fluent-surface: #ffffff;
+    --fluent-surface-2: #fafafa;
+    --fluent-surface-3: #f5f5f5;
+    --fluent-canvas: #f3f3f3;
+    --fluent-layer: rgba(255, 255, 255, 0.78);
+    --fluent-sidebar: rgba(246, 246, 246, 0.88);
+    --fluent-border: #e5e5e5;
+    --fluent-border-strong: #d1d1d1;
+    --fluent-text: #242424;
+    --fluent-text-2: #424242;
+    --fluent-text-3: #616161;
+    --fluent-text-4: #8a8a8a;
+    --fluent-danger: #c42b1c;
+    --fluent-success: #0f7b0f;
+    --fluent-shadow-2: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --fluent-shadow-4: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --fluent-shadow-8: 0 8px 16px rgba(0, 0, 0, 0.12);
+    --fluent-shadow-16: 0 16px 32px rgba(0, 0, 0, 0.14);
+    --fluent-radius-sm: 4px;
+    --fluent-radius: 6px;
+    --fluent-radius-lg: 8px;
+    --fluent-sidebar-width: 272px;
+    --fluent-commandbar-height: 64px;
+}
+
+html {
+    background: var(--fluent-canvas);
+}
+
+body {
+    color: var(--fluent-text);
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+}
+
+body.overflow-hidden {
+    background: var(--fluent-canvas);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+button {
+    letter-spacing: 0;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 120ms;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--fluent-accent);
+    outline-offset: 1px;
+}
+
+::selection {
+    background: #cfe4fa;
+    color: var(--fluent-text);
+}
+
+.fluent-app {
+    background: var(--fluent-canvas);
+    color: var(--fluent-text);
+}
+
+.fluent-sidebar {
+    width: var(--fluent-sidebar-width);
+    height: 100%;
+    color: var(--fluent-text-2);
+    background:
+        linear-gradient(180deg, rgba(250, 250, 250, 0.94), rgba(243, 243, 243, 0.96)),
+        var(--fluent-sidebar);
+    border-right: 1px solid var(--fluent-border);
+    box-shadow: none;
+    backdrop-filter: blur(20px) saturate(120%);
+}
+
+.fluent-sidebar-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 72px;
+    padding: 16px 18px 12px;
+}
+
+.fluent-brand-mark {
+    display: grid;
+    grid-template-columns: repeat(2, 10px);
+    grid-template-rows: repeat(2, 10px);
+    gap: 2px;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+}
+
+.fluent-brand-icon {
+    display: block;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    border-radius: 7px;
+}
+
+.fluent-brand-mark span:nth-child(1) {
+    background: #f25022;
+}
+
+.fluent-brand-mark span:nth-child(2) {
+    background: #7fba00;
+}
+
+.fluent-brand-mark span:nth-child(3) {
+    background: #00a4ef;
+}
+
+.fluent-brand-mark span:nth-child(4) {
+    background: #ffb900;
+}
+
+.fluent-brand-name {
+    color: var(--fluent-text);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.fluent-brand-subtitle {
+    color: var(--fluent-text-3);
+    font-size: 11px;
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+.fluent-workspace-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    margin: 0 12px 12px;
+    padding: 9px 10px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    background: rgba(255, 255, 255, 0.66);
+}
+
+.fluent-workspace-icon,
+.fluent-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-accent);
+    background: var(--fluent-accent-soft);
+}
+
+.fluent-empty-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.fluent-status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #9a9a9a;
+}
+
+.fluent-status-dot.is-live {
+    background: #13a10e;
+    box-shadow: 0 0 0 3px rgba(19, 161, 14, 0.12);
+}
+
+.fluent-update-badge {
+    padding: 3px 6px;
+    border: 1px solid #d2d2d2;
+    border-radius: 10px;
+    color: var(--fluent-accent);
+    background: #fff;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.fluent-update-badge:hover {
+    background: var(--fluent-accent-soft);
+}
+
+.fluent-nav {
+    padding: 0 8px 12px;
+}
+
+.fluent-nav-group + .fluent-nav-group {
+    margin-top: 14px;
+}
+
+.fluent-nav-label {
+    padding: 0 12px 5px;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.fluent-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 10px 8px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+    background: transparent;
+}
+
+.fluent-nav-item:hover {
+    color: var(--fluent-text);
+    background: rgba(0, 0, 0, 0.035);
+}
+
+.fluent-nav-item.is-active {
+    color: var(--fluent-text);
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    font-weight: 600;
+}
+
+.fluent-nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    color: var(--fluent-text-3);
+}
+
+.fluent-nav-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.fluent-nav-item.is-active .fluent-nav-icon,
+.fluent-nav-item:hover .fluent-nav-icon {
+    color: var(--fluent-accent);
+}
+
+.fluent-nav-indicator {
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--fluent-accent);
+}
+
+.fluent-sidebar-footer {
+    padding: 10px 8px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.fluent-sidebar-action {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-3);
+    font-size: 12px;
+    text-align: left;
+    background: transparent;
+}
+
+.fluent-sidebar-action:hover {
+    color: var(--fluent-text);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.fluent-main {
+    background:
+        radial-gradient(circle at 85% 0%, rgba(255, 255, 255, 0.68), transparent 38%),
+        var(--fluent-canvas);
+}
+
+.fluent-commandbar {
+    position: relative;
+    background: rgba(250, 250, 250, 0.92);
+    border-bottom: 1px solid var(--fluent-border);
+    backdrop-filter: blur(24px) saturate(120%);
+}
+
+.fluent-commandbar-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: var(--fluent-commandbar-height);
+    padding: 8px 28px;
+}
+
+.fluent-page-heading {
+    min-width: 0;
+}
+
+.fluent-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.fluent-page-heading h1 {
+    margin: 1px 0 0;
+    color: var(--fluent-text);
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 28px;
+    letter-spacing: -0.015em;
+}
+
+.fluent-page-heading p {
+    display: none;
+    margin: 0;
+    color: var(--fluent-text-3);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.fluent-command-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    min-width: 0;
+}
+
+.fluent-icon-btn,
+.fluent-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 32px;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.fluent-icon-btn:hover,
+.fluent-toolbar-btn:hover {
+    color: var(--fluent-text);
+    background: rgba(0, 0, 0, 0.045);
+    border-color: rgba(0, 0, 0, 0.03);
+}
+
+.fluent-toolbar-btn {
+    gap: 6px;
+    padding: 0 10px;
+}
+
+.fluent-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--fluent-border);
+    border-radius: 16px;
+    color: var(--fluent-text-3);
+    background: rgba(255, 255, 255, 0.76);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.fluent-status-pill.is-running {
+    color: #0b6a0b;
+    border-color: #c4e4c4;
+    background: #f4fbf4;
+}
+
+.fluent-run-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 86px;
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--fluent-radius);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.fluent-run-btn.is-start,
+.fluent-primary-btn {
+    color: #fff;
+    background: var(--fluent-accent);
+    border-color: var(--fluent-accent);
+    border-radius: var(--fluent-radius);
+    font-weight: 600;
+}
+
+.fluent-run-btn.is-start:hover,
+.fluent-primary-btn:hover {
+    background: var(--fluent-accent-hover);
+    border-color: var(--fluent-accent-hover);
+}
+
+.fluent-run-btn.is-stop {
+    color: #fff;
+    background: var(--fluent-danger);
+    border-color: var(--fluent-danger);
+}
+
+.fluent-run-btn.is-stop:hover {
+    background: #a42317;
+}
+
+.fluent-secondary-btn,
+.fluent-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--fluent-border-strong);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.fluent-secondary-btn:hover,
+.fluent-button:hover {
+    background: #f7f7f7;
+    border-color: #bdbdbd;
+}
+
+.fluent-contextbar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.fluent-contextbar-top {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-height: 44px;
+    padding: 6px 28px;
+}
+
+.fluent-runtime-progress {
+    display: flex;
+    flex: 0 0 260px;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 220px;
+}
+
+.fluent-runtime-progress-copy {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    color: var(--fluent-text-3);
+    font-size: 11px;
+}
+
+.fluent-runtime-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fluent-text-2);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.fluent-runtime-mode {
+    overflow: hidden;
+    color: var(--fluent-text-4);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-runtime-progress-copy strong {
+    margin-left: auto;
+    color: var(--fluent-accent);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.fluent-config-switches {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.fluent-segment-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.fluent-segment-label {
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.fluent-segment-group .console-seg {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    padding: 2px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: none;
+}
+
+.fluent-segment-group .console-seg button {
+    min-width: 0;
+    height: 24px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 4px;
+    color: var(--fluent-text-3);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 24px;
+}
+
+.fluent-segment-group .console-seg button:hover {
+    color: var(--fluent-text);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.fluent-segment-group .console-seg button.is-active-openai,
+.fluent-segment-group .console-seg button.is-active-grok,
+.fluent-segment-group .console-seg button.is-active-phone,
+.fluent-segment-group .console-seg button.is-active-email {
+    color: var(--fluent-accent);
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    font-weight: 600;
+}
+
+.fluent-progress-track {
+    width: 100%;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: #dedede;
+}
+
+.fluent-progress-fill {
+    height: 100%;
+    max-width: 100%;
+    border-radius: inherit;
+    background: var(--fluent-accent);
+    transition: width 300ms ease;
+}
+
+.fluent-runtime-groups {
+    display: grid;
+    grid-template-columns:
+        minmax(270px, 1.36fr)
+        minmax(190px, 0.96fr)
+        minmax(215px, 1.04fr)
+        minmax(170px, 0.84fr);
+    border-top: 1px solid var(--fluent-border);
+    background: rgba(255, 255, 255, 0.32);
+}
+
+.fluent-runtime-group {
+    min-width: 0;
+    padding: 9px 20px 11px;
+    border-right: 1px solid var(--fluent-border);
+}
+
+.fluent-runtime-group:last-child {
+    border-right: 0;
+}
+
+.fluent-runtime-group-title {
+    margin-bottom: 6px;
+    color: var(--fluent-text-4);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 14px;
+}
+
+.fluent-runtime-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.fluent-runtime-group.is-domains .fluent-runtime-metrics,
+.fluent-runtime-group.is-signals .fluent-runtime-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fluent-runtime-group.is-timing .fluent-runtime-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fluent-runtime-metric {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.fluent-runtime-metric > span {
+    overflow: hidden;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-runtime-metric strong {
+    overflow: hidden;
+    color: var(--fluent-text);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 22px;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-runtime-metric strong small {
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.fluent-runtime-metric.is-success strong,
+.fluent-runtime-metric.is-available strong {
+    color: var(--fluent-success);
+}
+
+.fluent-runtime-metric.is-failure strong {
+    color: var(--fluent-danger);
+}
+
+.fluent-runtime-metric.is-warning strong,
+.fluent-runtime-metric.is-cooldown strong {
+    color: #a76500;
+}
+
+.fluent-runtime-metric.is-phone strong,
+.fluent-runtime-metric.is-discard strong {
+    color: #8764b8;
+}
+
+.fluent-contextbar .fluent-config-switches {
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.fluent-contextbar .fluent-config-switches::-webkit-scrollbar {
+    display: none;
+}
+
+.fluent-content-scroll {
+    background: transparent;
+}
+
+.fluent-content {
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 22px 28px 36px;
+}
+
+.fluent-settings-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    min-width: 0;
+    margin: -22px -28px 18px;
+    padding: 10px 28px 0;
+    border-bottom: 1px solid var(--fluent-border);
+    background: rgba(243, 243, 243, 0.94);
+    backdrop-filter: blur(22px) saturate(115%);
+}
+
+.fluent-settings-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.fluent-settings-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.fluent-settings-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 0 12px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: var(--fluent-radius) var(--fluent-radius) 0 0;
+    color: var(--fluent-text-3);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.fluent-settings-tab::after {
+    position: absolute;
+    right: 10px;
+    bottom: 0;
+    left: 10px;
+    height: 2px;
+    border-radius: 1px 1px 0 0;
+    content: "";
+    background: transparent;
+}
+
+.fluent-settings-tab:hover {
+    color: var(--fluent-text);
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.fluent-settings-tab.is-active {
+    color: var(--fluent-text);
+    background: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+}
+
+.fluent-settings-tab.is-active::after {
+    background: var(--fluent-accent);
+}
+
+.fluent-settings-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.fluent-settings-tab-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.fluent-settings-tab.is-active .fluent-settings-tab-icon {
+    color: var(--fluent-accent);
+}
+
+.fluent-settings-save {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 0 13px;
+    margin-bottom: 6px;
+    flex: 0 0 auto;
+    border: 1px solid var(--fluent-accent);
+    border-radius: var(--fluent-radius);
+    color: #fff;
+    background: var(--fluent-accent);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.fluent-settings-save:hover {
+    border-color: var(--fluent-accent-hover);
+    background: var(--fluent-accent-hover);
+}
+
+.fluent-scope-status {
+    align-self: center;
+    flex: 0 0 auto;
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-4);
+    background: rgba(255, 255, 255, 0.52);
+    font-size: 10px;
+    line-height: 16px;
+}
+
+.fluent-maintenance-bar .fluent-scope-status {
+    display: none;
+}
+
+.fluent-inventory-bar {
+    align-items: stretch;
+    position: relative;
+}
+
+.fluent-inventory-bar::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 1px;
+    width: 28px;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(90deg, rgba(243, 243, 243, 0), rgba(243, 243, 243, 0.96));
+}
+
+.fluent-inventory-bar .fluent-settings-tabs {
+    padding-right: 22px;
+}
+
+.fluent-inventory-scope {
+    align-self: center;
+    flex: 0 0 auto;
+    margin-bottom: 6px;
+    padding: 0 10px;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.fluent-inventory-scope strong {
+    margin-left: 4px;
+    color: var(--fluent-text-2);
+    font-weight: 600;
+}
+
+.fluent-settings-bar + .fluent-config-page {
+    margin-top: 0;
+}
+
+.fluent-save-fab {
+    position: fixed;
+    right: 30px;
+    bottom: 26px;
+    z-index: 50;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--fluent-accent);
+    border-radius: var(--fluent-radius);
+    color: #fff;
+    background: var(--fluent-accent);
+    box-shadow: var(--fluent-shadow-8);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.fluent-save-fab:hover {
+    background: var(--fluent-accent-hover);
+    box-shadow: var(--fluent-shadow-16);
+}
+
+.fluent-toast {
+    color: var(--fluent-text);
+    border: 1px solid var(--fluent-border-strong);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--fluent-shadow-8);
+    backdrop-filter: blur(20px);
+}
+
+.fluent-toast.is-success {
+    border-left: 3px solid #107c10;
+}
+
+.fluent-toast.is-error {
+    border-left: 3px solid var(--fluent-danger);
+}
+
+.fluent-toast.is-info {
+    border-left: 3px solid var(--fluent-accent);
+}
+
+.fluent-toast.is-warning {
+    border-left: 3px solid #c87f00;
+}
+
+.fluent-input {
+    min-height: 34px;
+    border: 1px solid var(--fluent-border-strong);
+    border-bottom-color: #8a8a8a;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text);
+    background: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+    outline: none;
+}
+
+.fluent-input:hover {
+    background: #fbfbfb;
+    border-color: #b8b8b8;
+    border-bottom-color: #737373;
+}
+
+.fluent-input:focus {
+    border-color: var(--fluent-accent);
+    box-shadow: inset 0 -2px 0 var(--fluent-accent);
+    outline: none;
+}
+
+.fluent-empty-state {
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-nowrap-actions {
+    flex-wrap: nowrap;
+}
+
+.fluent-selection-bar {
+    border: 1px solid #cfe4fa;
+    border-radius: var(--fluent-radius);
+    background: #f4f9fe;
+}
+
+.fluent-selection-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-right: 1px solid #d5e6f5;
+    color: #145b91;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.fluent-selection-label {
+    padding: 0 6px;
+    color: var(--fluent-text-4);
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.fluent-selection-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    flex-wrap: wrap;
+    padding: 2px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    background: #fff;
+}
+
+.fluent-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--fluent-text-2);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.fluent-selection-spacer {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.fluent-action-btn:hover:not(:disabled) {
+    border-color: var(--fluent-border);
+    background: var(--fluent-surface-3);
+}
+
+.fluent-action-btn.is-export {
+    color: #24587f;
+    border-color: #d3e4f2;
+    background: #f5f9fc;
+}
+
+.fluent-action-btn.is-export:hover:not(:disabled) {
+    border-color: #a8cae5;
+    color: #174b73;
+    background: #eaf4fc;
+}
+
+.fluent-action-btn.is-success {
+    border-color: #c9e7d5;
+    color: #0f6b3f;
+    background: #f2fbf6;
+}
+
+.fluent-action-btn.is-success:hover:not(:disabled) {
+    border-color: #b9e4cb;
+    background: #e7f7ee;
+}
+
+.fluent-action-btn.is-platform {
+    border-color: #ddd0f2;
+    color: #6944a4;
+    background: #f8f3ff;
+}
+
+.fluent-action-btn.is-platform:hover:not(:disabled) {
+    border-color: #d9c8f4;
+    background: #f1e9fc;
+}
+
+.fluent-action-btn.is-image {
+    border-color: #f0d1e0;
+    color: #a13d70;
+    background: #fff5fa;
+}
+
+.fluent-action-btn.is-image:hover:not(:disabled) {
+    border-color: #f1c9dc;
+    background: #fceaf3;
+}
+
+.fluent-action-btn.is-info {
+    color: #fff;
+    border-color: var(--fluent-accent);
+    background: var(--fluent-accent);
+}
+
+.fluent-action-btn.is-info:hover:not(:disabled) {
+    border-color: var(--fluent-accent-hover);
+    color: #fff;
+    background: var(--fluent-accent-hover);
+}
+
+.fluent-action-btn.is-danger {
+    min-height: 32px;
+    padding-inline: 12px;
+    color: #a9271b;
+    border-color: #e9bdb8;
+    background: #fff4f2;
+    font-weight: 600;
+}
+
+.fluent-action-btn.is-danger:hover:not(:disabled) {
+    border-color: #d88a82;
+    color: #8e2016;
+    background: #ffe9e6;
+}
+
+.fluent-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.fluent-page-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--fluent-border-strong);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.fluent-page-button:hover:not(:disabled) {
+    border-color: #b8b8b8;
+    background: #f7f7f7;
+}
+
+.fluent-page-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.fluent-page-jump {
+    padding: 0 8px;
+    border: 1px solid var(--fluent-border-strong);
+    border-radius: var(--fluent-radius);
+    background: #fff;
+}
+
+.fluent-page-jump:focus-within {
+    border-color: var(--fluent-accent);
+    box-shadow: inset 0 -2px 0 var(--fluent-accent);
+}
+
+.fluent-page-jump input {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.fluent-console-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: clamp(460px, calc(100vh - 290px), 720px);
+    min-height: 0;
+}
+
+.fluent-task-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(340px, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-task-status {
+    min-width: 0;
+    padding: 18px 22px 17px;
+}
+
+.fluent-task-status-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--fluent-text-3);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.fluent-task-mode {
+    margin-left: auto;
+    padding: 2px 8px;
+    border: 1px solid var(--fluent-border);
+    border-radius: 10px;
+    background: var(--fluent-surface-2);
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.fluent-task-progress-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 16px;
+    min-width: 0;
+}
+
+.fluent-task-progress-heading strong {
+    color: var(--fluent-text);
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 38px;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.fluent-task-progress-heading > span:not(.fluent-task-percent) {
+    color: var(--fluent-text-3);
+    font-size: 12px;
+}
+
+.fluent-task-percent {
+    margin-left: auto;
+    color: var(--fluent-accent);
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.fluent-task-progress {
+    height: 5px;
+    margin-top: 12px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: #dedede;
+}
+
+.fluent-task-progress-fill {
+    height: 100%;
+    max-width: 100%;
+    border-radius: inherit;
+    background: var(--fluent-accent);
+    transition: width 300ms ease;
+}
+
+.fluent-task-caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    margin-top: 13px;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+}
+
+.fluent-task-caption strong {
+    margin-left: 3px;
+    color: var(--fluent-text-2);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.fluent-task-caption strong.is-negative {
+    color: var(--fluent-danger);
+}
+
+.fluent-task-signals {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-left: 1px solid var(--fluent-border);
+    background: var(--fluent-surface-2);
+}
+
+.fluent-task-signal {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    min-height: 66px;
+    padding: 10px 14px;
+    border-right: 1px solid var(--fluent-border);
+    border-bottom: 1px solid var(--fluent-border);
+}
+
+.fluent-task-signal:nth-child(3n) {
+    border-right: 0;
+}
+
+.fluent-task-signal:nth-last-child(-n + 3) {
+    border-bottom: 0;
+}
+
+.fluent-task-signal span {
+    overflow: hidden;
+    color: var(--fluent-text-4);
+    font-size: 10px;
+    line-height: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-task-signal strong {
+    margin-top: 1px;
+    color: var(--fluent-text);
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 25px;
+    font-variant-numeric: tabular-nums;
+}
+
+.fluent-terminal-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+}
+
+.fluent-console-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 286px;
+    align-items: start;
+    gap: 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.fluent-terminal-card,
+.fluent-panel {
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-terminal-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.fluent-card-header,
+.fluent-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--fluent-border);
+}
+
+.fluent-card-header h2,
+.fluent-panel-header h3 {
+    margin: 0;
+    color: var(--fluent-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.fluent-card-header p {
+    margin: 2px 0 0;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.fluent-terminal-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 38px;
+    padding: 0 16px;
+    border-bottom: 1px solid #e8e8e8;
+    color: #6f777f;
+    background: #f7f8f9;
+    font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 11px;
+}
+
+.fluent-terminal-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #7b8289;
+}
+
+.fluent-terminal-live.is-live {
+    color: #0b6a0b;
+}
+
+.fluent-terminal {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding: 12px 16px 18px;
+    color: #d5d9dd;
+    background: #1b1b1b;
+    font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 12px;
+    line-height: 20px;
+    scrollbar-color: #565656 #1b1b1b;
+}
+
+.fluent-terminal-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    color: #8b939a;
+    text-align: center;
+}
+
+.fluent-terminal-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 14px;
+    border: 1px solid #3e4449;
+    border-radius: var(--fluent-radius);
+    color: #aab1b7;
+    background: #24282b;
+}
+
+.fluent-terminal-empty p {
+    margin: 0 0 3px;
+    color: #c8cdd1;
+    font-size: 13px;
+}
+
+.fluent-terminal-empty span {
+    font-size: 11px;
+}
+
+.fluent-log-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.fluent-log-line:hover {
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.fluent-log-time {
+    flex: 0 0 auto;
+    color: #7f888f;
+    user-select: none;
+}
+
+.fluent-log-level {
+    flex: 0 0 auto;
+    width: 62px;
+    color: #aeb5bb;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+}
+
+.fluent-log-level.is-success {
+    color: #6ccb5f;
+}
+
+.fluent-log-level.is-error {
+    color: #ff99a4;
+}
+
+.fluent-log-level.is-warning {
+    color: #fce100;
+}
+
+.fluent-log-level.is-info {
+    color: #60cdff;
+}
+
+.fluent-log-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: #d6dadd;
+}
+
+.fluent-console-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fluent-panel-header {
+    padding: 12px 15px;
+}
+
+.fluent-detail-list {
+    margin: 0;
+    padding: 8px 15px 12px;
+}
+
+.fluent-detail-list > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 31px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.fluent-detail-list > div:last-child {
+    border-bottom: 0;
+}
+
+.fluent-detail-list dt {
+    color: var(--fluent-text-3);
+    font-size: 12px;
+}
+
+.fluent-detail-list dd {
+    max-width: 155px;
+    margin: 0;
+    overflow: hidden;
+    color: var(--fluent-text);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Shared page composition for feature pages. */
+.fluent-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.fluent-page.grid {
+    display: grid;
+}
+
+.fluent-page-hero {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    min-width: 0;
+    padding: 20px 22px;
+    overflow: hidden;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background:
+        linear-gradient(110deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 250, 253, 0.94) 64%, rgba(235, 243, 251, 0.9) 100%);
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-page-hero::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    content: "";
+    background: var(--fluent-accent);
+}
+
+.fluent-page-hero-main {
+    min-width: 0;
+}
+
+.fluent-page-eyebrow,
+.fluent-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fluent-accent);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+.fluent-page-eyebrow::before {
+    width: 14px;
+    height: 1px;
+    content: "";
+    background: currentColor;
+}
+
+.fluent-page-hero h2 {
+    margin: 3px 0 0;
+    color: var(--fluent-text) !important;
+    font-size: 21px;
+    font-weight: 600 !important;
+    line-height: 28px;
+    letter-spacing: -0.015em !important;
+}
+
+.fluent-page-hero p {
+    max-width: 720px;
+    margin: 4px 0 0;
+    color: var(--fluent-text-3);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 19px;
+}
+
+.fluent-page-hero-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.fluent-page-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid rgba(15, 108, 189, 0.16);
+    border-radius: 14px;
+    color: #0c5b9d;
+    background: rgba(255, 255, 255, 0.74);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.fluent-page-chip .fluent-status-dot {
+    background: var(--fluent-accent);
+    box-shadow: none;
+}
+
+.fluent-page-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.fluent-page-kpi {
+    min-width: 0;
+    padding: 13px 16px;
+}
+
+.fluent-page-kpi + .fluent-page-kpi {
+    border-left: 1px solid var(--fluent-border);
+}
+
+.fluent-page-kpi span {
+    display: block;
+    color: var(--fluent-text-3);
+    font-size: 11px;
+    line-height: 17px;
+}
+
+.fluent-page-kpi strong {
+    display: block;
+    margin-top: 2px;
+    overflow: hidden;
+    color: var(--fluent-text);
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 26px;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-page-kpi small {
+    display: block;
+    margin-top: 1px;
+    overflow: hidden;
+    color: var(--fluent-text-4);
+    font-size: 10px;
+    line-height: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-page-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    border: 1px solid #cfe4fa;
+    border-radius: var(--fluent-radius);
+    color: #194b74;
+    background: #f3f8fd;
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.fluent-page-note.is-warning {
+    color: #745400;
+    border-color: #f0dda3;
+    background: #fffaf0;
+}
+
+.fluent-page-note svg {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+}
+
+.fluent-right-rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    align-items: start;
+    gap: 16px;
+}
+
+.fluent-right-rail-main {
+    min-width: 0;
+}
+
+.fluent-right-rail-aside {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fluent-runtime-band {
+    overflow: hidden;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--fluent-border);
+}
+
+.fluent-section-heading h2 {
+    margin: 0;
+    color: var(--fluent-text) !important;
+    font-size: 14px;
+    font-weight: 600 !important;
+    line-height: 20px;
+    letter-spacing: 0 !important;
+}
+
+.fluent-section-heading p {
+    margin: 2px 0 0;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.fluent-section-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--fluent-text-3);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.fluent-section-status.is-live {
+    color: #0b6a0b;
+}
+
+.fluent-runtime-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric {
+    min-width: 0;
+    padding: 12px 14px 13px;
+    border-right: 1px solid #ededed;
+    border-bottom: 1px solid #ededed;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric:nth-child(6n) {
+    border-right: 0;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric span,
+.fluent-runtime-grid > .fluent-runtime-metric small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric span {
+    color: var(--fluent-text-3);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric strong {
+    display: block;
+    margin: 1px 0;
+    color: var(--fluent-text);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 24px;
+    font-variant-numeric: tabular-nums;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric small {
+    color: var(--fluent-text-4);
+    font-size: 9px;
+    line-height: 14px;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric strong.is-positive {
+    color: var(--fluent-success);
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric strong.is-negative {
+    color: var(--fluent-danger);
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric strong.is-warning {
+    color: #9d5d00;
+}
+
+.fluent-runtime-grid > .fluent-runtime-metric strong.is-accent {
+    color: var(--fluent-accent);
+}
+
+.fluent-task-panel {
+    overflow: hidden;
+}
+
+.fluent-task-panel .fluent-kicker {
+    color: var(--fluent-text-4);
+    font-weight: 400;
+}
+
+.fluent-config-page {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+}
+
+.fluent-config-page > .fluent-page-hero,
+.fluent-config-page > .fluent-page-kpis,
+.fluent-config-page > .fluent-page-note {
+    grid-column: 1 / -1;
+    flex: 0 0 auto;
+}
+
+.fluent-config-page > [class*="bg-white"],
+.fluent-config-page > [class*="bg-gradient"] {
+    position: relative;
+    min-width: 0;
+    margin: 0 !important;
+    border: 1px solid var(--fluent-border) !important;
+    border-top-width: 1px !important;
+    border-left-width: 1px !important;
+    border-radius: var(--fluent-radius-lg) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: var(--fluent-shadow-2) !important;
+    width: 100%;
+}
+
+.fluent-config-page.flush {
+    gap: 14px !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.fluent-maintenance-page {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start;
+}
+
+.fluent-maintenance-page > [v-show] {
+    margin: 0 !important;
+}
+
+.fluent-maintenance-page .lg\:col-span-2 {
+    grid-column: 1 / -1 !important;
+}
+
+.fluent-config-page.flush > :is(.bg-white, [class*="bg-gradient"]) {
+    --settings-card-accent: var(--fluent-border-strong);
+    margin: 0 !important;
+    padding: 18px 20px !important;
+    overflow: hidden;
+    border: 1px solid var(--fluent-border) !important;
+    border-top: 3px solid var(--settings-card-accent) !important;
+    border-radius: var(--fluent-radius-lg) !important;
+    background: var(--fluent-surface) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.035) !important;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-orange"],
+        [class*="border-l-orange"]
+    ) {
+    --settings-card-accent: #c75b00;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-amber"],
+        [class*="border-l-amber"]
+    ) {
+    --settings-card-accent: #9d5d00;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-emerald"],
+        [class*="border-l-emerald"]
+    ) {
+    --settings-card-accent: #107c10;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-teal"],
+        [class*="border-l-teal"]
+    ) {
+    --settings-card-accent: #008272;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-cyan"],
+        [class*="border-l-cyan"]
+    ) {
+    --settings-card-accent: #007e8c;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-sky"],
+        [class*="border-l-sky"]
+    ) {
+    --settings-card-accent: #1473b8;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-blue"],
+        [class*="border-l-blue"]
+    ) {
+    --settings-card-accent: #0f548c;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-indigo"],
+        [class*="border-l-indigo"]
+    ) {
+    --settings-card-accent: #4f52b2;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-violet"],
+        [class*="border-l-violet"]
+    ) {
+    --settings-card-accent: #6b4fc4;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-purple"],
+        [class*="border-l-purple"]
+    ) {
+    --settings-card-accent: #7d3ac1;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-fuchsia"],
+        [class*="border-l-fuchsia"]
+    ) {
+    --settings-card-accent: #a43bb7;
+}
+
+.fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]):is(
+        [class*="border-t-rose"],
+        [class*="border-l-rose"]
+    ) {
+    --settings-card-accent: #bc2f4a;
+}
+
+.fluent-config-page.flush :is(h3, h4) {
+    color: var(--fluent-text) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+}
+
+.fluent-config-page.flush :is(.rounded-2xl, .rounded-xl) {
+    border-radius: var(--fluent-radius) !important;
+}
+
+.fluent-config-page.flush :is(.rounded-2xl, .rounded-xl) > h3 {
+    font-size: 14px !important;
+    line-height: 20px !important;
+}
+
+.fluent-config-page.flush :is(h3, h4) > svg,
+.fluent-config-page.flush :is(h3, h4) span > svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+.fluent-config-page.flush :is(p, span, div)[class*="text-"][class*="font-black"] {
+    font-weight: 500 !important;
+}
+
+.fluent-config-page.flush > :is(.bg-white, [class*="bg-gradient"]) > :is(h3, .flex):first-child {
+    margin-bottom: 14px !important;
+}
+
+.fluent-config-page.flush :is(input, select, textarea) {
+    min-height: 32px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: 12px !important;
+}
+
+.fluent-config-page :is(.relative > button.absolute, .relative > input.absolute):is([class*="right-"], [class*="inset-y-"]) {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: var(--fluent-radius) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--fluent-text-3) !important;
+}
+
+.fluent-config-page :is(.relative > button.absolute, .relative > input.absolute):is([class*="right-"], [class*="inset-y-"]):not([class*="inset-y-0"]) {
+    top: calc(50% + 1px) !important;
+    right: 5px !important;
+    transform: translateY(-50%) !important;
+}
+
+.fluent-config-page :is(.relative > button.absolute, .relative > input.absolute)[class*="inset-y-0"] {
+    top: calc(50% + 1px) !important;
+    right: 5px !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+}
+
+.fluent-config-page :is(.relative > button.absolute, .relative > input.absolute):is([class*="right-"], [class*="inset-y-"]):is(:hover, :focus-visible) {
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--fluent-accent) !important;
+}
+
+.fluent-config-page :is(.relative > button.absolute, .relative > input.absolute):is([class*="right-"], [class*="inset-y-"]):is([class*="bg-white"], [class*="bg-slate"]):is(:hover, :focus-visible) {
+    background: transparent !important;
+}
+
+.fluent-config-page .relative:has(> :is(button.absolute, input.absolute):is([class*="right-"], [class*="inset-y-"])) > :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+    padding-right: 42px !important;
+}
+
+/* SMS provider fields share one baseline even when a balance chip changes label height. */
+.fluent-config-page.flush .sms-provider-credentials {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 20px !important;
+}
+
+.fluent-config-page.flush .sms-provider-field,
+.fluent-config-page.flush .sms-provider-key-row {
+    display: flex !important;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.fluent-config-page.flush .sms-provider-key-row {
+    flex-direction: row !important;
+}
+
+.fluent-config-page.flush .sms-provider-field > label {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 32px !important;
+    margin-bottom: 8px !important;
+    padding: 0 !important;
+    line-height: 18px !important;
+}
+
+.fluent-config-page.flush .sms-provider-field > label span:first-child {
+    flex: 1 1 auto;
+}
+
+.fluent-config-page.flush .sms-provider-key-row {
+    align-items: stretch !important;
+    gap: 8px !important;
+}
+
+.fluent-config-page.flush .sms-provider-key-row > .relative {
+    flex: 1 1 auto !important;
+    min-width: 0;
+}
+
+.fluent-config-page.flush .sms-provider-key-row > button {
+    flex: 0 0 40px;
+    width: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+}
+
+.fluent-config-page.flush .sms-provider-field > .relative > input,
+.fluent-config-page.flush .sms-provider-key-row input {
+    min-height: 40px !important;
+}
+
+.fluent-config-page.flush .sms-provider-options {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+}
+
+.fluent-config-page.flush .sms-provider-options > label {
+    min-width: 0 !important;
+}
+
+.fluent-config-page.flush .sms-provider-options input[type="number"] {
+    width: 36px !important;
+    min-width: 36px !important;
+    min-height: 24px !important;
+    height: 24px !important;
+    padding: 0 3px !important;
+}
+
+@media (max-width: 1279px) {
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split
+        > .concurrency-dual-card
+        > .concurrency-left-grid
+        > .concurrency-switch-row {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split
+        > .concurrency-dual-card
+        > .concurrency-left-grid
+        > .concurrency-switch-row
+        > .concurrency-switch-card {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .fluent-config-page.flush .sms-provider-credentials {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .fluent-config-page.flush .sms-provider-options {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
+
+.fluent-config-page.flush :is(.bg-gradient-to-br, .bg-gradient-to-b) {
+    background-image: none !important;
+    background-color: var(--fluent-surface-2) !important;
+}
+
+.fluent-config-page.flush :is(.bg-sky-50, .bg-blue-50, .bg-cyan-50, .bg-teal-50, .bg-emerald-50, .bg-amber-50, .bg-purple-50, .bg-indigo-50, [class*="bg-sky-50/"], [class*="bg-blue-50/"], [class*="bg-cyan-50/"], [class*="bg-teal-50/"], [class*="bg-emerald-50/"], [class*="bg-amber-50/"], [class*="bg-purple-50/"], [class*="bg-indigo-50/"]) {
+    border-color: var(--fluent-border) !important;
+    background-color: var(--fluent-surface-2) !important;
+    background-image: none !important;
+}
+
+.fluent-config-page.flush :is(.border-sky-100, .border-blue-100, .border-cyan-100, .border-teal-100, .border-emerald-100, .border-purple-100, .border-indigo-100, .border-amber-100) {
+    border-color: var(--fluent-border) !important;
+}
+
+.fluent-config-page.flush :is(.text-sky-900, .text-sky-800, .text-sky-700, .text-blue-900, .text-blue-800, .text-blue-700, .text-cyan-900, .text-cyan-800, .text-cyan-700, .text-teal-900, .text-teal-800, .text-teal-700, .text-emerald-900, .text-emerald-800, .text-emerald-700, .text-purple-900, .text-purple-800, .text-purple-700, .text-indigo-900, .text-indigo-800, .text-indigo-700) {
+    color: var(--fluent-text-2) !important;
+}
+
+.fluent-config-page.flush :is(.text-rose-800, .text-rose-700) {
+    color: var(--fluent-danger) !important;
+}
+
+.fluent-config-page.flush :is(.text-amber-700, .text-amber-800) {
+    color: #805d14 !important;
+}
+
+.fluent-config-page.flush [class*="tracking-wider"],
+.fluent-config-page.flush [class*="tracking-widest"] {
+    letter-spacing: 0 !important;
+}
+
+.fluent-config-page.flush :is(button, a):not(.fluent-run-btn):not(.fluent-icon-btn) {
+    min-height: 32px;
+    font-weight: 500 !important;
+}
+
+.fluent-config-page.flush :is(.shadow-inner, .shadow-sm) {
+    box-shadow: none !important;
+}
+
+.fluent-config-page.flush textarea {
+    min-height: 96px !important;
+    padding: 10px 12px !important;
+    line-height: 18px !important;
+}
+
+.fluent-config-page > [class*="bg-white"]::before,
+.fluent-config-page > [class*="bg-gradient"]::before {
+    display: none;
+}
+
+.fluent-config-page > [class*="bg-white"] h3,
+.fluent-config-page > [class*="bg-gradient"] h3 {
+    color: var(--fluent-text) !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.fluent-data-page.inventory-shell,
+.fluent-page.inventory-shell {
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.fluent-data-page > .inventory-toolbar {
+    margin-top: 0;
+    border: 1px solid var(--fluent-border) !important;
+    border-radius: var(--fluent-radius-lg) var(--fluent-radius-lg) 0 0;
+    background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.fluent-data-page > .inventory-toolbar + .inventory-toolbar {
+    border-radius: 0;
+}
+
+.fluent-data-page > .inventory-table-wrap {
+    border-right: 1px solid var(--fluent-border) !important;
+    border-left: 1px solid var(--fluent-border) !important;
+}
+
+.fluent-data-page > .inventory-footer {
+    border: 1px solid var(--fluent-border) !important;
+    border-radius: 0 0 var(--fluent-radius-lg) var(--fluent-radius-lg);
+}
+
+/* Inventory pages use one continuous work surface. */
+.fluent-data-page.inventory-shell {
+    gap: 0;
+    border: 1px solid var(--fluent-border) !important;
+    border-radius: var(--fluent-radius-lg) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: var(--fluent-shadow-2) !important;
+    overflow: hidden !important;
+}
+
+.fluent-data-page.inventory-shell > .inventory-toolbar {
+    padding: 12px 16px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--fluent-border) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+.fluent-data-page.inventory-shell > .inventory-table-wrap {
+    border: 0 !important;
+}
+
+.fluent-data-page.inventory-shell > .inventory-footer {
+    padding: 11px 16px !important;
+    border: 0 !important;
+    border-top: 1px solid var(--fluent-border) !important;
+    border-radius: 0 !important;
+    background: var(--fluent-surface-2) !important;
+}
+
+.fluent-data-page :is(h2, h3).text-sm,
+.fluent-data-page .cloud-toolbar-title h2 {
+    color: var(--fluent-text) !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+
+.fluent-data-page .inventory-toolbar :is(input, select):not([type="checkbox"]):not([type="radio"]) {
+    min-height: 32px;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: 12px !important;
+}
+
+.fluent-data-page .inventory-toolbar > div > div,
+.fluent-data-page .inventory-toolbar > div > div > div {
+    min-width: 0;
+}
+
+.fluent-data-page .inventory-table-scroll thead th {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    color: var(--fluent-text-3) !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+.fluent-data-page .inventory-table-scroll tbody td {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 12px !important;
+}
+
+.fluent-data-page .inventory-table-scroll tbody tr {
+    transition: background-color 100ms ease;
+}
+
+.inventory-mobile-list {
+    display: none;
+}
+
+/* One restrained action language: blue primary, neutral secondary, red destructive. */
+.fluent-content .fluent-page button:not([class*="bg-"]):not([class*="text-"]):not(.fluent-run-btn):not(.fluent-icon-btn):not(.fluent-page-button):not(.fluent-action-btn) {
+    border-color: var(--fluent-border-strong) !important;
+    color: var(--fluent-text-2) !important;
+    background: #fff !important;
+}
+
+.fluent-content .fluent-page :is(button, a):is([class*="bg-indigo"], [class*="bg-blue"], [class*="bg-sky"], [class*="bg-emerald"], [class*="bg-amber"], [class*="bg-cyan"], [class*="bg-violet"], [class*="bg-purple"]):not(.fluent-run-btn):not(.fluent-icon-btn):not([class*="bg-gradient"]):not([class*="hover:bg"]) {
+    border-color: var(--fluent-border) !important;
+    color: var(--fluent-text-2) !important;
+    background: var(--fluent-surface-2) !important;
+}
+
+.fluent-content .fluent-page button:is([class*="text-emerald-700"], [class*="text-emerald-600"]) {
+    border-color: #b9dfcb !important;
+    color: #0f6b3f !important;
+    background-color: #f2fbf6 !important;
+    background-image: none !important;
+}
+
+.fluent-content .fluent-page button:is([class*="text-purple-700"], [class*="text-purple-600"]) {
+    border-color: #dac8ee !important;
+    color: #6944a4 !important;
+    background-color: #f8f3ff !important;
+    background-image: none !important;
+}
+
+.fluent-content .fluent-page button:is([class*="text-pink-700"], [class*="text-pink-600"]) {
+    border-color: #edcbdc !important;
+    color: #a13d70 !important;
+    background-color: #fff5fa !important;
+    background-image: none !important;
+}
+
+.fluent-content .fluent-page button:is([class*="text-fuchsia-700"], [class*="text-fuchsia-600"]) {
+    border-color: #e6c8e5 !important;
+    color: #8f398e !important;
+    background-color: #fdf4fd !important;
+    background-image: none !important;
+}
+
+.fluent-content .fluent-page button:is([class*="text-amber-700"], [class*="text-amber-600"]) {
+    border-color: #ead8af !important;
+    color: #805d14 !important;
+    background-color: #fffaf0 !important;
+    background-image: none !important;
+}
+
+.fluent-content .fluent-page :is(button, a):is([class*="bg-rose"]):not([class*="bg-gradient"]) {
+    border-color: #d98b84 !important;
+    color: var(--fluent-danger) !important;
+    background: #fff !important;
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card) {
+    position: relative;
+    min-width: 0;
+    min-height: 48px !important;
+    padding: 8px 10px !important;
+    border: 1px solid var(--fluent-border) !important;
+    border-radius: var(--fluent-radius) !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: hidden;
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card):hover {
+    border-color: #b8d8f3 !important;
+    background: #f7fbff !important;
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card)[class*="ring"] {
+    border-color: var(--fluent-accent) !important;
+    ring: 0 !important;
+    box-shadow: inset 0 0 0 1px var(--fluent-accent) !important;
+}
+
+.fluent-data-page .inventory-mini-card:is([class*="ring"]) {
+    background: #e3f1fd !important;
+}
+
+.fluent-data-page .inventory-mini-card:is([class*="ring"]) > div:first-child > div:last-child {
+    color: var(--fluent-accent) !important;
+}
+
+.fluent-data-page .inventory-mini-card:is([class*="ring"]) > div.z-10:last-child {
+    color: var(--fluent-accent) !important;
+    opacity: 1;
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card) :is([class*="text-emerald"], [class*="text-rose"], [class*="text-amber"], [class*="text-indigo"], [class*="text-cyan"], [class*="text-pink"], [class*="text-purple"], [class*="text-fuchsia"], [class*="text-sky"]) {
+    color: var(--fluent-text-3) !important;
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card) > div:first-child > div:last-child {
+    color: var(--fluent-text) !important;
+}
+
+.fluent-data-page .inventory-mini-card > div.z-10:last-child {
+    position: absolute !important;
+    top: 50% !important;
+    right: 9px !important;
+    width: 16px !important;
+    height: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transform: translateY(-50%) !important;
+    color: var(--fluent-text-4) !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    opacity: 0.72;
+}
+
+.fluent-data-page .inventory-mini-card > div.z-10:last-child > span {
+    display: contents !important;
+}
+
+.fluent-data-page .inventory-mini-card > div.z-10:last-child svg {
+    width: 13px !important;
+    height: 13px !important;
+    flex: 0 0 auto;
+}
+
+.fluent-data-page .inventory-mini-card > div.z-10:last-child :is([class*="bg-slate"], [class*="bg-amber"], [class*="bg-indigo"], [class*="bg-cyan"], [class*="bg-pink"], [class*="bg-emerald"], [class*="bg-rose"]) {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.fluent-data-page .fluent-selection-bar,
+.fluent-data-page :is([class*="bg-indigo-50"], [class*="bg-pink-50"]) {
+    border-color: #d6e7f7 !important;
+    background: linear-gradient(180deg, #f8fbfe, #f2f7fc) !important;
+}
+
+.fluent-data-page .fluent-selection-group--export {
+    border-color: #d8e6f2 !important;
+    background: #edf5fb !important;
+}
+
+.fluent-data-page .fluent-selection-group--export .fluent-selection-label {
+    color: #486781;
+}
+
+.fluent-data-page .fluent-selection-group--push {
+    border-color: #dce5ec !important;
+    background: #fff !important;
+}
+
+.fluent-data-page .fluent-selection-group--credential {
+    border-color: #c9def0 !important;
+    background: #f4f9fe !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-export {
+    color: #24587f !important;
+    border-color: #d3e4f2 !important;
+    background: #f5f9fc !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-export:hover:not(:disabled) {
+    color: #174b73 !important;
+    border-color: #a8cae5 !important;
+    background: #eaf4fc !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-success {
+    color: #0f6b3f !important;
+    background: #f2fbf6 !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-platform {
+    color: #6944a4 !important;
+    background: #f8f3ff !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-image {
+    color: #a13d70 !important;
+    background: #fff5fa !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-info {
+    color: #fff !important;
+    border-color: var(--fluent-accent) !important;
+    background: var(--fluent-accent) !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-info:hover:not(:disabled) {
+    color: #fff !important;
+    border-color: var(--fluent-accent-hover) !important;
+    background: var(--fluent-accent-hover) !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-danger {
+    min-height: 32px !important;
+    padding-inline: 12px !important;
+    color: #a9271b !important;
+    border-color: #e9bdb8 !important;
+    background: #fff4f2 !important;
+    font-weight: 600 !important;
+}
+
+.fluent-data-page .fluent-action-btn.is-danger:hover:not(:disabled) {
+    color: #8e2016 !important;
+    border-color: #d88a82 !important;
+    background: #ffe9e6 !important;
+}
+
+.fluent-data-page :is(.bg-rose-500, .bg-rose-600) {
+    border-color: #d98b84 !important;
+    background: #fff !important;
+    color: var(--fluent-danger) !important;
+}
+
+.fluent-data-page :is(.bg-indigo-500, .bg-indigo-600, .bg-blue-500, .bg-blue-600, .bg-sky-500, .bg-sky-600, .bg-emerald-500, .bg-emerald-600, .bg-amber-500, .bg-amber-600, .bg-purple-500, .bg-purple-600, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-cyan-500, .bg-cyan-600) {
+    border-color: var(--fluent-border-strong) !important;
+    background: #fff !important;
+    color: var(--fluent-text-2) !important;
+}
+
+.fluent-data-page :is(button, a):is(.bg-indigo-500, .bg-indigo-600, .bg-blue-500, .bg-blue-600, .bg-sky-500, .bg-sky-600, .bg-emerald-500, .bg-emerald-600, .bg-amber-500, .bg-amber-600, .bg-purple-500, .bg-purple-600, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-cyan-500, .bg-cyan-600) {
+    border-color: var(--fluent-accent) !important;
+    background: var(--fluent-accent) !important;
+    color: #fff !important;
+}
+
+.fluent-data-page :is(.bg-indigo-50, .bg-blue-50, .bg-sky-50, .bg-emerald-50, .bg-amber-50, .bg-purple-50, .bg-pink-50, .bg-fuchsia-50, .bg-cyan-50) {
+    border-color: var(--fluent-border) !important;
+    background: var(--fluent-surface-2) !important;
+    color: var(--fluent-text-2) !important;
+}
+
+.fluent-data-page .cloud-stat-badges,
+.fluent-data-page .cloud-stat-badge {
+    display: none !important;
+}
+
+.fluent-data-page .cloud-stat-card {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card) > div:first-child > div:last-child {
+    margin-top: 2px;
+    font-size: 16px !important;
+    line-height: 22px !important;
+}
+
+.fluent-data-page .inventory-mini-card > div.z-10:first-child {
+    width: 100%;
+    padding-right: 20px;
+}
+
+.fluent-data-page .inventory-stats,
+.fluent-data-page .cloud-stats {
+    padding: 8px 16px !important;
+    background: var(--fluent-surface-2) !important;
+}
+
+.fluent-data-page :is(.inventory-stat-grid, .cloud-stat-grid) {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+}
+
+.fluent-data-page .cloud-stat-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 1180px) {
+    .fluent-data-page :is(.inventory-stat-grid, .cloud-stat-grid) {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .fluent-data-page :is(.inventory-stat-grid, .cloud-stat-grid) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+}
+
+.fluent-data-page :is(.inventory-mini-card, .cloud-stat-card) [class*="text-["] {
+    font-size: 10px !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+.fluent-data-page :is(.text-indigo-700, .text-blue-700, .text-sky-700, .text-emerald-700, .text-amber-700, .text-purple-700, .text-pink-700, .text-fuchsia-700, .text-cyan-700) {
+    color: var(--fluent-text-2) !important;
+}
+
+.fluent-data-page :is(.text-rose-600, .text-rose-700) {
+    color: var(--fluent-danger) !important;
+}
+
+.fluent-data-page .fluent-page-button,
+.fluent-data-page .fluent-page-jump {
+    border-color: var(--fluent-border-strong) !important;
+    background: #fff !important;
+}
+
+.fluent-config-page > :is(.bg-white, [class*="bg-gradient"]) {
+    margin: 0 !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--fluent-border) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.fluent-config-page > :last-child {
+    border-bottom: 0 !important;
+}
+
+.fluent-config-page h3 {
+    color: var(--fluent-text) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+}
+
+.fluent-config-page.flush > .email-settings-panel h3 {
+    font-size: 15px !important;
+}
+
+.fluent-config-page :is(h4, label.block) {
+    letter-spacing: 0 !important;
+}
+
+.fluent-config-page :is(button, a):not(.fluent-run-btn):not(.fluent-icon-btn):not(.fluent-action-btn) {
+    border-color: var(--fluent-border-strong) !important;
+    color: var(--fluent-text-2) !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.fluent-config-page .email-settings-grid > .email-settings-panel {
+    position: relative;
+    overflow: hidden;
+    margin: 0 !important;
+    border: 1px solid var(--fluent-border) !important;
+    border-radius: var(--fluent-radius-lg) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: var(--fluent-shadow-2) !important;
+}
+
+@media (min-width: 1280px) {
+    .fluent-config-page.email-settings-grid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        align-items: start;
+        gap: 18px !important;
+        padding-bottom: 24px;
+    }
+}
+
+.fluent-content .fluent-config-page.flush .email-settings-grid {
+    padding-bottom: 24px;
+}
+
+.fluent-config-page .email-settings-grid > .email-settings-panel--mode {
+    border-left: 3px solid #d8a34a !important;
+    background:
+        linear-gradient(180deg, rgba(255, 251, 243, 0.86), rgba(255, 255, 255, 0.95)),
+        #fff !important;
+}
+
+.email-settings-panel-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin: -2px 0 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--fluent-border);
+}
+
+.email-settings-panel-heading p {
+    margin: 5px 0 0;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    line-height: 17px;
+}
+
+.email-settings-scope,
+.email-settings-mode-chip {
+    flex: 0 0 auto;
+}
+
+.email-settings-scope {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 8px;
+    border: 1px solid #cfe1f0;
+    border-radius: 12px;
+    color: #145b91;
+    background: #f4f9fd;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.email-settings-mode-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 0;
+    max-width: 220px;
+    padding: 6px 9px;
+    border: 1px solid #eadcc1;
+    border-radius: var(--fluent-radius);
+    color: #79591d;
+    background: rgba(255, 249, 236, 0.88);
+}
+
+.email-settings-mode-chip span {
+    color: #96743a;
+    font-size: 9px;
+}
+
+.email-settings-mode-chip strong {
+    overflow: hidden;
+    max-width: 100%;
+    color: #624711;
+    font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fluent-config-page :is(button, a):not(.fluent-run-btn):not(.fluent-icon-btn):hover {
+    border-color: #b8b8b8 !important;
+    background: #f7f7f7 !important;
+}
+
+.fluent-config-page :is(.bg-blue-600, .bg-indigo-600, .bg-sky-600, .bg-emerald-600, .bg-amber-600, .bg-cyan-600, .bg-violet-600, .bg-purple-600) {
+    border-color: var(--fluent-border) !important;
+    color: var(--fluent-text-2) !important;
+    background: var(--fluent-surface-2) !important;
+}
+
+.fluent-config-page :is(.bg-rose-600, .bg-rose-500) {
+    border-color: #d98b84 !important;
+    color: var(--fluent-danger) !important;
+    background: #fff7f6 !important;
+}
+
+.fluent-config-page button[class*="bg-"][class*="600"]:not([class*="bg-white"]):not([class*="bg-slate"]):not([class*="bg-rose"]):not([class*="bg-teal"]):not(.fluent-run-btn):not(.fluent-icon-btn) {
+    border-color: var(--fluent-accent) !important;
+    color: #fff !important;
+    background: var(--fluent-accent) !important;
+}
+
+.fluent-config-page button[class*="bg-"][class*="600"]:not([class*="bg-white"]):not([class*="bg-slate"]):not([class*="bg-rose"]):not([class*="bg-teal"]):not(.fluent-run-btn):not(.fluent-icon-btn):hover {
+    border-color: var(--fluent-accent-hover) !important;
+    background: var(--fluent-accent-hover) !important;
+}
+
+.fluent-config-page button[class*="bg-rose"]:not(.fluent-run-btn):not(.fluent-icon-btn) {
+    border-color: #d98b84 !important;
+    color: var(--fluent-danger) !important;
+    background: #fff7f6 !important;
+}
+
+.fluent-config-page :is(button, a):is([class*="bg-white"], [class*="bg-slate"], [class*="bg-rose"]):not(.fluent-run-btn):not(.fluent-icon-btn):hover {
+    border-color: var(--fluent-border-strong) !important;
+    color: var(--fluent-text) !important;
+    background: var(--fluent-surface-3) !important;
+}
+
+.fluent-config-page button[class*="bg-rose"]:not(.fluent-run-btn):not(.fluent-icon-btn):hover {
+    border-color: var(--fluent-danger) !important;
+    color: var(--fluent-danger) !important;
+    background: #fff1ef !important;
+}
+
+.fluent-config-page button[class*="bg-teal"]:not([class*="bg-white"]):not([class*="bg-slate"]):not(.fluent-run-btn):not(.fluent-icon-btn) {
+    border-color: var(--fluent-border-strong) !important;
+    color: var(--fluent-text-2) !important;
+    background: #fff !important;
+}
+
+.fluent-config-page button[class*="bg-teal"]:not([class*="bg-white"]):not([class*="bg-slate"]):not(.fluent-run-btn):not(.fluent-icon-btn):hover {
+    border-color: var(--fluent-accent) !important;
+    color: var(--fluent-accent) !important;
+    background: var(--fluent-accent-soft) !important;
+}
+
+.fluent-config-page .relative > :is(button, input).absolute:is([class*="right-"], [class*="inset-y-"]) {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+.fluent-config-page .relative > :is(button, input).absolute:is([class*="right-"], [class*="inset-y-"]):is(:hover, :focus-visible) {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+.fluent-data-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-data-toolbar-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.fluent-data-toolbar-title {
+    color: var(--fluent-text);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.fluent-table-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--fluent-border);
+    border-bottom: 0;
+    background: #fafafa;
+}
+
+.fluent-table-caption strong {
+    color: var(--fluent-text-2);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.fluent-table-caption span {
+    color: var(--fluent-text-4);
+    font-size: 10px;
+}
+
+.fluent-section-divider {
+    height: 1px;
+    margin: 2px 0;
+    background: var(--fluent-border);
+}
+
+.fluent-badge-soft {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 22px;
+    padding: 0 8px;
+    border: 1px solid #d8e7f5;
+    border-radius: 11px;
+    color: #185f96;
+    background: #f4f9fd;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.fluent-command-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fluent-command-row > button {
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--fluent-border-strong);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    background: #fff;
+    box-shadow: none;
+    font-size: 12px;
+}
+
+.fluent-command-row > button:hover {
+    background: #f5f9fd;
+    border-color: #9fc5e8;
+}
+
+.fluent-command-row > button.is-primary {
+    color: #fff;
+    border-color: var(--fluent-accent);
+    background: var(--fluent-accent);
+}
+
+.fluent-command-row > button.is-danger {
+    color: var(--fluent-danger);
+    border-color: #edc8c4;
+    background: #fff7f6;
+}
+
+.login-shell {
+    background:
+        linear-gradient(135deg, rgba(245, 248, 252, 0.96), rgba(239, 243, 247, 0.96)),
+        var(--fluent-surface-3);
+}
+
+.login-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 14% 16%, rgba(15, 108, 189, 0.1), transparent 31%),
+        radial-gradient(circle at 82% 82%, rgba(0, 164, 239, 0.07), transparent 29%);
+}
+
+.login-card {
+    padding: 32px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--fluent-radius-lg);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(28px) saturate(120%);
+}
+
+/* Fluent surfaces for existing feature fragments */
+.fluent-content :is(.inventory-shell, .config-card) {
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-lg) !important;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--fluent-shadow-2);
+    backdrop-filter: none;
+}
+
+.fluent-content :is(.inventory-shell, .config-card):hover {
+    box-shadow: var(--fluent-shadow-2);
+}
+
+.fluent-content .inventory-toolbar {
+    border-color: var(--fluent-border) !important;
+    background: #fff;
+    backdrop-filter: none;
+}
+
+.fluent-content .inventory-table-wrap {
+    background: #fff;
+}
+
+.fluent-content .inventory-table-scroll thead th {
+    color: var(--fluent-text-3) !important;
+    background: #fafafa;
+    backdrop-filter: none;
+}
+
+.fluent-content .inventory-footer {
+    border-color: var(--fluent-border) !important;
+    background: #fafafa;
+}
+
+.fluent-content :is(.bg-white, .bg-white\/80, .bg-white\/90, .bg-slate-50\/80) {
+    background-color: #fff !important;
+}
+
+.fluent-content :is(.rounded-2xl, .rounded-3xl, .rounded-xl) {
+    border-radius: var(--fluent-radius-lg);
+}
+
+.fluent-content :is(.shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl) {
+    box-shadow: var(--fluent-shadow-2) !important;
+}
+
+.fluent-content :is(.inventory-mini-card, .cloud-stat-card) {
+    border-radius: var(--fluent-radius) !important;
+    box-shadow: none !important;
+}
+
+.fluent-content :is(.inventory-mini-card, .cloud-stat-card)::after {
+    display: none;
+}
+
+.fluent-content h2 {
+    font-weight: 600 !important;
+    color: var(--fluent-text) !important;
+    letter-spacing: -0.01em !important;
+}
+
+.fluent-content h3 {
+    font-weight: 600 !important;
+    color: var(--fluent-text) !important;
+}
+
+.fluent-content :is(button, a):not(.fluent-run-btn):not(.fluent-save-fab) {
+    box-shadow: none;
+}
+
+.fluent-content :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    border-color: var(--fluent-border-strong) !important;
+    border-radius: var(--fluent-radius) !important;
+    background-color: #fff !important;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+.fluent-content :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):focus {
+    border-color: var(--fluent-accent) !important;
+    box-shadow: inset 0 -2px 0 var(--fluent-accent) !important;
+    outline: none !important;
+}
+
+.fluent-content table {
+    border-color: var(--fluent-border) !important;
+}
+
+.fluent-content tbody tr {
+    border-color: #ededed !important;
+}
+
+.fluent-data-page .inventory-table-scroll tbody tr {
+    background: #fff !important;
+}
+
+.fluent-data-page .inventory-table-scroll tbody tr:hover {
+    background: #f7f7f7 !important;
+}
+
+.fluent-data-page .inventory-table-scroll tbody tr.is-selected {
+    background: #eff6fc !important;
+    box-shadow: inset 3px 0 0 var(--fluent-accent);
+}
+
+.fluent-data-page .inventory-table-scroll tbody tr.is-selected:hover {
+    background: #e8f2fb !important;
+}
+
+.fluent-content :is(.rounded-full) {
+    border-radius: 999px;
+}
+
+.fluent-content .form-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex: 0 0 auto;
+    border: 1px solid #9aa4ad;
+    border-radius: 3px !important;
+    color: #fff !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    transition: border-color 100ms ease, background-color 100ms ease;
+}
+
+.fluent-content .form-checkbox::before {
+    width: 9px;
+    height: 5px;
+    border-bottom: 2px solid currentColor;
+    border-left: 2px solid currentColor;
+    content: "";
+    opacity: 0;
+    transform: translateY(-1px) rotate(-45deg) scale(0.8);
+    transition: opacity 80ms ease, transform 80ms ease;
+}
+
+.fluent-content .form-checkbox:hover:not(:disabled) {
+    border-color: var(--fluent-accent);
+}
+
+.fluent-content .form-checkbox:focus-visible {
+    outline: 2px solid var(--fluent-accent);
+    outline-offset: 2px;
+}
+
+.fluent-content .form-checkbox:checked {
+    border-color: var(--fluent-accent) !important;
+    background: var(--fluent-accent) !important;
+}
+
+.fluent-content .form-checkbox:checked::before {
+    opacity: 1;
+    transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+/* Settings use a denser form rhythm than the operational data pages. */
+.fluent-content .fluent-config-page.flush {
+    gap: 14px !important;
+}
+
+.fluent-content .fluent-config-page.concurrency-settings-page {
+    display: flex !important;
+    flex-direction: column;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    grid-auto-columns: none !important;
+    grid-auto-rows: auto !important;
+    align-items: stretch;
+    gap: 14px !important;
+}
+
+.fluent-content .fluent-config-page.concurrency-settings-page > * {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    align-self: stretch;
+}
+
+.fluent-content .fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]) {
+    padding: 16px 18px !important;
+}
+
+.fluent-content .fluent-config-page.flush > .concurrency-split {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row;
+    grid-auto-columns: minmax(0, 1fr);
+    align-items: start;
+    justify-self: stretch;
+    align-self: stretch;
+    width: auto;
+    max-width: none;
+    box-sizing: border-box;
+    gap: 14px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card {
+    width: 100%;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-timing-card {
+    grid-column: auto;
+    justify-self: stretch;
+    align-self: start;
+    max-width: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-timing-card
+    > :not(style) {
+    box-sizing: border-box !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-timing-card
+    > :is(.bg-amber-50\/50, .bg-sky-50\/60) {
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-timing-card
+    > .concurrency-settings-pair
+    > div {
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-timing-card
+    > .concurrency-settings-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid.concurrency-left-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-field-pair {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-field-pair
+    > div {
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    padding: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    > div:first-child {
+    flex: 1 1 auto !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    > div:last-child {
+    margin-top: 5px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    label[for]:not([aria-label]) {
+    display: block !important;
+    margin: 0 !important;
+    line-height: 16px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    > div:first-child
+    > label:first-of-type {
+    margin-bottom: 4px !important;
+    font-size: 11px !important;
+    line-height: 16px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    > div:first-child
+    > .relative.flex {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    > div:first-child
+    > .relative.flex
+    > label[for]:not([aria-label]) {
+    font-size: 11px !important;
+    line-height: 16px !important;
+    white-space: normal !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-left-grid
+    > .concurrency-switch-row
+    > .concurrency-switch-card
+    > div:last-child
+    p {
+    font-size: 10px !important;
+    line-height: 15px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-settings-pair {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .concurrency-settings-pair
+    > div {
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(.grid, .flex)
+    > :is(div, label) {
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(input, select, textarea) {
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(p, span) {
+    overflow-wrap: anywhere;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card {
+    padding: 12px 14px 14px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > :is(h3, .flex):first-child {
+    margin-bottom: 8px !important;
+    padding-bottom: 7px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > :is(.grid, .flex, .bg-amber-50\/50, .bg-sky-50\/60) {
+    gap: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > :is([class*="bg-"], .grid)
+    + :is([class*="bg-"], .grid) {
+    margin-top: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > :is(.grid, [class*="bg-"]) {
+    margin-bottom: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(
+        [class*="bg-rose-50"],
+        [class*="bg-slate-50"],
+        [class*="bg-indigo-50"],
+        [class*="bg-amber-50"],
+        [class*="bg-sky-50"]
+    ) {
+    padding: 9px 10px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > :is(
+        [class*="bg-rose-50"],
+        [class*="bg-slate-50"],
+        [class*="bg-indigo-50"],
+        [class*="bg-amber-50"],
+        [class*="bg-red-50"]
+    ) {
+    box-shadow: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 9px !important;
+    font-size: 12px !important;
+    line-height: 18px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    [class*="bg-"]
+    label[for="enable_codex_agent_identity"],
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    [class*="bg-"]
+    label[for="disable_forced_takeover"],
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    [class*="bg-"]
+    label[for="discard_on_downgrade"] {
+    box-sizing: border-box !important;
+    padding: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label[for="enable_multi_thread_reg"],
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label[for="grok_browser_recycle_enabled"] {
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label[for="enable_multi_thread_reg"][aria-label],
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label[for="grok_browser_recycle_enabled"][aria-label] {
+    background-color: #cbd5e1 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    input#enable_multi_thread_reg:checked
+    + label[for="enable_multi_thread_reg"][aria-label] {
+    background-color: #f59e0b !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    input#grok_browser_recycle_enabled:checked
+    + label[for="grok_browser_recycle_enabled"][aria-label] {
+    background-color: #0ea5e9 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label[for="enable_multi_thread_reg"]:not([aria-label]),
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label[for="grok_browser_recycle_enabled"]:not([aria-label]) {
+    border-radius: 0 !important;
+    color: var(--fluent-text-2) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+    line-height: 20px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    .peer
+    + :is(div, span) {
+    box-sizing: border-box !important;
+    position: relative !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    border-radius: 999px !important;
+    background-color: var(--fluent-border-strong) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    .peer
+    + :is(div, span)::after {
+    top: 2px !important;
+    left: 2px !important;
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+    border-radius: 999px !important;
+    background-color: #fff !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    .peer:checked
+    + :is(div, span)::after {
+    transform: translateX(16px) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    .peer:checked
+    + :is(div, span) {
+    background-color: var(--fluent-accent) !important;
+    border-color: var(--fluent-accent) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    input + p {
+    margin-top: 5px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    .relative:has(> button.absolute)
+    > input {
+    padding-right: 38px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label:is([class*="px-"], [class*="py-"]) {
+    padding: 6px 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label
+    > :is(div, span)
+    + :is(div, span) {
+    margin-left: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    label.group:has(> .peer)
+    > span {
+    min-width: max-content !important;
+    white-space: nowrap !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(
+        .space-y-2,
+        .space-y-3,
+        .space-y-4,
+        .space-y-5,
+        .space-y-6
+    )
+    > :not([hidden])
+    ~ :not([hidden]) {
+    margin-top: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(.gap-3, .gap-4, .gap-5, .gap-6, .md\:gap-5, .md\:gap-6) {
+    gap: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(.mb-3, .mb-4, .mb-5, .mb-6, .md\:mb-8) {
+    margin-bottom: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(.mt-2, .mt-3, .mt-4, .mt-5, .mt-6) {
+    margin-top: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(.py-2, .py-2\.5, .py-3, .py-3\.5) {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    :is(
+        .rounded-xl,
+        .rounded-2xl
+    )[class*="border"]:not(.concurrency-dual-card) {
+    border-radius: 6px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > :is(div, label.group):has(> .peer) {
+    min-height: 20px !important;
+    margin-top: 3px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: auto !important;
+    max-width: 100% !important;
+    flex-wrap: nowrap !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > :is(div, label.group):has(> .peer)
+    > span {
+    margin: 0 0 0 8px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: var(--fluent-text-2) !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+    line-height: 20px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > :is(div, label.group):has(> .peer)
+    > span::before,
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > :is(div, label.group):has(> .peer)
+    > span::after {
+    display: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > :is(div, .mt-3)
+    > p {
+    display: block !important;
+    width: 100% !important;
+    margin: 4px 0 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    color: var(--fluent-text-3) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 10px !important;
+    font-weight: 400 !important;
+    line-height: 15px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > :is(div, .mt-3)
+    > p
+    svg {
+    display: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child {
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > label:first-child {
+    margin-bottom: 5px !important;
+    color: var(--fluent-text-2) !important;
+    font-size: 11px !important;
+    letter-spacing: 0 !important;
+    line-height: 16px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > label:first-child:is(
+        [class*="text-rose-"],
+        [class*="text-indigo-"],
+        [class*="text-amber-"],
+        [class*="text-red-"]
+    ) {
+    color: var(--fluent-text-2) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > label:first-child
+    svg {
+    width: 13px !important;
+    height: 13px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > div
+    > input {
+    margin-top: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > div:has(> button.absolute)
+    > button.absolute {
+    right: 8px !important;
+    width: 24px !important;
+    height: 24px !important;
+    background: transparent !important;
+    color: var(--fluent-text-4) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > div:has(> button.absolute)
+    > button.absolute:hover {
+    background: rgba(0, 0, 0, 0.04) !important;
+    color: var(--fluent-text-2) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > .concurrency-split
+    > .concurrency-dual-card
+    > .grid
+    > [class*="bg-"]
+    > div:first-child
+    > label:first-child
+    > span {
+    margin-left: 5px !important;
+    padding: 1px 5px !important;
+    border: 1px solid var(--fluent-border) !important;
+    color: var(--fluent-text-4) !important;
+    background: rgba(255, 255, 255, 0.58) !important;
+    box-shadow: none !important;
+    font-size: 9px !important;
+    font-weight: 400 !important;
+    line-height: 14px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"])
+    > :is(.flex, h3):first-child {
+    margin-bottom: 12px !important;
+    padding-bottom: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush .normal-mode-card {
+    padding: 12px 14px 14px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-card
+    > h3 {
+    margin-bottom: 8px !important;
+    padding-bottom: 7px !important;
+    font-size: 14px !important;
+    line-height: 20px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-card
+    > h3
+    svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+.fluent-content .fluent-config-page.flush .normal-mode-range-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    align-items: stretch;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-range-grid
+    > div {
+    padding: 8px 10px !important;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-range-card
+    > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-card
+    .normal-mode-field {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 8px !important;
+    font-size: 12px !important;
+    line-height: 18px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-range-grid
+    label {
+    margin: 0 0 4px !important;
+    font-size: 11px !important;
+    line-height: 16px !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+.fluent-content .fluent-config-page.flush .normal-mode-switch-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    margin-top: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    > div {
+    padding: 8px 10px !important;
+    min-width: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    > div
+    > div {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    > div
+    > div
+    > div {
+    gap: 2px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    span[class*="uppercase"] {
+    font-size: 11px !important;
+    line-height: 16px !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    span[class*="bg-"] {
+    margin-left: 4px !important;
+    padding: 0 4px !important;
+    font-size: 9px !important;
+    line-height: 15px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    p {
+    margin: 3px 0 0 !important;
+    max-width: none !important;
+    font-size: 10px !important;
+    line-height: 15px !important;
+    color: var(--fluent-text-4) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-switch-grid
+    input.peer:checked
+    + div {
+    background-color: var(--fluent-accent) !important;
+    border-color: var(--fluent-accent) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-toggle-card
+    input.peer
+    + div {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-toggle-card
+    input.peer
+    + div {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    background-color: var(--fluent-border-strong) !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-toggle-card
+    input.peer
+    + div::after {
+    top: 2px !important;
+    left: 2px !important;
+    width: 16px !important;
+    height: 16px !important;
+    transform: none;
+}
+
+.fluent-content .fluent-config-page.flush
+    .normal-mode-toggle-card
+    input.peer:checked
+    + div::after {
+    transform: translateX(16px) !important;
+}
+
+@media (max-width: 767px) {
+    .fluent-content .fluent-config-page.flush .normal-mode-range-grid,
+    .fluent-content .fluent-config-page.flush .normal-mode-switch-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.space-y-4, .space-y-5, .space-y-6)
+    > :not([hidden])
+    ~ :not([hidden]) {
+    margin-top: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.gap-4, .gap-5, .gap-6, .md\:gap-5, .md\:gap-6, .md\:gap-8, .md\:gap-10) {
+    gap: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.mb-4, .mb-5, .mb-6, .md\:mb-6, .md\:mb-8) {
+    margin-bottom: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.mt-4, .mt-5, .mt-6, .mt-8):not(.mt-0) {
+    margin-top: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.pt-4, .pt-5, .pt-6, .pt-8) {
+    padding-top: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.pb-4, .pb-5, .pb-6) {
+    padding-bottom: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.p-4, .p-5, .p-6) {
+    padding: 12px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.space-y-4, .space-y-5, .space-y-6) {
+    column-gap: 10px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.py-3, .py-3\.5, .py-4) {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+}
+
+.fluent-content .fluent-config-page.flush label[class*="mb-"] {
+    margin-bottom: 6px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(p, span)[class*="mb-"]:not([class*="rounded"]):not([class*="bg-"]):not([class*="shadow"]) {
+    margin-bottom: 6px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .sms-provider-credentials
+    > :is(.md\:col-span-2, [class*="col-span-2"]) {
+    grid-column: 1 / -1 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .sms-provider-credentials
+    > [class*="col-span-2"]:not(.grid):not(.flex) {
+    padding-top: 0 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .sms-provider-options
+    > label {
+    padding: 9px 11px !important;
+    align-items: center !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .sms-provider-options
+    > label:has(input:checked) {
+    border-color: #c9d4df !important;
+    background: #f8fafc !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    .sms-provider-options
+    > label p {
+    margin-top: 2px !important;
+}
+
+/* The email mode selector follows the same compact field language as inputs. */
+.email-api-mode-field {
+    width: 100%;
+}
+
+.email-api-mode-select-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.email-mode-picker {
+    position: relative;
+    width: 100%;
+}
+
+.email-mode-picker > summary {
+    list-style: none;
+}
+
+.email-mode-picker > summary::-webkit-details-marker {
+    display: none;
+}
+
+.email-mode-trigger {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 16px;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 7px 12px;
+    border: 1px solid var(--fluent-border-strong);
+    border-bottom-color: #8a8a8a;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text);
+    background: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.email-mode-trigger:hover {
+    border-color: #b8b8b8;
+    border-bottom-color: #737373;
+    background: #fbfbfb;
+}
+
+.email-mode-picker[open] > .email-mode-trigger {
+    border-color: var(--fluent-accent);
+    box-shadow: inset 0 -2px 0 var(--fluent-accent);
+}
+
+.email-mode-trigger:focus-visible {
+    outline: 2px solid var(--fluent-accent);
+    outline-offset: 1px;
+}
+
+.email-mode-trigger-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-accent);
+    background: var(--fluent-accent-soft);
+}
+
+.email-mode-trigger-icon svg {
+    width: 17px;
+    height: 17px;
+}
+
+.email-mode-trigger-copy,
+.email-mode-option-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.email-mode-trigger-copy strong {
+    overflow: hidden;
+    color: var(--fluent-text);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 17px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.email-mode-trigger-copy small {
+    overflow: hidden;
+    color: var(--fluent-text-4);
+    font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 9px;
+    line-height: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.email-mode-chevron {
+    width: 7px;
+    height: 7px;
+    margin-right: 2px;
+    border-right: 1.5px solid var(--fluent-text-3);
+    border-bottom: 1.5px solid var(--fluent-text-3);
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 120ms ease;
+}
+
+.email-mode-picker[open] .email-mode-chevron {
+    transform: translateY(2px) rotate(225deg);
+}
+
+.email-mode-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--fluent-border-strong);
+    border-radius: var(--fluent-radius-lg);
+    background: #fff;
+    box-shadow: var(--fluent-shadow-16);
+}
+
+.email-mode-popover-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 12px 9px;
+    border-bottom: 1px solid var(--fluent-border);
+}
+
+.email-mode-popover-head > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.email-mode-popover-head strong {
+    color: var(--fluent-text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.email-mode-popover-head span {
+    color: var(--fluent-text-4);
+    font-size: 10px;
+}
+
+.email-mode-close {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: var(--fluent-radius) !important;
+    color: var(--fluent-text-3) !important;
+    background: transparent !important;
+}
+
+.email-mode-close:hover {
+    color: var(--fluent-text) !important;
+    background: var(--fluent-surface-3) !important;
+}
+
+.email-mode-close svg {
+    width: 15px;
+    height: 15px;
+}
+
+.email-mode-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 10px 6px !important;
+    padding: 0 9px;
+    border: 1px solid var(--fluent-border-strong);
+    border-bottom-color: #8a8a8a;
+    border-radius: var(--fluent-radius);
+    background: #fff;
+}
+
+.email-mode-search:focus-within {
+    border-color: var(--fluent-accent);
+    box-shadow: inset 0 -2px 0 var(--fluent-accent);
+}
+
+.email-mode-search > svg {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    color: var(--fluent-text-4);
+}
+
+.email-mode-search input {
+    width: 100%;
+    min-width: 0;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: var(--fluent-text) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 12px !important;
+    outline: none !important;
+}
+
+.email-mode-list {
+    max-height: min(330px, 48vh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px 6px 8px;
+    scrollbar-color: #b8b8b8 transparent;
+    scrollbar-width: thin;
+}
+
+.email-mode-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.email-mode-list::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: #b8b8b8;
+    background-clip: padding-box;
+}
+
+.email-mode-group-label {
+    padding: 8px 7px 4px;
+    color: var(--fluent-text-4);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.email-mode-option {
+    display: grid !important;
+    grid-template-columns: 16px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 46px !important;
+    padding: 6px 8px !important;
+    border: 0 !important;
+    border-radius: var(--fluent-radius) !important;
+    color: var(--fluent-text) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-align: left;
+}
+
+.email-mode-option:hover,
+.email-mode-option:focus-visible {
+    background: var(--fluent-surface-3) !important;
+    outline: none !important;
+}
+
+.email-mode-option.is-selected {
+    background: var(--fluent-accent-soft) !important;
+}
+
+.email-mode-option-mark {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #9aa4ad;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.email-mode-option.is-selected .email-mode-option-mark {
+    border: 4px solid var(--fluent-accent);
+}
+
+.email-mode-option-copy strong {
+    overflow: hidden;
+    color: var(--fluent-text);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 17px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.email-mode-option-copy small {
+    overflow: hidden;
+    color: var(--fluent-text-4);
+    font-size: 10px;
+    line-height: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.email-mode-option-check {
+    width: 16px;
+    height: 16px;
+    color: var(--fluent-accent);
+}
+
+.email-mode-empty {
+    padding: 28px 12px;
+    color: var(--fluent-text-4);
+    font-size: 11px;
+    text-align: center;
+}
+
+.email-api-mode-select-wrap::after {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--fluent-text-3);
+    border-bottom: 1.5px solid var(--fluent-text-3);
+    content: "";
+    pointer-events: none;
+    transform: translateY(-70%) rotate(45deg);
+}
+
+.fluent-content .fluent-config-page
+    :is(.email-api-mode-select, .email-api-mode-select-wrap > select),
+.fluent-content .fluent-config-page.flush
+    select:not([multiple]):not([size]) {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 0 38px 0 12px !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    border: 1px solid var(--fluent-border-strong) !important;
+    border-bottom-color: #8a8a8a !important;
+    border-radius: var(--fluent-radius) !important;
+    color: var(--fluent-text) !important;
+    background-color: #fff !important;
+    background-image: none !important;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08) !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    line-height: normal !important;
+    cursor: pointer;
+}
+
+.fluent-content .fluent-config-page
+    :is(.email-api-mode-select, .email-api-mode-select-wrap > select):hover,
+.fluent-content .fluent-config-page.flush
+    select:not([multiple]):not([size]):hover {
+    border-color: #b8b8b8 !important;
+    border-bottom-color: #737373 !important;
+    background-color: #fbfbfb !important;
+}
+
+.fluent-content .fluent-config-page
+    :is(.email-api-mode-select, .email-api-mode-select-wrap > select):focus,
+.fluent-content .fluent-config-page.flush
+    select:not([multiple]):not([size]):focus {
+    border-color: var(--fluent-accent) !important;
+    box-shadow: inset 0 -2px 0 var(--fluent-accent) !important;
+}
+
+body.theme-dark .email-api-mode-select-wrap::after {
+    border-color: var(--fluent-text-3);
+}
+
+body.theme-dark .email-mode-trigger,
+body.theme-dark .email-mode-popover,
+body.theme-dark .email-mode-search {
+    border-color: var(--fluent-border-strong) !important;
+    color: var(--fluent-text);
+    background: #272727 !important;
+}
+
+body.theme-dark .email-mode-trigger {
+    border-bottom-color: #6b6b6b;
+}
+
+body.theme-dark .email-mode-trigger:hover,
+body.theme-dark .email-mode-close:hover,
+body.theme-dark .email-mode-option:hover,
+body.theme-dark .email-mode-option:focus-visible {
+    background: #303030 !important;
+}
+
+body.theme-dark .email-mode-trigger-icon,
+body.theme-dark .email-mode-option.is-selected {
+    color: var(--fluent-accent);
+    background: #173a4c !important;
+}
+
+body.theme-dark .email-mode-popover-head {
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .email-mode-option-mark {
+    border-color: #767676;
+    background: #202020;
+}
+
+body.theme-dark .email-mode-option.is-selected .email-mode-option-mark {
+    border-color: var(--fluent-accent);
+    background: #202020;
+}
+
+@media (max-width: 767px) {
+    .email-mode-popover {
+        position: fixed;
+        top: auto;
+        right: 8px;
+        bottom: max(8px, env(safe-area-inset-bottom));
+        left: 8px;
+        max-height: min(72vh, 610px);
+        border-radius: 12px;
+        box-shadow: 0 22px 54px rgba(0, 0, 0, 0.22);
+    }
+
+    .email-mode-list {
+        max-height: min(48vh, 420px);
+    }
+
+    .email-mode-option {
+        min-height: 50px !important;
+    }
+}
+
+body.theme-dark .fluent-content .fluent-config-page
+    :is(.email-api-mode-select, .email-api-mode-select-wrap > select),
+body.theme-dark .fluent-content .fluent-config-page.flush
+    select:not([multiple]):not([size]) {
+    border-color: var(--fluent-border-strong) !important;
+    border-bottom-color: #6b6b6b !important;
+    color: var(--fluent-text) !important;
+    background-color: #272727 !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.rounded-xl, .rounded-2xl)
+    > .flex:has(> :is(h3, h4)) {
+    margin-bottom: 12px !important;
+    padding-bottom: 10px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.rounded-xl, .rounded-2xl)
+    > .flex:has(> :is(h3, h4))
+    > label {
+    min-height: 34px !important;
+    padding: 0 10px !important;
+}
+
+.fluent-content .fluent-config-page.flush
+    :is(.space-y-4, .space-y-5, .space-y-6)
+    > :is(.rounded-xl, .rounded-2xl)
+    :is(.h-24, .h-28, .h-32, .md\:h-28, .md\:h-32)[class*="font-mono"] {
+    height: 96px !important;
+    min-height: 96px !important;
+}
+
+.fluent-content .fluent-config-page.flush .email-settings-grid {
+    gap: 14px !important;
+    padding-bottom: 18px !important;
+}
+
+.fluent-content .fluent-config-page.flush .email-settings-grid > .email-settings-panel {
+    padding: 18px 20px !important;
+}
+
+.fluent-content .fluent-config-page.flush .email-settings-panel > :is(.mt-4, .mt-5, .mt-6, .mt-8) {
+    margin-top: 10px !important;
+}
+
+.fluent-content .fluent-config-page.flush .email-settings-panel > .rounded-2xl {
+    padding: 12px !important;
+}
+
+.email-settings-panel-heading {
+    margin-bottom: 12px !important;
+    padding-bottom: 10px !important;
+}
+
+.email-settings-panel-heading p {
+    margin-top: 3px !important;
+}
+
+/* Modals and confirmations share the same Fluent surface language. */
+body > #app > div[class*="fixed inset-0"] > div {
+    border: 1px solid var(--fluent-border) !important;
+    border-radius: var(--fluent-radius-lg) !important;
+    box-shadow: var(--fluent-shadow-16) !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+}
+
+body > #app > div[class*="fixed inset-0"] :is(h3, h2) {
+    font-weight: 600 !important;
+}
+
+body:not(.theme-dark) .mobile-nav-mask {
+    background: rgba(0, 0, 0, 0.32);
+    backdrop-filter: blur(2px);
+}
+
+body:not(.theme-dark) .mobile-nav-drawer {
+    background:
+        linear-gradient(180deg, rgba(250, 250, 250, 0.98), rgba(243, 243, 243, 0.98)),
+        #f6f6f6 !important;
+    border-right-color: var(--fluent-border) !important;
+}
+
+body.theme-dark {
+    --fluent-accent: #60cdff;
+    --fluent-accent-hover: #7ad6ff;
+    --fluent-accent-soft: #173a4c;
+    --fluent-surface: #202020;
+    --fluent-surface-2: #272727;
+    --fluent-surface-3: #2b2b2b;
+    --fluent-canvas: #1c1c1c;
+    --fluent-border: #383838;
+    --fluent-border-strong: #4b4b4b;
+    --fluent-text: #f2f2f2;
+    --fluent-text-2: #d6d6d6;
+    --fluent-text-3: #b3b3b3;
+    --fluent-text-4: #929292;
+    --fluent-success: #6ccb5f;
+    color-scheme: dark;
+}
+
+body.theme-dark .fluent-sidebar {
+    background:
+        linear-gradient(180deg, rgba(42, 42, 42, 0.96), rgba(35, 35, 35, 0.97)),
+        #2a2a2a;
+}
+
+body.theme-dark .fluent-workspace-card,
+body.theme-dark .fluent-nav-item.is-active,
+body.theme-dark .fluent-status-pill,
+body.theme-dark .fluent-segment-group .console-seg,
+body.theme-dark .fluent-segment-group .console-seg button.is-active-openai,
+body.theme-dark .fluent-segment-group .console-seg button.is-active-grok,
+body.theme-dark .fluent-segment-group .console-seg button.is-active-phone,
+body.theme-dark .fluent-segment-group .console-seg button.is-active-email {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.theme-dark .fluent-main {
+    background:
+        radial-gradient(circle at 88% 0%, rgba(96, 205, 255, 0.045), transparent 36%),
+        var(--fluent-canvas);
+}
+
+body.theme-dark .fluent-commandbar {
+    background: rgba(32, 32, 32, 0.92);
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-settings-bar {
+    background: rgba(28, 28, 28, 0.94);
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-settings-tab:hover {
+    background: rgba(255, 255, 255, 0.055);
+}
+
+body.theme-dark .fluent-settings-tab.is-active {
+    background: rgba(255, 255, 255, 0.075);
+}
+
+body.theme-dark .fluent-settings-save {
+    color: #111;
+}
+
+body.theme-dark .fluent-runtime-groups {
+    color: var(--fluent-text-4);
+    background: rgba(255, 255, 255, 0.018);
+}
+
+body.theme-dark .fluent-runtime-group {
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-runtime-metric.is-cooldown strong,
+body.theme-dark .fluent-runtime-metric.is-warning strong {
+    color: #f2c661;
+}
+
+body.theme-dark .fluent-runtime-metric.is-phone strong,
+body.theme-dark .fluent-runtime-metric.is-discard strong {
+    color: #c8a7f0;
+}
+
+body.theme-dark .fluent-content :is(.inventory-shell, .config-card, .inventory-toolbar, .inventory-table-wrap, .bg-white) {
+    background: #202020 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-config-page :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]),
+body.theme-dark .fluent-config-page :is(.bg-slate-50, .bg-slate-100, [class*="bg-slate-50/"], [class*="bg-slate-100/"]) {
+    color: var(--fluent-text-2) !important;
+    background: #272727 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-config-page :is(.text-slate-700, .text-slate-800, .text-slate-600) {
+    color: var(--fluent-text-2) !important;
+}
+
+body.theme-dark .fluent-config-page :is(.text-slate-400, .text-slate-500) {
+    color: var(--fluent-text-4) !important;
+}
+
+body.theme-dark .fluent-config-page :is(button, a):not(.fluent-run-btn):not(.fluent-icon-btn) {
+    border-color: var(--fluent-border-strong) !important;
+    color: var(--fluent-text-2) !important;
+    background: #2b2b2b !important;
+}
+
+body.theme-dark .fluent-config-page button[class*="bg-"][class*="600"]:not([class*="bg-white"]):not([class*="bg-slate"]):not([class*="bg-rose"]):not([class*="bg-teal"]):not(.fluent-run-btn):not(.fluent-icon-btn) {
+    border-color: var(--fluent-accent) !important;
+    color: #111 !important;
+    background: var(--fluent-accent) !important;
+}
+
+body.theme-dark .fluent-config-page :is(.relative > button.absolute, .relative > input.absolute):is([class*="right-"], [class*="inset-y-"]) {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .fluent-config-page :is(.relative > button.absolute, .relative > input.absolute):is([class*="right-"], [class*="inset-y-"]):is(:hover, :focus-visible) {
+    background: transparent !important;
+}
+
+body.theme-dark .fluent-config-page .relative > :is(button, input).absolute:is([class*="right-"], [class*="inset-y-"]) {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .fluent-config-page button[class*="bg-"][class*="600"]:not([class*="bg-white"]):not([class*="bg-slate"]):not([class*="bg-rose"]):not([class*="bg-teal"]):not(.fluent-run-btn):not(.fluent-icon-btn):hover {
+    color: #111 !important;
+    background: var(--fluent-accent-hover) !important;
+}
+
+body.theme-dark .fluent-config-page button[class*="bg-rose"]:not(.fluent-run-btn):not(.fluent-icon-btn) {
+    border-color: #6b3a3a !important;
+    color: #ffb3ad !important;
+    background: #3a2424 !important;
+}
+
+body.theme-dark .fluent-config-page :is(.rounded-xl, .rounded-2xl, .rounded-lg)[class*="border-amber"],
+body.theme-dark .fluent-config-page [class*="bg-amber-50"] {
+    color: #f2d6a2 !important;
+    background: #2e291f !important;
+    border-color: #51452e !important;
+}
+
+body.theme-dark :is(.fluent-stats-grid, .fluent-terminal-card, .fluent-panel) {
+    border-color: var(--fluent-border);
+    background: #242424;
+}
+
+body.theme-dark .fluent-task-overview {
+    border-color: var(--fluent-border);
+    background: #242424;
+}
+
+body.theme-dark .fluent-task-signals {
+    border-color: var(--fluent-border);
+    background: #272727;
+}
+
+body.theme-dark :is(.fluent-task-signal, .fluent-task-progress) {
+    border-color: var(--fluent-border);
+    background-color: #272727;
+}
+
+body.theme-dark .fluent-task-progress {
+    background: #444;
+}
+
+body.theme-dark .fluent-data-page.inventory-shell {
+    background: #202020 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-data-page.inventory-shell > .inventory-toolbar {
+    background: transparent !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-data-page.inventory-shell > .inventory-footer {
+    background: #272727 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-data-page :is(.inventory-mini-card, .cloud-stat-card) {
+    background: #242424 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-data-page .inventory-mini-card:is([class*="ring"]) {
+    background: #173a4c !important;
+    border-color: var(--fluent-accent) !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-selection-bar,
+body.theme-dark .fluent-data-page :is([class*="bg-indigo-50"], [class*="bg-pink-50"]) {
+    background: #1f2b33 !important;
+    border-color: #2d4657 !important;
+}
+
+body.theme-dark .fluent-content .form-checkbox {
+    border-color: #87939b !important;
+    background: #202020 !important;
+}
+
+body.theme-dark .fluent-content .form-checkbox:checked {
+    border-color: var(--fluent-accent) !important;
+    color: #111 !important;
+    background: var(--fluent-accent) !important;
+}
+
+body.theme-dark .fluent-selection-count {
+    border-color: #355268;
+    color: var(--fluent-accent);
+}
+
+body.theme-dark .fluent-data-page .fluent-selection-group--export {
+    border-color: #365264 !important;
+    background: #172a36 !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-selection-group--push {
+    border-color: #384348 !important;
+    background: #24282b !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-selection-group--credential {
+    border-color: #2f5168 !important;
+    background: #1a2a35 !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-export {
+    color: #a9d1ee !important;
+    border-color: #3e647d !important;
+    background: #203746 !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-export:hover:not(:disabled) {
+    color: #d8edfb !important;
+    border-color: #5988a6 !important;
+    background: #29485b !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-success {
+    color: #8fd8ae !important;
+    border-color: #355d47 !important;
+    background: #183126 !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-platform {
+    color: #c7b0ed !important;
+    border-color: #514368 !important;
+    background: #2b2338 !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-image {
+    color: #efb1cc !important;
+    border-color: #674052 !important;
+    background: #38232d !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-info {
+    color: #111 !important;
+    border-color: var(--fluent-accent) !important;
+    background: var(--fluent-accent) !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-info:hover:not(:disabled) {
+    color: #111 !important;
+    border-color: var(--fluent-accent-hover) !important;
+    background: var(--fluent-accent-hover) !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-danger {
+    color: #ffb3ad !important;
+    border-color: #84504c !important;
+    background: #422927 !important;
+}
+
+body.theme-dark .fluent-data-page .fluent-action-btn.is-danger:hover:not(:disabled) {
+    color: #ffd0cc !important;
+    border-color: #a9655f !important;
+    background: #55302d !important;
+}
+
+body.theme-dark .fluent-data-page :is(.bg-rose-500, .bg-rose-600) {
+    color: #ff99a4 !important;
+    background: #3a2424 !important;
+    border-color: #6b3a3a !important;
+}
+
+body.theme-dark .fluent-config-page.flush {
+    color: var(--fluent-text) !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .fluent-config-page.flush > :is(.bg-white, [class*="bg-gradient"]) {
+    border-color: var(--fluent-border) !important;
+    border-top-color: var(--settings-card-accent) !important;
+    background: #242424 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 3px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.theme-dark .fluent-config-page.flush
+    :is(.sms-provider-credentials, .sms-provider-field, .sms-provider-key-row)
+    :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    color: var(--fluent-text) !important;
+    border-color: var(--fluent-border-strong) !important;
+    background: #1f1f1f !important;
+}
+
+body.theme-dark .fluent-config-page.flush .sms-provider-field > label {
+    color: var(--fluent-text-2) !important;
+}
+
+body.theme-dark .fluent-config-page.flush .sms-provider-options > label {
+    color: var(--fluent-text-2) !important;
+    border-color: var(--fluent-border) !important;
+    background: #292929 !important;
+}
+
+body.theme-dark .fluent-stat + .fluent-stat,
+body.theme-dark :is(.fluent-card-header, .fluent-panel-header),
+body.theme-dark .fluent-detail-list > div {
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-terminal-toolbar {
+    border-color: #343434;
+    color: #afb4b8;
+    background: #292929;
+}
+
+body.theme-dark .fluent-content .inventory-table-scroll thead th,
+body.theme-dark .fluent-content .inventory-footer {
+    background: #272727 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-content tbody tr:hover {
+    background: #292929 !important;
+}
+
+body.theme-dark .fluent-data-page .inventory-table-scroll tbody tr {
+    background: #202020 !important;
+}
+
+body.theme-dark .fluent-data-page .inventory-table-scroll tbody tr:hover {
+    background: #272727 !important;
+}
+
+body.theme-dark .fluent-data-page .inventory-table-scroll tbody tr.is-selected {
+    background: #1d2b36 !important;
+}
+
+body.theme-dark .fluent-content :is(
+    .inventory-mini-card--pink,
+    .inventory-mini-card--rose,
+    .inventory-mini-card--amber,
+    .inventory-mini-card--emerald,
+    .inventory-mini-card--indigo,
+    .inventory-mini-card--cyan,
+    .inventory-mini-card--slate
+) {
+    background: #242424 !important;
+    border-color: var(--fluent-border) !important;
+}
+
+body.theme-dark .fluent-content :is(
+    .inventory-mini-card--pink,
+    .inventory-mini-card--rose,
+    .inventory-mini-card--amber,
+    .inventory-mini-card--emerald,
+    .inventory-mini-card--indigo,
+    .inventory-mini-card--cyan,
+    .inventory-mini-card--slate
+) > div:last-child {
+    background: #2d2d2d !important;
+    border-color: #414141 !important;
+}
+
+body.theme-dark .fluent-content :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    color: var(--fluent-text) !important;
+    background: #1f1f1f !important;
+    border-color: var(--fluent-border-strong) !important;
+}
+
+body.theme-dark .login-shell {
+    background: #1c1c1c;
+}
+
+body.theme-dark .login-card {
+    background: rgba(43, 43, 43, 0.9);
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-primary-btn,
+body.theme-dark .fluent-run-btn.is-start {
+    color: #111;
+}
+
+body.theme-dark .fluent-empty-state {
+    background: #202020;
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-page-hero {
+    border-color: var(--fluent-border);
+    background: linear-gradient(110deg, rgba(36, 36, 36, 0.98), rgba(32, 38, 42, 0.96));
+}
+
+body.theme-dark .fluent-page-chip {
+    color: var(--fluent-accent);
+    border-color: #315065;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.theme-dark :is(.fluent-page-kpis, .fluent-runtime-band, .fluent-data-toolbar) {
+    border-color: var(--fluent-border);
+    background: #242424;
+}
+
+body.theme-dark :is(.fluent-page-kpi + .fluent-page-kpi, .fluent-runtime-metric, .fluent-section-heading) {
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-page-note {
+    color: #b8d7ee;
+    border-color: #315065;
+    background: #1d2a32;
+}
+
+body.theme-dark .fluent-page-note.is-warning {
+    color: #f1d68b;
+    border-color: #5a4b2a;
+    background: #302a1d;
+}
+
+body.theme-dark .fluent-table-caption {
+    border-color: var(--fluent-border);
+    background: #272727;
+}
+
+body.theme-dark .fluent-config-page > [class*="bg-white"],
+body.theme-dark .fluent-config-page > [class*="bg-gradient"] {
+    border-color: var(--fluent-border) !important;
+    background: #242424 !important;
+}
+
+body.theme-dark .fluent-content .fluent-config-page.flush
+    > :is(.bg-white, [class*="bg-gradient"]) {
+    border-color: var(--fluent-border) !important;
+    border-top-color: var(--settings-card-accent) !important;
+    background: #242424 !important;
+}
+
+body.theme-dark .fluent-config-page .email-settings-grid > .email-settings-panel {
+    border-color: var(--fluent-border) !important;
+    background: #242424 !important;
+}
+
+body.theme-dark .fluent-config-page .email-settings-grid > .email-settings-panel--mode {
+    border-left-color: #a57a32 !important;
+    background: #28251f !important;
+}
+
+body.theme-dark .email-settings-panel-heading {
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .email-settings-scope {
+    color: var(--fluent-accent);
+    border-color: #315065;
+    background: #1d2a32;
+}
+
+body.theme-dark .email-settings-mode-chip {
+    color: #e5ca94;
+    border-color: #5a4b2a;
+    background: #302a1d;
+}
+
+body.theme-dark .email-settings-mode-chip span {
+    color: #c4a66d;
+}
+
+body.theme-dark .email-settings-mode-chip strong {
+    color: #f1d89e;
+}
+
+body.theme-dark .fluent-command-row > button {
+    color: var(--fluent-text-2);
+    border-color: var(--fluent-border-strong);
+    background: #242424;
+}
+
+body.theme-dark .fluent-command-row > button.is-primary {
+    color: #111;
+    border-color: var(--fluent-accent);
+    background: var(--fluent-accent);
+}
+
+body.theme-dark .fluent-toast {
+    color: var(--fluent-text);
+    background: rgba(43, 43, 43, 0.96);
+    border-color: var(--fluent-border-strong);
+}
+
+body.theme-dark :is(.fluent-selection-bar, .fluent-selection-group, .fluent-page-button, .fluent-page-jump) {
+    color: var(--fluent-text-2);
+    background: #242424;
+    border-color: var(--fluent-border);
+}
+
+body.theme-dark .fluent-selection-bar {
+    background: #1d2a32;
+    border-color: #2c4657;
+}
+
+@media (min-width: 1280px) {
+    .fluent-page-heading p {
+        display: block;
+    }
+}
+
+@media (max-width: 1360px) {
+    .fluent-runtime-groups {
+        grid-template-columns:
+            minmax(245px, 1.25fr)
+            minmax(180px, 1fr)
+            minmax(190px, 1fr)
+            minmax(155px, 0.78fr);
+    }
+
+    .fluent-runtime-group {
+        padding-inline: 15px;
+    }
+
+    .fluent-runtime-metrics {
+        gap: 8px;
+    }
+}
+
+@media (max-width: 1180px) {
+    .fluent-contextbar-top {
+        flex-wrap: wrap;
+        gap: 7px 16px;
+        padding-block: 7px;
+    }
+
+    .fluent-runtime-progress {
+        flex: 1 1 220px;
+    }
+
+    .fluent-config-switches {
+        flex: 1 1 auto;
+        justify-content: flex-end;
+    }
+
+    .fluent-runtime-groups {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .fluent-runtime-metrics,
+    .fluent-runtime-group.is-domains .fluent-runtime-metrics,
+    .fluent-runtime-group.is-signals .fluent-runtime-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fluent-runtime-group.is-results .fluent-runtime-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fluent-runtime-group.is-timing .fluent-runtime-metrics {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+
+    .fluent-console-grid {
+        grid-template-columns: minmax(0, 1fr) 250px;
+    }
+    .fluent-task-overview {
+        grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+    }
+    .fluent-runtime-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .fluent-runtime-grid > .fluent-runtime-metric:nth-child(6n) {
+        border-right: 1px solid #ededed;
+    }
+    .fluent-runtime-grid > .fluent-runtime-metric:nth-child(4n) {
+        border-right: 0;
+    }
+    .fluent-right-rail {
+        grid-template-columns: minmax(0, 1fr) 240px;
+    }
+}
+
+@media (max-width: 1023px) {
+    .fluent-sidebar {
+        width: min(86vw, 300px);
+        transform: translateX(-100%);
+        transition: transform 200ms cubic-bezier(0.1, 0.9, 0.2, 1);
+        box-shadow: none;
+    }
+    .fluent-sidebar.is-open {
+        transform: translateX(0);
+        box-shadow: var(--fluent-shadow-16);
+    }
+    .fluent-commandbar-main {
+        padding-inline: 16px;
+        gap: 10px;
+    }
+    .fluent-contextbar-top {
+        padding-inline: 16px;
+    }
+    .fluent-page-heading h1 {
+        font-size: 18px;
+        line-height: 24px;
+    }
+    .fluent-config-switches {
+        flex: 1 1 auto;
+    }
+    .fluent-content {
+        padding: 18px 16px 30px;
+    }
+    .fluent-settings-bar {
+        margin: -18px -16px 18px;
+        padding-inline: 16px;
+    }
+    .fluent-task-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .fluent-task-signals {
+        border-top: 1px solid var(--fluent-border);
+        border-left: 0;
+    }
+    .fluent-console-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .fluent-console-aside {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .fluent-page-hero {
+        flex-direction: column;
+        gap: 14px;
+    }
+    .fluent-page-hero-actions {
+        justify-content: flex-start;
+    }
+    .fluent-right-rail {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .fluent-right-rail-aside {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .fluent-terminal-card {
+        min-height: 0;
+    }
+    .fluent-terminal {
+        max-height: 100%;
+    }
+}
+
+@media (max-width: 767px) {
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split
+        > .concurrency-dual-card
+        > .concurrency-left-grid
+        > .concurrency-field-pair,
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split
+        > .concurrency-dual-card
+        > .concurrency-settings-pair {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split
+        > .concurrency-dual-card
+        > .concurrency-left-grid
+        > .concurrency-switch-row {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .fluent-content
+        .fluent-config-page.flush
+        > .concurrency-split
+        > .concurrency-dual-card
+        > .concurrency-left-grid
+        > .concurrency-switch-row
+        > .concurrency-switch-card {
+        width: 100% !important;
+    }
+
+    .fluent-commandbar-main {
+        min-height: 58px;
+        padding: 8px 12px;
+    }
+    .fluent-breadcrumb,
+    .fluent-page-heading p,
+    .fluent-toolbar-btn,
+    .fluent-status-pill {
+        display: none;
+    }
+    .fluent-page-heading {
+        flex: 1 1 auto;
+    }
+    .fluent-page-heading h1 {
+        font-size: 17px;
+        line-height: 24px;
+    }
+    .fluent-command-actions {
+        gap: 2px;
+    }
+    .fluent-run-btn {
+        min-width: 64px;
+        padding-inline: 10px;
+    }
+    .fluent-contextbar-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        padding: 8px 12px 9px;
+    }
+
+    .fluent-runtime-progress {
+        flex: 1 1 100%;
+        min-width: 0;
+        gap: 4px;
+    }
+
+    .fluent-contextbar .fluent-config-switches {
+        width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+        margin-left: 0;
+        justify-content: flex-start;
+        scrollbar-width: none;
+    }
+
+    .fluent-contextbar .fluent-config-switches::-webkit-scrollbar {
+        display: none;
+    }
+
+    .fluent-runtime-groups {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        min-width: 0;
+        border-top: 1px solid var(--fluent-border);
+    }
+
+    .fluent-runtime-group {
+        padding: 7px 12px 8px;
+        border-right: 1px solid var(--fluent-border);
+        border-bottom: 1px solid var(--fluent-border);
+    }
+
+    .fluent-runtime-group:nth-child(2n) {
+        border-right: 0;
+    }
+
+    .fluent-runtime-group:nth-last-child(-n + 2) {
+        border-bottom: 0;
+    }
+
+    .fluent-runtime-metrics,
+    .fluent-runtime-group.is-domains .fluent-runtime-metrics,
+    .fluent-runtime-group.is-signals .fluent-runtime-metrics,
+    .fluent-runtime-group.is-results .fluent-runtime-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 2px 10px;
+    }
+
+    .fluent-runtime-group.is-timing .fluent-runtime-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fluent-runtime-group-title {
+        margin-bottom: 2px;
+    }
+
+    .fluent-runtime-metric > span {
+        font-size: 10px;
+        line-height: 15px;
+    }
+
+    .fluent-runtime-metric strong {
+        font-size: 15px;
+        line-height: 20px;
+    }
+    .fluent-segment-label {
+        display: none;
+    }
+    .fluent-content {
+        padding: 12px 10px 28px;
+    }
+    .fluent-settings-bar {
+        margin: -12px -10px 12px;
+        padding: 6px 10px 0;
+        gap: 6px;
+    }
+    .fluent-settings-tab {
+        min-height: 38px;
+        padding-inline: 9px;
+        gap: 5px;
+        font-size: 11px;
+    }
+    .fluent-settings-tab-icon {
+        width: 16px;
+        height: 16px;
+    }
+    .fluent-settings-tab-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    .fluent-settings-save {
+        width: 32px;
+        min-width: 32px;
+        padding: 0;
+    }
+    .fluent-settings-save span {
+        display: none;
+    }
+    .fluent-inventory-scope,
+    .fluent-scope-status {
+        display: none;
+    }
+    .fluent-inventory-bar::after {
+        width: 20px;
+        background: linear-gradient(90deg, rgba(243, 243, 243, 0), rgba(243, 243, 243, 0.94));
+    }
+    .fluent-nowrap-actions {
+        flex-wrap: wrap;
+    }
+    .fluent-toast-stack {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        align-items: stretch;
+    }
+    .fluent-toast {
+        min-width: 0;
+        max-width: none;
+    }
+    .fluent-save-fab {
+        right: 14px;
+        bottom: 14px;
+    }
+    .login-card {
+        padding: 24px;
+    }
+    .fluent-console-page {
+        gap: 10px;
+        height: min(620px, calc(100vh - 205px));
+        min-height: 420px;
+    }
+    .fluent-task-status {
+        padding: 14px;
+    }
+    .fluent-task-progress-heading {
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+    .fluent-task-progress-heading strong {
+        font-size: 27px;
+        line-height: 33px;
+    }
+    .fluent-task-caption {
+        gap: 7px 14px;
+    }
+    .fluent-task-signals {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .fluent-task-signal:nth-child(3n) {
+        border-right: 1px solid var(--fluent-border);
+    }
+    .fluent-task-signal:nth-child(2n) {
+        border-right: 0;
+    }
+    .fluent-task-signal:nth-last-child(-n + 3) {
+        border-bottom: 1px solid var(--fluent-border);
+    }
+    .fluent-task-signal:nth-last-child(-n + 2) {
+        border-bottom: 0;
+    }
+    .fluent-card-header {
+        align-items: flex-start;
+        padding: 12px 13px;
+    }
+    .fluent-card-header p {
+        display: none;
+    }
+    .fluent-card-header .fluent-button span {
+        display: none;
+    }
+    .fluent-terminal-actions .fluent-section-status {
+        display: none;
+    }
+    .fluent-terminal-card {
+        min-height: 0;
+    }
+    .fluent-terminal {
+        min-height: 0;
+        padding-inline: 10px;
+        font-size: 11px;
+    }
+    .fluent-console-aside {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .fluent-page-hero {
+        padding: 16px;
+    }
+    .fluent-page-hero h2 {
+        font-size: 18px;
+        line-height: 25px;
+    }
+    .fluent-page-kpis {
+        display: none;
+    }
+    .fluent-right-rail-aside {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .fluent-runtime-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .fluent-runtime-metric:nth-child(4n) {
+        border-right: 1px solid #ededed;
+    }
+    .fluent-runtime-metric:nth-child(2n) {
+        border-right: 0;
+    }
+    .fluent-data-page > .inventory-table-wrap {
+        max-width: 100%;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    .fluent-data-page.inventory-shell.accounts-mobile-list-page > .inventory-table-wrap {
+        display: none !important;
+    }
+
+    .fluent-data-page.inventory-shell.accounts-mobile-list-page
+        > .source-account-surface > .inventory-table-wrap {
+        display: none !important;
+    }
+
+    .fluent-data-page.inventory-shell.responsive-inventory-page > .inventory-table-wrap {
+        display: none !important;
+    }
+
+    .inventory-mobile-list {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: var(--fluent-surface-2);
+    }
+
+    .inventory-mobile-list-tools {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 34px;
+        padding: 0 2px;
+    }
+
+    .inventory-mobile-select-all {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+        padding: 0 4px;
+        color: var(--fluent-text-2);
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .inventory-mobile-select-all input[type="checkbox"] {
+        flex: 0 0 16px;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--fluent-border-strong);
+        border-radius: 3px;
+        accent-color: var(--fluent-accent);
+        appearance: auto;
+    }
+
+    .inventory-mobile-selected-count {
+        color: var(--fluent-text-4);
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .inventory-mobile-card {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        padding: 9px 10px;
+        border: 1px solid var(--fluent-border);
+        border-radius: var(--fluent-radius);
+        background: #fff;
+    }
+
+    .inventory-mobile-card.is-selected {
+        border-color: #a9cbe9;
+        background: #f4f9fd;
+        box-shadow: inset 3px 0 0 var(--fluent-accent);
+    }
+
+    .inventory-mobile-checkbox {
+        margin-top: 3px;
+    }
+
+    .inventory-mobile-main {
+        display: grid;
+        min-width: 0;
+        gap: 6px;
+    }
+
+    .inventory-mobile-identity {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .inventory-mobile-address {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .inventory-mobile-address strong {
+        overflow: hidden;
+        color: var(--fluent-text);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 18px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .inventory-mobile-index {
+        flex: 0 0 auto;
+        color: var(--fluent-text-4);
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 10px;
+    }
+
+    .inventory-mobile-secret {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 5px;
+        min-width: 0;
+        color: var(--fluent-text-3);
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 11px;
+        line-height: 16px;
+    }
+
+    .inventory-mobile-secret svg {
+        flex: 0 0 auto;
+    }
+
+    .inventory-mobile-secret span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .inventory-mobile-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .inventory-mobile-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .inventory-mobile-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 18px;
+        padding: 0 5px;
+        border: 1px solid var(--fluent-border);
+        border-radius: 3px;
+        color: var(--fluent-text-3);
+        background: var(--fluent-surface-2);
+        font-size: 10px;
+        line-height: 14px;
+        white-space: nowrap;
+    }
+
+    .inventory-mobile-badge.is-success {
+        border-color: #b9dfcb;
+        color: var(--fluent-success);
+        background: #f2fbf6;
+    }
+
+    .inventory-mobile-badge.is-warning {
+        border-color: #ead8af;
+        color: #805d14;
+        background: #fffaf0;
+    }
+
+    .inventory-mobile-badge.is-alert {
+        border-color: #e9bdb8;
+        color: var(--fluent-danger);
+        background: #fff4f2;
+    }
+
+    .inventory-mobile-badge.is-platform {
+        border-color: #c9def0;
+        color: #24587f;
+        background: #f4f9fe;
+    }
+
+    .inventory-mobile-time {
+        flex: 0 0 auto;
+        overflow: hidden;
+        color: var(--fluent-text-4);
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 10px;
+        line-height: 16px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .inventory-mobile-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .inventory-mobile-action {
+        min-height: 24px !important;
+        padding: 2px 8px !important;
+        border: 1px solid var(--fluent-border) !important;
+        border-radius: 4px !important;
+        color: var(--fluent-text-2) !important;
+        background: var(--fluent-surface-2) !important;
+        font-size: 10px !important;
+        font-weight: 500 !important;
+    }
+
+    .inventory-mobile-action.is-success {
+        border-color: #b9dfcb !important;
+        color: #0f6b3f !important;
+        background: #f2fbf6 !important;
+    }
+
+    .inventory-mobile-action.is-platform {
+        border-color: #dac8ee !important;
+        color: #6944a4 !important;
+        background: #f8f3ff !important;
+    }
+
+    .inventory-mobile-action.is-image {
+        border-color: #edcbdc !important;
+        color: #a13d70 !important;
+        background: #fff5fa !important;
+    }
+
+    .inventory-mobile-action.is-warning {
+        border-color: #ead8af !important;
+        color: #805d14 !important;
+        background: #fffaf0 !important;
+    }
+
+    .inventory-mobile-action.is-danger {
+        border-color: #e9bdb8 !important;
+        color: var(--fluent-danger) !important;
+        background: #fff4f2 !important;
+    }
+
+    .inventory-mobile-empty {
+        padding: 48px 12px;
+        color: var(--fluent-text-4);
+        text-align: center;
+    }
+
+    .inventory-mobile-empty--team {
+        display: grid;
+        justify-items: center;
+        gap: 7px;
+        min-height: 180px;
+        padding: 40px 18px;
+        border: 1px dashed var(--fluent-border-strong);
+        border-radius: var(--fluent-radius);
+        background: #fff;
+    }
+
+    .inventory-mobile-empty--team strong {
+        color: var(--fluent-text-2);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .inventory-mobile-empty--team span {
+        max-width: 250px;
+        font-size: 11px;
+        line-height: 17px;
+    }
+
+    .inventory-mobile-list--team .inventory-mobile-card {
+        grid-template-columns: 24px minmax(0, 1fr);
+    }
+
+    .inventory-mobile-list--team .inventory-mobile-secret {
+        justify-content: flex-start;
+    }
+
+    .fluent-data-page.responsive-inventory-page > .inventory-toolbar {
+        padding: 11px 12px !important;
+    }
+
+    .fluent-data-page.responsive-inventory-page .inventory-footer {
+        padding: 10px 12px !important;
+    }
+
+    .fluent-data-page.mobile-cloud-priority > .inventory-toolbar:first-child {
+        padding: 10px 11px !important;
+    }
+
+    .mobile-cloud-priority .cloud-toolbar-shell {
+        gap: 7px;
+    }
+
+    .mobile-cloud-priority .cloud-toolbar-side,
+    .mobile-cloud-priority .cloud-toolbar-side--right {
+        gap: 6px;
+    }
+
+    .mobile-cloud-priority .cloud-toolbar-title {
+        gap: 7px;
+    }
+
+    .mobile-cloud-priority .cloud-toolbar-title > span {
+        width: 27px;
+        height: 27px;
+        border-radius: var(--fluent-radius) !important;
+    }
+
+    .mobile-cloud-priority .cloud-filter-strip {
+        gap: 5px;
+        padding: 0;
+    }
+
+    .mobile-cloud-priority .cloud-filter-strip label {
+        min-height: 28px;
+        padding: 0 7px !important;
+        border-radius: var(--fluent-radius) !important;
+        font-size: 10px !important;
+    }
+
+    .mobile-cloud-priority .cloud-toolbar-side--right
+        > :is(.relative, select, button) {
+        min-height: 32px;
+    }
+
+    .mobile-cloud-priority .cloud-search-wrap input {
+        min-height: 32px;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    .mobile-cloud-priority .cloud-progress-inline {
+        min-height: 34px !important;
+        height: 34px !important;
+    }
+
+    .mobile-cloud-priority > .inventory-toolbar.inventory-stats {
+        padding: 8px 10px !important;
+    }
+
+    .mobile-cloud-priority .cloud-stat-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+    }
+
+    .mobile-cloud-priority .cloud-stat-card {
+        min-height: 54px !important;
+        padding: 6px 7px !important;
+    }
+
+    .mobile-cloud-priority .cloud-stat-card > div:first-child > div:first-child {
+        margin-bottom: 3px !important;
+        overflow: hidden;
+        font-size: 9px !important;
+        line-height: 12px !important;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mobile-cloud-priority .cloud-stat-card > div:first-child > div:last-child {
+        font-size: 13px !important;
+        line-height: 16px !important;
+    }
+
+    .mobile-cloud-priority .cloud-stat-badges {
+        display: none !important;
+    }
+
+    .mobile-cloud-priority .inventory-mobile-list {
+        padding-top: 7px;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        > .inventory-toolbar.inventory-stats {
+        padding: 8px 10px !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-footer {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-footer > div {
+        width: 100% !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-footer > div:last-child {
+        display: grid !important;
+        grid-template-columns: minmax(90px, 1fr) repeat(2, minmax(78px, 0.85fr)) !important;
+        gap: 6px !important;
+        justify-content: stretch !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-footer > div:last-child
+        > :is(button, div) {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 34px !important;
+        margin: 0 !important;
+        padding-inline: 6px !important;
+        justify-content: center !important;
+        white-space: nowrap;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-stat-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+        gap: 4px !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-mini-card {
+        min-height: 46px !important;
+        padding: 6px 7px !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-mini-card > div.z-10:last-child {
+        display: none !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-mini-card > div.z-10:first-child {
+        width: 100% !important;
+        padding-right: 0 !important;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-mini-card > div:first-child > div:first-child {
+        overflow: hidden;
+        font-size: 9px !important;
+        line-height: 12px !important;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .fluent-data-page.inventory-shell.inventory-panel.mobile-table-priority
+        .inventory-mini-card > div:first-child > div:last-child {
+        overflow: hidden;
+        margin-top: 2px !important;
+        font-size: 13px !important;
+        line-height: 16px !important;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .inventory-footer {
+        flex-wrap: wrap;
+        gap: 8px !important;
+        padding: 10px !important;
+    }
+
+    .inventory-footer > div {
+        width: 100%;
+    }
+
+    .inventory-footer .fluent-pagination {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) repeat(2, minmax(0, 0.9fr));
+        gap: 6px !important;
+    }
+
+    .inventory-footer .fluent-page-jump {
+        width: auto;
+        min-width: 0;
+        margin: 0 !important;
+    }
+
+    .inventory-footer .fluent-page-jump input {
+        width: 30px !important;
+        min-width: 0;
+    }
+
+    .inventory-footer .fluent-page-button {
+        width: auto;
+        min-width: 0;
+        padding-inline: 8px;
+    }
+
+    body.theme-dark .inventory-mobile-list {
+        background: #202020;
+    }
+
+    body.theme-dark .inventory-mobile-list-tools {
+        color: var(--fluent-text-2);
+    }
+
+    body.theme-dark .inventory-mobile-card {
+        border-color: var(--fluent-border);
+        background: #272727;
+    }
+
+    body.theme-dark .inventory-mobile-card.is-selected {
+        border-color: #315065;
+        background: #1d2b36;
+    }
+
+    body.theme-dark .inventory-mobile-badge,
+    body.theme-dark .inventory-mobile-action {
+        border-color: #414141 !important;
+        color: var(--fluent-text-2) !important;
+        background: #303030 !important;
+    }
+
+    body.theme-dark .inventory-mobile-badge.is-success,
+    body.theme-dark .inventory-mobile-action.is-success {
+        border-color: #355d47 !important;
+        color: #8fd8ae !important;
+        background: #183126 !important;
+    }
+
+    body.theme-dark .inventory-mobile-badge.is-warning {
+        border-color: #5a4b2a !important;
+        color: #f1d68b !important;
+        background: #302a1d !important;
+    }
+
+    body.theme-dark .inventory-mobile-badge.is-alert {
+        border-color: #84504c !important;
+        color: #ffb3ad !important;
+        background: #422927 !important;
+    }
+
+    body.theme-dark .inventory-mobile-badge.is-platform,
+    body.theme-dark .inventory-mobile-action.is-platform {
+        border-color: #514368 !important;
+        color: #c7b0ed !important;
+        background: #2b2338 !important;
+    }
+
+    body.theme-dark .inventory-mobile-action.is-image {
+        border-color: #674052 !important;
+        color: #efb1cc !important;
+        background: #38232d !important;
+    }
+
+    body.theme-dark .inventory-mobile-action.is-warning {
+        border-color: #5a4b2a !important;
+        color: #f1d68b !important;
+        background: #302a1d !important;
+    }
+
+    body.theme-dark .inventory-mobile-action.is-danger {
+        border-color: #84504c !important;
+        color: #ffb3ad !important;
+        background: #422927 !important;
+    }
+
+    body.theme-dark .inventory-mobile-empty--team {
+        border-color: var(--fluent-border-strong);
+        background: #272727;
+    }
+
+    body.theme-dark .inventory-mobile-empty--team strong {
+        color: var(--fluent-text-2);
+    }
+
+    .fluent-section-heading {
+        align-items: flex-start;
+        padding: 12px 13px;
+    }
+    .fluent-section-heading p,
+    .fluent-section-status {
+        display: none;
+    }
+    .fluent-data-toolbar,
+    .fluent-table-caption {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 12px;
+    }
+    .fluent-data-toolbar-group {
+        width: 100%;
+    }
+    .fluent-log-level {
+        width: 48px;
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+/* Isolated account-source inventory */
+.source-accounts-page {
+    border-radius: var(--fluent-radius-lg) !important;
+    --source-inline-padding: 20px;
+}
+
+.source-account-surface {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+.source-accounts-page > .source-account-surface {
+    border-radius: inherit;
+}
+
+.source-account-surface > .source-account-intro {
+    border: 0;
+    border-bottom: 1px solid var(--fluent-border);
+    border-radius: 0;
+}
+
+.source-account-surface > .source-accounts-toolbar {
+    border: 0;
+    border-top: 1px solid var(--fluent-border) !important;
+    padding-right: var(--source-inline-padding) !important;
+    padding-left: var(--source-inline-padding) !important;
+}
+
+.source-accounts-page {
+    gap: 0 !important;
+}
+
+.source-account-intro {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 18px var(--source-inline-padding);
+    background: var(--fluent-surface);
+}
+
+.source-account-intro-copy {
+    min-width: 0;
+}
+
+.source-account-eyebrow {
+    color: var(--fluent-text-3);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.source-account-intro h2 {
+    margin: 3px 0 4px;
+    color: var(--fluent-text);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0 !important;
+    line-height: 24px;
+}
+
+.source-account-intro p {
+    margin: 0;
+    color: var(--fluent-text-3);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.source-account-intro-copy,
+.source-account-intro h2 {
+    padding: 0;
+}
+
+.source-account-intro-metric {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 10px;
+    flex: 0 0 auto;
+    min-width: 148px;
+    padding-left: 20px;
+    border-left: 1px solid var(--fluent-border);
+}
+
+.source-account-intro-metric span,
+.source-account-intro-metric small {
+    color: var(--fluent-text-3);
+    font-size: 11px;
+}
+
+.source-account-intro-metric strong {
+    grid-row: span 2;
+    color: var(--fluent-text);
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 30px;
+}
+
+.source-account-intro-metric small {
+    color: var(--fluent-text-4);
+}
+
+.source-accounts-toolbar {
+    border-radius: 0 !important;
+}
+
+.source-account-toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.source-account-heading,
+.source-account-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.source-account-heading h3 {
+    margin: 0;
+    color: var(--fluent-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.source-icon-button,
+.source-tool-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 32px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    background: var(--fluent-surface);
+    font-size: 12px;
+}
+
+.source-icon-button {
+    width: 32px;
+    padding: 0;
+}
+
+.source-tool-button {
+    padding: 0 10px;
+}
+
+.source-icon-button:hover,
+.source-tool-button:hover {
+    border-color: var(--fluent-border-strong);
+    background: var(--fluent-surface-3);
+}
+
+.source-account-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: var(--fluent-text-3);
+}
+
+.source-account-search svg {
+    position: absolute;
+    left: 9px;
+    pointer-events: none;
+}
+
+.source-account-search input {
+    width: 224px;
+    min-height: 32px;
+    padding: 0 10px 0 30px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text);
+    background: var(--fluent-surface);
+    font-size: 12px;
+}
+
+.source-selection-bar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    margin-top: 10px;
+    border-radius: var(--fluent-radius);
+}
+
+.source-selection-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.source-selection-bar > * {
+    flex: 0 0 auto;
+}
+
+.source-selection-bar > .fluent-selection-group {
+    flex-wrap: nowrap;
+}
+
+.source-selection-bar > .fluent-selection-spacer {
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+}
+
+.source-selection-bar > .fluent-action-btn.is-danger {
+    margin-left: auto;
+}
+
+.source-account-surface > .inventory-table-wrap {
+    border: 0 !important;
+}
+
+.source-accounts-table {
+    width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+}
+
+.source-accounts-table thead th,
+.source-accounts-table tbody td {
+    height: 48px;
+    padding: 10px 16px !important;
+    border-bottom: 1px solid var(--fluent-border);
+    text-align: left !important;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.source-accounts-table thead th {
+    height: 40px;
+    color: var(--fluent-text-3) !important;
+    background: var(--fluent-surface-2);
+    font-size: 10px !important;
+    font-weight: 600 !important;
+}
+
+.source-accounts-table :is(.source-select-column, .source-index-column) {
+    width: 48px;
+    min-width: 48px;
+    padding-right: 6px !important;
+    padding-left: 6px !important;
+    text-align: center !important;
+}
+
+.source-accounts-table :is(.source-select-column, .source-index-column) > input {
+    margin-inline: auto;
+}
+
+.source-accounts-table .source-account-column {
+    min-width: 220px;
+}
+
+.source-accounts-table tbody tr:last-child > td {
+    border-bottom: 0;
+}
+
+.source-account-surface > .source-account-footer {
+    border: 0 !important;
+    border-top: 1px solid var(--fluent-border) !important;
+    border-radius: 0 !important;
+    background: var(--fluent-surface-2) !important;
+}
+
+.source-account-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 7px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-sm);
+    color: var(--fluent-text-2);
+    background: var(--fluent-surface-2);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.source-account-badge.is-x-com {
+    border-color: #c6dfef;
+    color: #0b5d8b;
+    background: #f4faff;
+}
+
+.source-account-badge.is-huawei {
+    border-color: #d8cded;
+    color: #5840a0;
+    background: #faf7ff;
+}
+
+.source-account-identity {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    text-align: left;
+}
+
+.source-account-identity strong {
+    overflow: hidden;
+    color: var(--fluent-text);
+    font-size: 12px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-account-identity span {
+    color: var(--fluent-text-4);
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+.source-row-index,
+.source-account-time {
+    color: var(--fluent-text-4);
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 11px;
+}
+
+.source-push-status,
+.source-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+}
+
+.source-push-status > span {
+    padding: 2px 6px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-sm);
+    background: var(--fluent-surface-2);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.source-push-status > span.is-muted {
+    color: var(--fluent-text-4);
+}
+
+.source-row-actions button {
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius-sm);
+    color: var(--fluent-text-2);
+    background: var(--fluent-surface);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.source-row-actions button.is-success {
+    border-color: #b9dfcb;
+    color: #0f6b3f;
+    background: #f2fbf6;
+}
+
+.source-row-actions button.is-platform {
+    border-color: #c9def0;
+    color: #24587f;
+    background: #f4f9fe;
+}
+
+.source-empty-state {
+    padding: 64px 16px !important;
+    color: var(--fluent-text-4);
+    text-align: center;
+}
+
+.source-account-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--fluent-text-3);
+    font-size: 12px;
+}
+
+.source-account-footer strong {
+    color: var(--fluent-text);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.source-footer-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.source-footer-controls select {
+    min-height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--fluent-border);
+    border-radius: var(--fluent-radius);
+    color: var(--fluent-text-2);
+    background: var(--fluent-surface);
+    font-size: 12px;
+}
+
+.inventory-mobile-badge.is-source {
+    border-color: #d4d4d4;
+    color: var(--fluent-text-2);
+}
+
+body.theme-dark .source-account-intro,
+body.theme-dark .source-icon-button,
+body.theme-dark .source-tool-button,
+body.theme-dark .source-account-search input,
+body.theme-dark .source-footer-controls select {
+    border-color: #3a3a3a;
+    color: var(--fluent-text);
+    background: #252525;
+}
+
+body.theme-dark .source-account-intro p,
+body.theme-dark .source-account-intro-metric span,
+body.theme-dark .source-account-intro-metric small,
+body.theme-dark .source-account-footer {
+    color: var(--fluent-text-3);
+}
+
+@media (max-width: 767px) {
+    .source-accounts-page {
+        --source-inline-padding: 14px;
+    }
+
+    .source-account-intro {
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px var(--source-inline-padding);
+    }
+
+    .source-account-intro h2 {
+        font-size: 16px;
+    }
+
+    .source-account-intro p {
+        max-width: 34ch;
+    }
+
+    .source-account-intro-metric {
+        min-width: 76px;
+        padding-left: 12px;
+    }
+
+    .source-account-intro-metric span,
+    .source-account-intro-metric small {
+        display: none;
+    }
+
+    .source-account-intro-metric strong {
+        grid-row: auto;
+        font-size: 22px;
+    }
+
+    .source-account-toolbar-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .source-account-tools {
+        width: 100%;
+    }
+
+    .source-account-intro-metric {
+        row-gap: 5px;
+    }
+
+    .source-account-intro-metric strong {
+        justify-self: end;
+    }
+
+    .source-account-search {
+        flex: 1 1 auto;
+    }
+
+    .source-account-search input {
+        width: 100%;
+    }
+
+    .source-tool-button span {
+        display: none;
+    }
+
+    .source-tool-button {
+        width: 34px;
+        padding: 0;
+    }
+
+    .source-selection-bar {
+        align-items: flex-start;
+        padding: 8px !important;
+        padding-right: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+        gap: 8px;
+    }
+
+    .source-selection-bar > .fluent-selection-count {
+        display: none;
+    }
+
+    .source-selection-bar > .fluent-action-btn.is-danger {
+        padding-inline: 9px;
+        white-space: nowrap;
+    }
+
+    .source-account-surface > .source-accounts-toolbar {
+        padding: 12px var(--source-inline-padding) !important;
+    }
+
+    .source-account-surface > .source-account-footer {
+        padding: 10px var(--source-inline-padding) !important;
+    }
+
+    .source-account-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .source-footer-controls {
+        width: 100%;
+    }
+
+    .source-footer-controls .fluent-page-button {
+        flex: 1 1 0;
+    }
+}
+
+@media (max-width: 767px) {
+    .fluent-content
+        .fluent-config-page.flush
+        .concurrency-switch-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .fluent-content
+        .fluent-config-page.flush
+        .concurrency-switch-row
+        > .concurrency-switch-card {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+}

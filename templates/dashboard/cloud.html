@@ -1,4 +1,5 @@
-                        <div v-show="currentTab === 'cloud'" class="inventory-shell inventory-panel mobile-table-priority mobile-cloud-priority rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        <div v-show="currentTab === 'cloud'" class="fluent-data-page fluent-page inventory-shell inventory-panel mobile-table-priority mobile-cloud-priority responsive-inventory-page rounded-2xl">
+
                             <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100">
                                 <div class="cloud-toolbar-shell">
                                     <div class="cloud-toolbar-side">
@@ -6,7 +7,7 @@
                                             <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-white border border-sky-100 shadow-sm shrink-0">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h11a5 5 0 00-.1-9.995A5.002 5.002 0 1010.5 6H9.75a4 4 0 00-6.75 9z"></path></svg>
                                             </span>
-                                            <h2 class="text-[1.8rem] leading-none font-black text-slate-800 tracking-tight whitespace-nowrap">云端库存</h2>
+                                            <h2 class="text-sm font-semibold text-slate-800 whitespace-nowrap">远端账号清单</h2>
                                             <button @click="fetchCloudAccounts" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm shrink-0" title="刷新列表">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                                             </button>
@@ -63,30 +64,32 @@
                                                 <div class="h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all duration-500" :style="{ width: ((cloudFetchState.total ? (cloudFetchState.completed / cloudFetchState.total) : 0) * 100) + '%' }"></div>
                                             </div>
                                         </div>
-                                        <div class="cloud-secondary-actions" v-if="selectedCloud.length > 0">
-                                            <div class="flex flex-wrap items-center gap-2 bg-indigo-50/80 border border-indigo-100 p-1.5 rounded-xl shadow-sm transition-all duration-300">
-                                                <span class="text-xs font-black text-indigo-700 px-2 border-r border-indigo-200">已选 {{ selectedCloud.length }}</span>
-                                                <button @click="bulkFetchSub2ApiUsage" :disabled="isCloudActionLoading" class="px-3 py-1 bg-purple-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-purple-600 transition flex items-center gap-1 disabled:opacity-50">
+                                    </div>
+                                </div>
+                                <div class="cloud-secondary-actions" v-if="selectedCloud.length > 0">
+                                    <div class="fluent-selection-bar flex flex-wrap items-center gap-3 p-2.5 w-full animate-fade-in">
+                                        <span class="fluent-selection-count">已选 {{ selectedCloud.length }}</span>
+                                        <div class="fluent-selection-group gap-1">
+                                            <button @click="bulkFetchSub2ApiUsage" :disabled="isCloudActionLoading" class="fluent-action-btn is-platform">
                                                     <span v-if="isCloudActionLoading" class="animate-spin inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></span>
                                                     <span v-else class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> 批量获取利用率
                                                 </button>
-                                                <button @click="bulkCloudAction('check')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-600 transition flex items-center gap-1 disabled:opacity-50">
+                                                <button @click="bulkCloudAction('check')" :disabled="isCloudActionLoading" class="fluent-action-btn is-info">
                                                     <span v-if="isCloudActionLoading" class="animate-spin inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></span>
                                                     <span v-else class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span> 批量测活
                                                 </button>
-                                                <button @click="bulkCloudAction('enable')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-600 transition flex items-center gap-1 disabled:opacity-50">
+                                                <button @click="bulkCloudAction('enable')" :disabled="isCloudActionLoading" class="fluent-action-btn is-success">
                                                     <span class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21V11m0 0C9.5 11 7 9.5 7 6.5 7 5 8 3.5 9.5 3c.7 2.2 2.3 3.5 4.5 4 2.2-.5 3.8-1.8 4.5-4C20 3.5 21 5 21 6.5 21 9.5 18.5 11 16 11m-4 10c-2 0-3.5-.5-4.5-1.5"></path></svg></span> 批量启用
                                                 </button>
-                                                <button @click="bulkCloudAction('delete')" :disabled="isCloudActionLoading" class="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-rose-600 transition flex items-center gap-1 disabled:opacity-50 ml-1">
+                                        </div>
+                                                <button @click="bulkCloudAction('delete')" :disabled="isCloudActionLoading" class="fluent-action-btn is-danger ml-auto">
                                                     <span class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></span> 删除选中
                                                 </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="inventory-toolbar inventory-stats p-5 md:px-8 border-b border-slate-100">
-                                <div class="grid grid-cols-2 xl:grid-cols-6 gap-3 w-full">
+                            <div class="inventory-toolbar inventory-stats cloud-stats p-5 md:px-8 border-b border-slate-100">
+                                <div class="cloud-stat-grid grid grid-cols-2 xl:grid-cols-6 gap-3 w-full">
                                     <div @click="filterByCard('all', 'active')" class="cloud-stat-card cloud-stat-card--emerald cursor-pointer active:scale-95 bg-white shadow-sm border border-slate-200 relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-center group">
                                         <div class="text-[10px] font-black text-emerald-500/80 mb-1 uppercase tracking-widest z-10 relative">云端启用</div>
                                         <div class="text-[1.05rem] font-black text-emerald-600 z-10 relative leading-none">{{ inventoryStats?.cloud?.enabled || 0 }}</div>
@@ -155,6 +158,80 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="inventory-mobile-list" aria-label="云端库存列表">
+                                <div class="inventory-mobile-list-tools">
+                                    <label class="inventory-mobile-select-all">
+                                        <input type="checkbox" @change="toggleAllCloud"
+                                               :checked="selectedCloud.length === filteredCloud.length && filteredCloud.length > 0"
+                                               aria-label="全选当前页云端账号"
+                                               class="form-checkbox">
+                                        <span>全选当前页</span>
+                                    </label>
+                                    <span class="inventory-mobile-selected-count">
+                                        已选 {{ selectedCloud.length }} / {{ filteredCloud.length }}
+                                    </span>
+                                </div>
+                                <div v-if="filteredCloud.length === 0" class="inventory-mobile-empty">
+                                    暂无云端账号数据
+                                </div>
+                                <article v-for="acc in filteredCloud" :key="'mobile-cloud-' + acc.id + acc.account_type"
+                                         class="inventory-mobile-card"
+                                         :class="{ 'is-selected': selectedCloud.includes(acc.id + '|' + acc.account_type) }">
+                                    <input type="checkbox" :value="acc.id + '|' + acc.account_type" v-model="selectedCloud"
+                                           :aria-label="'选择云端账号 ' + (showCloudPlaintext ? acc.credential : maskEmail(acc.credential))"
+                                           class="form-checkbox inventory-mobile-checkbox">
+                                    <div class="inventory-mobile-main">
+                                        <div class="inventory-mobile-identity">
+                                            <div class="inventory-mobile-address">
+                                                <strong>{{ showCloudPlaintext ? acc.credential : maskEmail(acc.credential) }}</strong>
+                                            </div>
+                                            <span class="inventory-mobile-badge"
+                                                  :class="{ 'is-platform': acc.account_type !== 'image2api', 'is-image': acc.account_type === 'image2api' }">
+                                                {{ acc.account_type === 'image2api' ? 'Img2API' : acc.account_type === 'grok2api' ? 'Grok2API' : acc.account_type === 'sub2api' ? 'Sub2API' : 'CPA' }}
+                                            </span>
+                                        </div>
+                                        <div class="inventory-mobile-status">
+                                            <span v-if="acc.status === 'active'" class="inventory-mobile-badge is-success">存活</span>
+                                            <span v-else-if="acc.status === 'dead'" class="inventory-mobile-badge is-alert">失效</span>
+                                            <span v-else class="inventory-mobile-badge is-warning">已禁用</span>
+                                            <span class="inventory-mobile-badge">{{ acc.last_check || '未检查' }}</span>
+                                        </div>
+                                        <div class="inventory-mobile-summary">
+                                            <div class="inventory-mobile-status">
+                                                <span v-if="acc.account_type === 'cpa' && acc.details?.cpa_primary_remain_pct !== undefined"
+                                                      class="inventory-mobile-badge">周限额 {{ acc.details.cpa_primary_remain_pct }}%</span>
+                                                <span v-else-if="acc.account_type === 'image2api' && acc.details?.quota !== undefined"
+                                                      class="inventory-mobile-badge">额度 {{ acc.details.quota }}</span>
+                                                <span v-else-if="acc.account_type === 'grok2api' && acc.details?.quota_limit !== undefined"
+                                                      class="inventory-mobile-badge">剩余 {{ acc.details.quota_remaining ?? 0 }}/{{ acc.details.quota_limit ?? 0 }}</span>
+                                                <span v-else-if="acc.account_type === 'sub2api' && acc.details?.window_stats"
+                                                      class="inventory-mobile-badge">{{ acc.details.window_stats.requests ?? 0 }} req</span>
+                                            </div>
+                                        </div>
+                                        <div class="inventory-mobile-actions">
+                                            <button v-if="acc.account_type === 'image2api' || acc.account_type === 'grok2api'"
+                                                    type="button" @click="singleCloudAction(acc, 'refresh')"
+                                                    :disabled="acc._loading"
+                                                    class="inventory-mobile-action is-platform">
+                                                {{ acc._loading === 'refresh' ? '刷新中...' : acc.account_type === 'grok2api' ? '刷新额度' : '刷新凭证' }}
+                                            </button>
+                                            <button v-if="acc.account_type !== 'image2api'"
+                                                    type="button" @click="singleCloudAction(acc, 'check')"
+                                                    :disabled="acc._loading"
+                                                    class="inventory-mobile-action is-success">测活</button>
+                                            <button type="button"
+                                                    @click="singleCloudAction(acc, acc.status === 'disabled' ? 'enable' : 'disable')"
+                                                    :disabled="acc._loading"
+                                                    class="inventory-mobile-action is-warning">
+                                                {{ acc.status === 'disabled' ? '启用' : '禁用' }}
+                                            </button>
+                                            <button type="button" @click="singleCloudAction(acc, 'delete')"
+                                                    :disabled="acc._loading"
+                                                    class="inventory-mobile-action is-danger">删除</button>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
                             <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
@@ -174,7 +251,7 @@
                                         <tr v-if="!filteredCloud.length">
                                             <td colspan="7" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无云端账号数据或未勾选平台</td>
                                         </tr>
-                                        <tr v-for="acc in filteredCloud" :key="acc.id + acc.account_type" class="hover:bg-indigo-50/40 transition duration-200" :class="{'bg-indigo-50/60': selectedCloud.includes(acc.id + '|' + acc.account_type)}">
+                                        <tr v-for="acc in filteredCloud" :key="acc.id + acc.account_type" :class="{'is-selected': selectedCloud.includes(acc.id + '|' + acc.account_type)}">
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap">
                                                 <input type="checkbox" :value="acc.id + '|' + acc.account_type" v-model="selectedCloud" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 transition-all">
                                             </td>
@@ -386,4 +463,3 @@
                                 </div>
                             </div>
                         </div>
-

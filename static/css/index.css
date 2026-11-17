@@ -605,9 +605,8 @@
 		padding: 10px 12px;
 	}
 	.inventory-panel.mobile-cloud-priority .inventory-scroll-region {
-		flex: 0 0 800px;
-		min-height: 800px;
-		height: 800px;
+		min-height: 0;
+		height: auto;
 	}
 	.inventory-panel.mobile-cloud-priority {
 		min-height: auto;

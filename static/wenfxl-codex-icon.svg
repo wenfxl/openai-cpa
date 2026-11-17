@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Wenfxl">
+  <defs>
+    <linearGradient id="tile" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fbfdff"/>
+      <stop offset=".55" stop-color="#eff7ff"/>
+      <stop offset="1" stop-color="#e0eeff"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="12" y1="9" x2="53" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4a90f1"/>
+      <stop offset=".55" stop-color="#2e75e1"/>
+      <stop offset="1" stop-color="#1c58c6"/>
+    </linearGradient>
+    <clipPath id="tileClip">
+      <rect x="2" y="2" width="60" height="60" rx="15"/>
+    </clipPath>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#tile)" stroke="#d3e5ff" stroke-width="1.1"/>
+  <g clip-path="url(#tileClip)">
+    <path d="M2 2h60v25C45 14 27 8 2 12V2Z" fill="#fff" opacity=".46"/>
+  </g>
+
+  <g fill="none" stroke="url(#ink)" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="14.8" cy="14.8" r="4.2" fill="url(#ink)" stroke="none"/>
+    <path d="m17.8 17.4 3.4 2.4" stroke-width="2.8"/>
+
+    <path d="M36.1 11.4a20.2 20.2 0 1 1 12.1 38 20.2 20.2 0 0 1-8.7-1.5" stroke-width="3.9"/>
+    <path d="M27 16.7c-6.6 4.4-9.2 13.4-5.8 20.6 3.5 7.6 12.7 11 20.4 7.1 5.8-2.9 9.2-8.8 8.9-15.2"
+          stroke-width="3.7"/>
+
+    <ellipse cx="34.8" cy="27.7" rx="2.05" ry="2.95" fill="url(#ink)" stroke="none"/>
+    <ellipse cx="42.8" cy="26.3" rx="1.5" ry="2.55" fill="url(#ink)" stroke="none" transform="rotate(14 42.8 26.3)"/>
+  </g>
+</svg>

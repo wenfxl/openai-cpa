@@ -1,0 +1,165 @@
+<div v-show="isInventorySourceTab" class="fluent-data-page fluent-page inventory-shell inventory-panel mobile-table-priority accounts-mobile-list-page source-accounts-page rounded-2xl">
+    <div class="source-account-surface">
+        <section class="source-account-intro">
+            <div class="source-account-intro-copy">
+                <span class="source-account-eyebrow">独立库存</span>
+                <h2>{{ currentTabLabel }}</h2>
+                <p>{{ currentInventorySource.description }}</p>
+            </div>
+            <div class="source-account-intro-metric">
+                <span>当前总量</span>
+                <strong>{{ currentInventorySource.count }}</strong>
+                <small>未计入本地账号</small>
+            </div>
+        </section>
+
+        <div class="inventory-toolbar source-accounts-toolbar">
+            <div class="source-account-toolbar-row">
+                <div class="source-account-heading">
+                    <h3>库存清单</h3>
+                    <button @click="fetchSourceAccounts(true)" class="source-icon-button" title="刷新列表" aria-label="刷新列表">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                </div>
+
+                <div class="source-account-tools">
+                    <label class="source-account-search">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="search" v-model="searchSourceAccounts" :placeholder="`搜索${currentTabLabel}...`" aria-label="搜索账号">
+                    </label>
+                    <button @click="showAccountsPlaintext = !showAccountsPlaintext" class="source-tool-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <span>{{ showAccountsPlaintext ? '隐藏' : '显示' }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="selectedSourceAccounts.length > 0" class="fluent-selection-bar source-selection-bar">
+                <span class="fluent-selection-count">已选 {{ selectedSourceAccounts.length }}</span>
+                <div class="fluent-selection-group fluent-selection-group--export">
+                    <span class="fluent-selection-label">导出</span>
+                    <button @click="exportSelectedSourceAccounts" class="fluent-action-btn is-export">CPA</button>
+                    <button @click="exportSourceAccountsToTxt" class="fluent-action-btn is-export">账密</button>
+                </div>
+                <div class="fluent-selection-group fluent-selection-group--push">
+                    <span class="fluent-selection-label">推送</span>
+                    <button @click="bulkPushSourceCPA" class="fluent-action-btn is-success">CPA</button>
+                    <button @click="bulkPushSourceSub2API" class="fluent-action-btn is-platform">Sub</button>
+                </div>
+                <span class="fluent-selection-spacer" aria-hidden="true"></span>
+                <button @click="deleteSelectedSourceAccounts" class="fluent-action-btn is-danger">
+                    <svg class="w-4 h-4 inline" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    删除选中
+                </button>
+            </div>
+        </div>
+        <div class="inventory-mobile-list source-mobile-list" :aria-label="`${currentTabLabel}列表`">
+            <div class="inventory-mobile-list-tools">
+                <label class="inventory-mobile-select-all">
+                    <input type="checkbox" @change="toggleAllSourceAccounts"
+                           :checked="selectedSourceAccounts.length === filteredSourceAccounts.length && filteredSourceAccounts.length > 0"
+                           aria-label="全选当前页账号"
+                           class="form-checkbox">
+                    <span>全选当前页</span>
+                </label>
+                <span class="inventory-mobile-selected-count">已选 {{ selectedSourceAccounts.length }} / {{ filteredSourceAccounts.length }}</span>
+            </div>
+            <div v-if="filteredSourceAccounts.length === 0" class="inventory-mobile-empty">暂无{{ currentTabLabel }}记录</div>
+            <article v-for="(acc, index) in filteredSourceAccounts" :key="`source-mobile-${acc.email}`"
+                     class="inventory-mobile-card"
+                     :class="{ 'is-selected': selectedSourceAccounts.includes(acc.email) }">
+                <input type="checkbox" :value="acc.email" v-model="selectedSourceAccounts"
+                       :aria-label="`选择账号 ${showAccountsPlaintext ? acc.email : maskEmail(acc.email)}`"
+                       class="form-checkbox inventory-mobile-checkbox">
+                <div class="inventory-mobile-main">
+                    <div class="inventory-mobile-identity">
+                        <div class="inventory-mobile-address">
+                            <strong>{{ showAccountsPlaintext ? acc.email : maskEmail(acc.email) }}</strong>
+                            <span class="inventory-mobile-index">#{{ (sourcePage - 1) * sourcePageSize + index + 1 }}</span>
+                        </div>
+                        <div class="inventory-mobile-secret">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                            <span>{{ showAccountsPlaintext ? acc.password : '••••••••' }}</span>
+                        </div>
+                    </div>
+                    <div class="inventory-mobile-summary">
+                        <div class="inventory-mobile-status">
+                            <span class="inventory-mobile-badge is-source">{{ currentTabLabel }}</span>
+                            <span v-if="acc.is_active === 0" class="inventory-mobile-badge is-alert">已禁用</span>
+                            <span v-else-if="!acc.push_platform" class="inventory-mobile-badge">未推送</span>
+                            <span v-else class="inventory-mobile-badge is-success">已推送</span>
+                            <span v-for="badge in getPlatformBadges(acc.push_platform)" :key="badge.name" class="inventory-mobile-badge is-platform">{{ badge.name }}</span>
+                        </div>
+                        <time class="inventory-mobile-time">{{ formatTime(acc.created_at) }}</time>
+                    </div>
+                    <div class="inventory-mobile-actions">
+                        <button type="button" @click="triggerSourceAccountAction(acc, 'push')" class="inventory-mobile-action is-success">推CPA</button>
+                        <button type="button" @click="triggerSourceAccountAction(acc, 'push_sub2api')" class="inventory-mobile-action is-platform">推Sub</button>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full hide-scrollbar">
+        <table class="source-accounts-table min-w-full divide-y divide-slate-100">
+            <thead>
+                <tr>
+                    <th scope="col" class="source-select-column"><input type="checkbox" @change="toggleAllSourceAccounts"
+                        :checked="selectedSourceAccounts.length === filteredSourceAccounts.length && filteredSourceAccounts.length > 0"
+                        aria-label="全选当前页账号" class="form-checkbox w-4 h-4"></th>
+                    <th scope="col" class="source-index-column">#</th>
+                    <th scope="col" class="source-account-column">账号与密码</th>
+                    <th scope="col">来源</th>
+                    <th scope="col">推送状态</th>
+                    <th scope="col">入库时间</th>
+                    <th scope="col">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-if="filteredSourceAccounts.length === 0">
+                    <td colspan="7" class="source-empty-state">暂无{{ currentTabLabel }}记录</td>
+                </tr>
+                <tr v-for="(acc, index) in filteredSourceAccounts" :key="acc.email" :class="{ 'is-selected': selectedSourceAccounts.includes(acc.email) }">
+                    <td class="source-select-column"><input type="checkbox" :value="acc.email" v-model="selectedSourceAccounts" :aria-label="`选择账号 ${showAccountsPlaintext ? acc.email : maskEmail(acc.email)}`" class="form-checkbox w-4 h-4"></td>
+                    <td class="source-index-column source-row-index">{{ (sourcePage - 1) * sourcePageSize + index + 1 }}</td>
+                    <td class="source-account-column">
+                        <div class="source-account-identity">
+                            <strong>{{ showAccountsPlaintext ? acc.email : maskEmail(acc.email) }}</strong>
+                            <span>{{ showAccountsPlaintext ? acc.password : '••••••••' }}</span>
+                        </div>
+                    </td>
+                    <td><span class="source-account-badge" :class="currentInventorySource.source === 'x_com' ? 'is-x-com' : 'is-huawei'">{{ currentTabLabel }}</span></td>
+                    <td>
+                        <div class="source-push-status">
+                            <span v-if="acc.is_active === 0" class="is-muted">已禁用</span>
+                            <span v-else-if="!acc.push_platform" class="is-muted">未推送</span>
+                            <span v-for="badge in getPlatformBadges(acc.push_platform)" :key="badge.name" :class="getBadgeClass(badge.type)">{{ badge.name }}</span>
+                        </div>
+                    </td>
+                    <td class="source-account-time">{{ formatTime(acc.created_at) }}</td>
+                    <td>
+                        <div class="source-row-actions">
+                            <button @click="triggerSourceAccountAction(acc, 'push')" class="is-success">推CPA</button>
+                            <button @click="triggerSourceAccountAction(acc, 'push_sub2api')" class="is-platform">推Sub</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+
+        <div class="inventory-footer source-account-footer">
+            <span>共 <strong>{{ totalSourceAccounts }}</strong> 个，第 {{ sourcePage }}/{{ totalSourcePages }} 页</span>
+            <div class="source-footer-controls">
+                <select v-model.number="sourcePageSize" @change="changeSourcePageSize" aria-label="每页数量">
+                    <option :value="10">10 条/页</option>
+                    <option :value="20">20 条/页</option>
+                    <option :value="50">50 条/页</option>
+                    <option :value="100">100 条/页</option>
+                </select>
+                <button @click="changeSourcePage(sourcePage - 1)" :disabled="sourcePage <= 1" class="fluent-page-button">上一页</button>
+                <button @click="changeSourcePage(sourcePage + 1)" :disabled="sourcePage >= totalSourcePages" class="fluent-page-button">下一页</button>
+            </div>
+        </div>
+    </div>
+</div>

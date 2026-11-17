@@ -1,8 +1,9 @@
-                        <div v-show="currentTab === 'image_accounts'" class="inventory-shell inventory-panel mobile-table-priority rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-md">
+                        <div v-show="currentTab === 'image_accounts'" class="fluent-data-page fluent-page inventory-shell inventory-panel mobile-table-priority responsive-inventory-page rounded-2xl">
+
                             <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col gap-4">
                                 <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full">
                                     <div class="flex items-center gap-3">
-                                        <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">半成品库存</h2>
+                                        <h2 class="text-sm font-semibold text-slate-800">待处理清单</h2>
                                         <button @click="fetchImageAccounts(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                                         </button>
@@ -48,6 +49,57 @@
                                 </div>
                             </div>
 
+                            <div class="inventory-mobile-list" aria-label="半成品库存列表">
+                                <div class="inventory-mobile-list-tools">
+                                    <label class="inventory-mobile-select-all">
+                                        <input type="checkbox" @change="toggleAllImageAccounts"
+                                               :checked="selectedImageAccounts.length === imageAccounts.length && imageAccounts.length > 0"
+                                               aria-label="全选当前页半成品账号"
+                                               class="form-checkbox">
+                                        <span>全选当前页</span>
+                                    </label>
+                                    <span class="inventory-mobile-selected-count">
+                                        已选 {{ selectedImageAccounts.length }} / {{ imageAccounts.length }}
+                                    </span>
+                                </div>
+                                <div v-if="imageAccounts.length === 0" class="inventory-mobile-empty">
+                                    暂无半成品账号记录
+                                </div>
+                                <article v-for="(acc, index) in imageAccounts" :key="'mobile-image-' + index"
+                                         class="inventory-mobile-card"
+                                         :class="{ 'is-selected': selectedImageAccounts.includes(acc.email) }">
+                                    <input type="checkbox" :value="acc.email" v-model="selectedImageAccounts"
+                                           :aria-label="'选择半成品账号 ' + (showAccountsPlaintext ? acc.email : maskEmail(acc.email))"
+                                           class="form-checkbox inventory-mobile-checkbox">
+                                    <div class="inventory-mobile-main">
+                                        <div class="inventory-mobile-identity">
+                                            <div class="inventory-mobile-address">
+                                                <strong>{{ showAccountsPlaintext ? acc.email : maskEmail(acc.email) }}</strong>
+                                                <span class="inventory-mobile-index">#{{ index + 1 + (imagePage - 1) * imagePageSize }}</span>
+                                            </div>
+                                            <div class="inventory-mobile-secret">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                                                <span>{{ showAccountsPlaintext ? acc.password : '••••••••' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="inventory-mobile-summary">
+                                            <div class="inventory-mobile-status">
+                                                <span class="inventory-mobile-badge is-warning">半成品就绪</span>
+                                                <span class="inventory-mobile-badge">待提取 OAuth</span>
+                                            </div>
+                                            <time class="inventory-mobile-time">{{ formatTime(acc.created_at) }}</time>
+                                        </div>
+                                        <div class="inventory-mobile-actions">
+                                            <button type="button" @click="upgradeSingleImageAccount(acc)"
+                                                    :disabled="acc._upgrading"
+                                                    class="inventory-mobile-action is-platform">
+                                                {{ acc._upgrading ? '提取中...' : '提取 OAuth' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+
                             <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-[400px]">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
@@ -64,7 +116,7 @@
                                         <tr v-if="imageAccounts.length === 0">
                                             <td colspan="5" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无半成品账号记录</td>
                                         </tr>
-                                        <tr v-for="(acc, index) in imageAccounts" :key="index" class="hover:bg-pink-50/40 transition duration-200" :class="{'bg-pink-50/60': selectedImageAccounts.includes(acc.email)}">
+                                        <tr v-for="(acc, index) in imageAccounts" :key="index" :class="{'is-selected': selectedImageAccounts.includes(acc.email)}">
                                             <td class="px-3 md:px-4 py-3 whitespace-nowrap"><input type="checkbox" :value="acc.email" v-model="selectedImageAccounts" class="form-checkbox w-4 h-4 text-pink-600 border-slate-300 rounded focus:ring-pink-500 transition-all"></td>
                                             <td class="px-2 md:px-3 py-3 whitespace-nowrap text-xs text-slate-400 font-mono font-medium">{{ index + 1 + (imagePage-1)*imagePageSize }}</td>
 

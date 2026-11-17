@@ -581,7 +581,8 @@ async def get_dashboard():
     dashboard_partials = (
         "console", "cluster", "accounts", "image-accounts", "mailboxes",
         "email", "sms", "proxy", "cloud", "team-accounts", "relay",
-        "notify", "domain-register", "concurrency",
+        "notify", "domain-register", "concurrency", "system-maintenance",
+        "source-accounts",
     )
     partials_dir = os.path.join(BASE_DIR, "templates", "dashboard")
     for partial_name in dashboard_partials:

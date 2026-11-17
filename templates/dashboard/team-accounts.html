@@ -1,4 +1,5 @@
-                        <div v-show="currentTab === 'team_accounts'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden relative animate-fade-in transition-shadow duration-300 hover:shadow-md">
+                        <div v-show="currentTab === 'team_accounts'" class="fluent-data-page fluent-page inventory-shell inventory-panel responsive-inventory-page rounded-2xl">
+
                             <div v-if="showImportTeamModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
                                     <h3 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></span> 批量导入 Team Token</h3>
@@ -31,7 +32,7 @@
 
                             <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                                    <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
                                         <svg class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-sky-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M16 19a3 3 0 013-3h1a2 2 0 012 2v1"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M2 19v-1a2 2 0 012-2h1a3 3 0 013 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 18a4 4 0 00-4 4h8a4 4 0 00-4-4z"></path><circle cx="12" cy="10" r="3.25" stroke-width="1.9"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M6 8.5a2.5 2.5 0 115 0"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M13 8.5a2.5 2.5 0 115 0"></path></svg> Team 团队账号库
                                     </h2>
                                     <button @click="fetchTeamAccounts(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20v-5h-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.64 19A9 9 0 0019 18.36L20 15"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.36 5A9 9 0 005 5.64L4 9"></path></svg></button>
@@ -90,5 +91,32 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
 
+                            <div class="inventory-mobile-list inventory-mobile-list--team" aria-label="Team 账号库存列表">
+                                <div v-if="teamAccounts.length === 0" class="inventory-mobile-empty inventory-mobile-empty--team">
+                                    <strong>Team 账号库为空</strong>
+                                    <span>可从上方导入 access_token 或完整 Cookie 数据。</span>
+                                </div>
+                                <article v-for="(team, index) in teamAccounts" :key="'mobile-team-' + index"
+                                         class="inventory-mobile-card">
+                                    <div class="inventory-mobile-index">{{ index + 1 }}</div>
+                                    <div class="inventory-mobile-main">
+                                        <div class="inventory-mobile-identity">
+                                            <div class="inventory-mobile-address">
+                                                <strong>{{ showTeamsPlaintext ? team.email : maskEmail(team.email) }}</strong>
+                                            </div>
+                                            <span class="inventory-mobile-badge" :class="{ 'is-success': team.cookies }">
+                                                {{ team.cookies ? 'Cookie' : 'Token' }}
+                                            </span>
+                                        </div>
+                                        <div class="inventory-mobile-secret">
+                                            <span>{{ showTeamsPlaintext ? team.access_token : 'eyJhbGciOi...' }}</span>
+                                        </div>
+                                        <div class="inventory-mobile-actions">
+                                            <button type="button" @click="deleteSingleTeam(team.id)"
+                                                    class="inventory-mobile-action is-danger">删除</button>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>

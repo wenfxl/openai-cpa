@@ -1,4 +1,4 @@
-                        <div v-show="currentTab === 'mailboxes'" class="inventory-shell inventory-panel rounded-2xl overflow-hidden relative transition-shadow duration-300 hover:shadow-md">
+                        <div v-show="currentTab === 'mailboxes'" class="fluent-data-page fluent-page inventory-shell inventory-panel responsive-inventory-page rounded-2xl">
 
                             <div v-if="showImportMailboxModal" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                                 <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl flex flex-col">
@@ -21,7 +21,7 @@
 
                             <div class="inventory-toolbar px-5 md:px-8 py-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 min-h-[80px]">
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">微软邮箱资源库</h2>
+                                    <h2 class="text-sm font-semibold text-slate-800">邮箱清单</h2>
                                         <button @click="fetchMailboxes(true)" class="p-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-sm" title="刷新列表">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                                         </button>
@@ -53,6 +53,58 @@
                                 </div>
                             </div>
 
+                            <div class="inventory-mobile-list" aria-label="微软邮箱库存列表">
+                                <div class="inventory-mobile-list-tools">
+                                    <label class="inventory-mobile-select-all">
+                                        <input type="checkbox" @change="toggleAllMailboxes"
+                                               :checked="selectedMailboxes.length === filteredMailboxes.length && filteredMailboxes.length > 0"
+                                               aria-label="全选当前页微软邮箱"
+                                               class="form-checkbox">
+                                        <span>全选当前页</span>
+                                    </label>
+                                    <span class="inventory-mobile-selected-count">
+                                        已选 {{ selectedMailboxes.length }} / {{ filteredMailboxes.length }}
+                                    </span>
+                                </div>
+                                <div v-if="filteredMailboxes.length === 0" class="inventory-mobile-empty">
+                                    暂无邮箱数据，请导入邮箱
+                                </div>
+                                <article v-for="(mb, index) in filteredMailboxes" :key="'mobile-mailbox-' + index"
+                                         class="inventory-mobile-card"
+                                         :class="{ 'is-selected': selectedMailboxes.includes(mb.email) }">
+                                    <input type="checkbox" :value="mb.email" v-model="selectedMailboxes"
+                                           :aria-label="'选择微软邮箱 ' + (showPwd.showMailboxesPlaintext ? mb.email : maskEmail(mb.email))"
+                                           class="form-checkbox inventory-mobile-checkbox">
+                                    <div class="inventory-mobile-main">
+                                        <div class="inventory-mobile-identity">
+                                            <div class="inventory-mobile-address">
+                                                <strong>{{ showPwd.showMailboxesPlaintext ? mb.email : maskEmail(mb.email) }}</strong>
+                                                <span class="inventory-mobile-index">#{{ index + 1 }}</span>
+                                            </div>
+                                            <span class="inventory-mobile-badge" :class="{ 'is-platform': mb.refresh_token }">
+                                                {{ mb.refresh_token ? 'OAuth' : '密码' }}
+                                            </span>
+                                        </div>
+                                        <div class="inventory-mobile-status">
+                                            <span v-if="mb.status === 0" class="inventory-mobile-badge is-success">未使用</span>
+                                            <span v-else-if="mb.status === 1" class="inventory-mobile-badge is-warning">已注册</span>
+                                            <span v-else-if="mb.status === 2" class="inventory-mobile-badge is-platform">已出凭证</span>
+                                            <span v-else class="inventory-mobile-badge is-alert">失效 / 死号</span>
+                                            <span class="inventory-mobile-badge">分裂 {{ mb.fission_count || 0 }} 次</span>
+                                        </div>
+                                        <div class="inventory-mobile-summary">
+                                            <time class="inventory-mobile-time">{{ formatTime(mb.created_at) }}</time>
+                                            <div class="inventory-mobile-actions">
+                                                <button v-if="!mb.refresh_token" type="button"
+                                                        @click="openOutlookAuthModal(mb)"
+                                                        class="inventory-mobile-action is-warning">去授权</button>
+                                                <span v-else class="inventory-mobile-badge is-success">已授权</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+
                             <div class="inventory-table-wrap inventory-scroll-region inventory-table-scroll overflow-x-auto w-full min-h-0">
                                 <table class="min-w-full divide-y divide-slate-100">
                                     <thead class="bg-slate-50/80">
@@ -71,7 +123,7 @@
                                         <tr v-if="filteredMailboxes.length === 0">
                                             <td colspan="6" class="px-6 py-16 text-center text-slate-400 font-medium bg-slate-50/30">暂无邮箱数据，请点击右上角导入</td>
                                         </tr>
-                                        <tr v-for="(mb, index) in filteredMailboxes" :key="index" class="hover:bg-slate-50 transition duration-200" :class="{'bg-indigo-50/60': selectedMailboxes.includes(mb.email)}">
+                                        <tr v-for="(mb, index) in filteredMailboxes" :key="index" :class="{'is-selected': selectedMailboxes.includes(mb.email)}">
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap"><input type="checkbox" :value="mb.email" v-model="selectedMailboxes" class="form-checkbox w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"></td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm text-slate-400 font-mono font-medium">{{ index + 1 }}</td>
                                             <td class="px-5 md:px-8 py-4 whitespace-nowrap text-sm font-bold text-slate-700">

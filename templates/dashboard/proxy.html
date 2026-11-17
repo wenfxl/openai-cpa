@@ -1,4 +1,4 @@
-                        <div v-show="currentTab === 'proxy'" v-if="config" class="space-y-5 md:space-y-8">
+                        <div v-if="currentTab === 'proxy' && config" class="fluent-config-page flush fluent-page">
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:max-w-3xl">
                                 <h3 class="text-lg md:text-xl font-black text-emerald-600 mb-5 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 md:w-6 md:h-6 inline-block align-text-bottom text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.8 2.4 4.5 5.6 4.5 9s-1.7 6.6-4.5 9c-2.8-2.4-4.5-5.6-4.5-9S9.2 5.4 12 3z"></path></svg></span> 基础代理设置</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
@@ -373,4 +373,3 @@
                             </div>
 
                         </div>
-

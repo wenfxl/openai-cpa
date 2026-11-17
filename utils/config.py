@@ -251,7 +251,7 @@ def init_config():
         deep_update_config(default_config, user_config)
 
     return user_config
-APP_VERSION = "v19.0.2"
+APP_VERSION = "v19.0.3"
 _c: dict = {}
 WEB_PASSWORD: str = "admin"
 RETAIN_REG_ONLY: bool = False

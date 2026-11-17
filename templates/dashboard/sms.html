@@ -1,4 +1,4 @@
-                        <div v-show="currentTab === 'sms'" v-if="config" class="space-y-5 md:space-y-8">
+                        <div v-if="currentTab === 'sms' && config" class="fluent-config-page flush fluent-page">
                             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 lg:col-span-2 border-t-4 border-t-orange-500 bg-gradient-to-b from-orange-50/30 to-white" v-if="config.hero_sms">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 border-b border-orange-100 pb-5 gap-4">
                                     <h3 class="text-xl md:text-2xl font-black text-orange-600 tracking-tight flex items-center flex-wrap gap-2">
@@ -15,13 +15,13 @@
                                     </label>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.hero_sms.enabled}">
-                                    <div>
+                                <div class="sms-provider-credentials" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.hero_sms.enabled}">
+                                    <div class="sms-provider-field">
                                         <label class="flex justify-between items-end text-xs md:text-sm text-orange-900 font-black mb-2 uppercase tracking-wider">
                                             <span>API Key</span>
                                             <span class="text-orange-600 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 shadow-sm text-[10px] md:text-xs">余额: <span class="font-mono font-bold">{{ heroSmsBalance || '0.00' }}</span> USD</span>
                                         </label>
-                                        <div class="flex gap-3">
+                                        <div class="sms-provider-key-row">
                                             <div class="relative flex-1">
                                                 <input :type="showPwd.hero_key ? 'text' : 'password'" v-model="config.hero_sms.api_key" class="w-full appearance-none bg-white border border-orange-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="HeroSMS API Key">
                                                 <button @click="showPwd.hero_key = !showPwd.hero_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-orange-600 focus:outline-none">
@@ -36,7 +36,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div>
+                                    <div class="sms-provider-field">
                                         <label class="block text-xs md:text-sm text-orange-900 font-black mb-2 uppercase tracking-wider">
                                             <span>服务代号 (Service)</span>
                                         </label>
@@ -115,7 +115,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-orange-100">
+                                    <div class="sms-provider-options md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-orange-100">
                                         <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-orange-200 shadow-sm cursor-pointer hover:bg-orange-50 transition-colors group">
                                             <input type="checkbox" v-model="config.hero_sms.auto_pick_country" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-orange-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
@@ -164,13 +164,13 @@
                                     </label>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.smsbower.enabled}">
-                                    <div>
+                                <div class="sms-provider-credentials" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.smsbower.enabled}">
+                                    <div class="sms-provider-field">
                                         <label class="flex justify-between items-end text-xs md:text-sm text-indigo-900 font-black mb-2 uppercase tracking-wider">
                                             <span>API Key</span>
                                             <span class="text-indigo-600 bg-indigo-100 px-2 py-1 rounded-md border border-indigo-200 shadow-sm text-[10px] md:text-xs">余额: <span class="font-mono font-bold">{{ smsBowerBalance || '0.00' }}</span> USD</span>
                                         </label>
-                                        <div class="flex gap-3">
+                                        <div class="sms-provider-key-row">
                                             <div class="relative flex-1">
                                                 <input :type="showPwd.smsbower_key ? 'text' : 'password'" v-model="config.smsbower.api_key" class="w-full appearance-none bg-white border border-indigo-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="SmsBower API Key">
                                                 <button @click="showPwd.smsbower_key = !showPwd.smsbower_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-indigo-600 focus:outline-none">
@@ -185,7 +185,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div>
+                                    <div class="sms-provider-field">
                                         <label class="flex justify-between items-end text-xs md:text-sm text-indigo-900 font-black mb-2 uppercase tracking-wider">
                                             <span>Cookie</span>
                                             <span class="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 shadow-sm animate-pulse">强烈推荐填写</span>
@@ -308,7 +308,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-indigo-100">
+                                    <div class="sms-provider-options md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-indigo-100">
                                         <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-indigo-50 transition-colors group">
                                             <input type="checkbox" v-model="config.smsbower.auto_pick_country" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-indigo-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
@@ -357,13 +357,13 @@
                                     </label>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.fivesim.enabled}">
-                                    <div>
+                                <div class="sms-provider-credentials" :class="{'opacity-50 pointer-events-none grayscale-[50%] transition-opacity duration-300': !config.fivesim.enabled}">
+                                    <div class="sms-provider-field">
                                         <label class="flex justify-between items-end text-xs md:text-sm text-teal-900 font-black mb-2 uppercase tracking-wider">
                                             <span>API Key</span>
                                             <span class="text-teal-600 bg-teal-100 px-2 py-1 rounded-md border border-teal-200 shadow-sm text-[10px] md:text-xs">余额: <span class="font-mono font-bold">{{ fivesimBalance || '0.00' }}</span> $</span>
                                         </label>
-                                        <div class="flex gap-3">
+                                        <div class="sms-provider-key-row">
                                             <div class="relative flex-1">
                                                 <input :type="showPwd.fivesim_key ? 'text' : 'password'" v-model="config.fivesim.api_key" class="w-full appearance-none bg-white border border-teal-200 text-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors shadow-sm text-sm font-mono placeholder:text-slate-300" placeholder="5SIM API Key">
                                                 <button @click="showPwd.fivesim_key = !showPwd.fivesim_key" class="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-slate-400 hover:text-teal-600 focus:outline-none"><svg v-if="showPwd.fivesim_key" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 012.67-3.835m2.89-2.89A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.875 3.175m-2.89 2.89l-1.414-1.414M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg></button>
@@ -376,7 +376,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div>
+                                    <div class="sms-provider-field">
                                         <label class="block text-xs md:text-sm text-teal-900 font-black mb-2 uppercase tracking-wider">
                                             <span>服务代号 (Service)</span>
                                         </label>
@@ -487,13 +487,13 @@
                                         </div>
                                     </div>
 
-                                    <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-teal-100">
+                                    <div class="sms-provider-options md:col-span-2 flex flex-col sm:flex-row gap-4 mt-2 pt-6 border-t border-teal-100">
                                         <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-teal-200 shadow-sm cursor-pointer hover:bg-teal-50 transition-colors group">
                                             <input type="checkbox" v-model="config.fivesim.auto_pick_country" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-teal-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
                                             <span class="ml-4 text-sm font-black text-teal-900 tracking-wide">智能国家优选 <span class="text-xs font-medium text-teal-600/80 block mt-0.5">(避开黑名单/超时区)</span></span>
                                         </label>
-                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:bg-teal-50 transition-colors group">
+                                        <label class="relative inline-flex flex-1 items-center p-4 bg-white rounded-xl border border-teal-200 shadow-sm cursor-pointer hover:bg-teal-50 transition-colors group">
                                             <input type="checkbox" v-model="config.fivesim.reuse_phone" class="sr-only peer">
                                             <div class="relative w-11 h-6 shrink-0 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:bg-teal-500 shadow-inner transition-colors duration-300 group-hover:shadow-md"></div>
                                             <div class="ml-4 flex flex-col justify-center">
@@ -520,6 +520,3 @@
                                 </div>
                             </div>
                         </div>
-
-
-

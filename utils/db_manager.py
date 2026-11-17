@@ -264,12 +264,51 @@ def _account_display_status(raw_token: Any) -> str:
     return "未知"
 
 
-def get_accounts_page(page: int = 1, page_size: int = 50, hide_reg: str = "0", search: str = None, status_filter: str = "all") -> dict:
+ACCOUNT_SOURCE_ALL = "all"
+ACCOUNT_SOURCE_LOCAL = "local"
+ACCOUNT_SOURCE_X_COM = "x_com"
+ACCOUNT_SOURCE_HUAWEI = "huawei"
+
+
+def _account_source_condition(source: str = ACCOUNT_SOURCE_LOCAL) -> tuple[str, list]:
+    normalized = str(source or ACCOUNT_SOURCE_LOCAL).strip().lower()
+    lower_token_data = "LOWER(COALESCE(token_data, ''))"
+    x_com_match = (
+        f"({lower_token_data} LIKE '%\"provider\"%x_com%' "
+        f"OR {lower_token_data} LIKE '%\"status\"%x_com_registered%')"
+    )
+    huawei_match = (
+        f"({lower_token_data} LIKE '%\"provider\"%huaweicloud%' "
+        f"OR {lower_token_data} LIKE '%\"status\"%huaweicloud_registered%')"
+    )
+
+    if normalized == ACCOUNT_SOURCE_X_COM:
+        return x_com_match, []
+    if normalized == ACCOUNT_SOURCE_HUAWEI:
+        return huawei_match, []
+    if normalized == ACCOUNT_SOURCE_ALL:
+        return "", []
+    return f"NOT {x_com_match} AND NOT {huawei_match}", []
+
+
+def get_accounts_page(
+    page: int = 1,
+    page_size: int = 50,
+    hide_reg: str = "0",
+    search: str = None,
+    status_filter: str = "all",
+    source: str = ACCOUNT_SOURCE_LOCAL,
+) -> dict:
     try:
         with get_db_conn() as conn:
             c = get_cursor(conn)
             conditions = []
             params = []
+
+            source_condition, source_params = _account_source_condition(source)
+            if source_condition:
+                conditions.append(source_condition)
+                params.extend(source_params)
 
             if hide_reg == "1":
                 conditions.append(
@@ -944,6 +983,7 @@ def get_inventory_stats() -> dict:
     try:
         with get_db_conn() as conn:
             c = get_cursor(conn)
+            local_where, _ = _account_source_condition(ACCOUNT_SOURCE_LOCAL)
             sql = """
                             SELECT 
                                 COUNT(1) as total,
@@ -965,7 +1005,9 @@ def get_inventory_stats() -> dict:
                                 SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as imgsub2api_count,
                                 SUM(CASE WHEN token_data LIKE ? THEN 1 ELSE 0 END) as image2api_count
                             FROM accounts
+                            WHERE __LOCAL_WHERE__
                         """
+            sql = sql.replace("__LOCAL_WHERE__", local_where)
             params = (
                 '%CPA%', '%CPA%', '%CPA%',
                 '%SUB2API%', '%SUB2API%', '%SUB2API%',
@@ -1002,7 +1044,11 @@ def get_inventory_stats() -> dict:
                     "sub2api": r[8],
                     "sub2api_active": r[9],
                     "sub2api_disabled": r[10]
-                }
+                },
+                "sources": {
+                    ACCOUNT_SOURCE_X_COM: _get_account_source_count(ACCOUNT_SOURCE_X_COM),
+                    ACCOUNT_SOURCE_HUAWEI: _get_account_source_count(ACCOUNT_SOURCE_HUAWEI),
+                },
             }
     except Exception as e:
         print(f"[{cfg.ts()}] [ERROR] 获取统计数据失败: {e}")
@@ -1010,8 +1056,22 @@ def get_inventory_stats() -> dict:
             "local": {"total": 0, "active": 0, "disabled": 0, "unpushed": 0, "pushed": 0, "with_token": 0, "credential": 0, "reg_only": 0,
                       "imgsub2api": 0, "image2api": 0},
             "cloud": {"total": 0, "enabled": 0, "cpa": 0, "cpa_active": 0, "cpa_disabled": 0, "sub2api": 0,
-                      "sub2api_active": 0, "sub2api_disabled": 0}
+                      "sub2api_active": 0, "sub2api_disabled": 0},
+            "sources": {ACCOUNT_SOURCE_X_COM: 0, ACCOUNT_SOURCE_HUAWEI: 0},
         }
+
+
+def _get_account_source_count(source: str) -> int:
+    try:
+        with get_db_conn() as conn:
+            c = get_cursor(conn)
+            condition, _ = _account_source_condition(source)
+            execute_sql(c, f"SELECT COUNT(1) FROM accounts WHERE {condition}")
+            row = c.fetchone()
+            return int(row[0] or 0) if row else 0
+    except Exception as e:
+        print(f"[{cfg.ts()}] [ERROR] 获取账号来源数量失败: {e}")
+        return 0
 
 
 def update_account_status_by_truncated_name(truncated_name: str, is_active: int):

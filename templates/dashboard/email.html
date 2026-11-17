@@ -1,9 +1,63 @@
-                        <div v-show="currentTab === 'email'" v-if="config" class="grid grid-cols-1 xl:grid-cols-2 gap-5 md:gap-8">
-                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60">
-                                <h3 class="text-lg md:text-xl font-black text-blue-600 mb-5 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"></path></svg></span> 基础发信设置</h3>
-                                <label class="block text-slate-700 text-sm font-extrabold mb-2">API 模式选择 (email_api_mode)</label>
-                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-                                    <div class="lg:col-span-2">
+                        <div v-if="currentTab === 'email' && config" class="fluent-config-page email-settings-grid fluent-page grid grid-cols-1 xl:grid-cols-2">
+                            <div class="email-settings-panel bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60">
+                                <div class="email-settings-panel-heading">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-blue-600 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7l9 6 9-6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"></path></svg></span> 全局发信配置</h3>
+                                        <p>对所有邮箱渠道生效的默认设置。</p>
+                                    </div>
+                                    <span class="email-settings-scope">全局</span>
+                                </div>
+                                <label class="block text-slate-700 text-sm font-semibold mb-2">API 模式选择 (email_api_mode)</label>
+                                <div class="email-api-mode-field">
+                                    <details class="email-mode-picker"
+                                             @toggle="$event.currentTarget.open ? null : emailApiModeQuery = ''"
+                                             @focusout="closeEmailApiModeOnFocusOut">
+                                        <summary class="email-mode-trigger" aria-label="选择 API 模式">
+                                            <span class="email-mode-trigger-icon" aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5 12 12l8-4.5M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg>
+                                            </span>
+                                            <span class="email-mode-trigger-copy">
+                                                <strong>{{ currentEmailApiModeOption.label }}</strong>
+                                                <small>{{ currentEmailApiModeOption.description }}</small>
+                                            </span>
+                                            <span class="email-mode-chevron" aria-hidden="true"></span>
+                                        </summary>
+                                        <div class="email-mode-popover" role="dialog" aria-label="API 模式选项">
+                                            <div class="email-mode-popover-head">
+                                                <div>
+                                                    <strong>选择邮箱通道</strong>
+                                                    <span>{{ emailApiModeOptions.length }} 个可用模式</span>
+                                                </div>
+                                                <button type="button" class="email-mode-close" @click="closeEmailApiModePicker" aria-label="关闭 API 模式选择">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18"/></svg>
+                                                </button>
+                                            </div>
+                                            <label class="email-mode-search">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>
+                                                <input v-model.trim="emailApiModeQuery" type="search" placeholder="搜索模式或服务名" autocomplete="off" @keydown.esc.prevent="closeEmailApiModePicker">
+                                            </label>
+                                            <div class="email-mode-list">
+                                                <template v-for="group in emailApiModeGroups" :key="group.name">
+                                                    <div class="email-mode-group-label">{{ group.name }}</div>
+                                                    <button v-for="option in group.options"
+                                                            :key="option.value"
+                                                            type="button"
+                                                            class="email-mode-option"
+                                                            :class="{ 'is-selected': option.selected }"
+                                                            @click="selectEmailApiMode(option.value, $event)">
+                                                        <span class="email-mode-option-mark" aria-hidden="true"></span>
+                                                        <span class="email-mode-option-copy">
+                                                            <strong>{{ option.label }}</strong>
+                                                            <small>{{ option.description }}</small>
+                                                        </span>
+                                                        <svg v-if="option.selected" class="email-mode-option-check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6"/></svg>
+                                                    </button>
+                                                </template>
+                                                <div v-if="emailApiModeOptions.length === 0" class="email-mode-empty">没有匹配的邮箱模式</div>
+                                            </div>
+                                        </div>
+                                    </details>
+                                    <div class="email-api-mode-select-wrap" hidden aria-hidden="true">
                                         <select v-model="config.email_api_mode" @change="if(!['freemail', 'imap', 'cloudmail', 'cloudflare_temp_email', 'openai_cpa', 'openai_cpa_cloud', 'remail'].includes(config.email_api_mode)) config.enable_sub_domains = false;" class="w-full appearance-none bg-slate-50 border-2 border-slate-200 text-blue-700 font-black rounded-xl py-3 px-4 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors shadow-sm cursor-pointer pr-10 relative bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232563eb%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_14px_center] bg-no-repeat">
                                             <option value="cloudflare_temp_email">cloudflare_temp_email (CF 临时邮箱)</option>
                                             <option value="imap">imap (直连收件箱)</option>
@@ -30,7 +84,7 @@
                                     </div>
                                 </div>
 
-                                <label class="block text-slate-700 text-sm font-extrabold mb-1 mt-6">发信域名池 (mail_domains)</label>
+                                <label class="block text-slate-700 text-sm font-semibold mb-1 mt-5">发信域名池 (mail_domains)</label>
                                 <span class="block text-xs text-slate-400 mb-2 font-medium">支持逗号分隔多域名，此处必须填写你配置在 CF 的主域名</span>
                                 <div class="relative flex-1">
                                     <input v-if="!showPwd.mail_domains" readonly :value="maskValue(config.mail_domains)"
@@ -422,8 +476,17 @@
                                 </label>
                             </div>
 
-                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-l-4 border-l-amber-400 bg-gradient-to-br from-amber-50/30 to-white">
-                                <h3 class="text-lg md:text-xl font-black text-amber-600 mb-6 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span> 渠道专属参数</h3>
+                            <div class="email-settings-panel email-settings-panel--mode bg-white p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/60 border-l-4 border-l-amber-400 bg-gradient-to-br from-amber-50/30 to-white">
+                                <div class="email-settings-panel-heading email-settings-panel-heading--mode">
+                                    <div>
+                                        <h3 class="text-lg md:text-xl font-black text-amber-600 flex items-center gap-2 tracking-tight"><span><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg></span> 当前邮箱服务配置</h3>
+                                        <p>以下参数仅作用于右侧显示的当前渠道。</p>
+                                    </div>
+                                    <div class="email-settings-mode-chip">
+                                        <span>当前模式</span>
+                                        <strong>{{ config.email_api_mode || '未选择' }}</strong>
+                                    </div>
+                                </div>
                                 <div v-if="config.email_api_mode === 'tempmail'" class="animate-fade-in">
                                     <div class="flex items-center gap-2 mb-4">
                                         <span class="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-md border border-amber-200 shadow-sm uppercase tracking-wider">当前模式</span>
@@ -1522,5 +1585,3 @@
                             </div>
                         </div>
                         </div>
-                        </div>
-

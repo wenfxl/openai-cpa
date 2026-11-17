@@ -5,6 +5,7 @@ const CLOUD_METHODS = {
                     const json = await res.json();
                     if (json.status === 'success') {
                         this.inventoryStats.local = json.data.local;
+                        this.inventoryStats.sources = json.data.sources || { x_com: 0, huawei: 0 };
                     } else {
                         console.error("获取统计数据失败:", json.message);
                     }
@@ -52,6 +53,8 @@ const CLOUD_METHODS = {
                         details: acc.account_type === 'image2api' ? (acc.details || {}) : (this.localCloudDetails[`${acc.account_type}|${acc.id}`] || this.localCloudDetails[acc.id] || acc.details || {}),
                         _loading: null
                     }));
+                    const availableKeys = new Set(this.rawCloudAccounts.map(acc => String(acc.id) + '|' + acc.account_type));
+                    this.selectedCloud = this.selectedCloud.filter(key => availableKeys.has(String(key)));
                     this.inventoryStats.cloud = this.computeCloudStats(this.rawCloudAccounts);
                     this.applyCloudAccountView();
                     if (typeof this.fetchInventoryStats === 'function') {
@@ -115,7 +118,8 @@ const CLOUD_METHODS = {
                 }
                 const startIdx = (this.cloudPage - 1) * this.cloudPageSize;
                 this.cloudAccounts = rows.slice(startIdx, startIdx + this.cloudPageSize);
-                this.selectedCloud = [];
+                const visibleKeys = new Set(this.cloudAccounts.map(acc => String(acc.id) + '|' + acc.account_type));
+                this.selectedCloud = this.selectedCloud.filter(key => visibleKeys.has(String(key)));
             },
     async singleCloudAction(acc, action) {
                 if (action === 'delete' && !confirm('⚠️ 危险操作：确认在远端彻底删除该账号吗？')) return;
@@ -237,8 +241,12 @@ const CLOUD_METHODS = {
                 }
             },
     toggleAll(event) {
-                if (event.target.checked) this.selectedAccounts = [...this.filteredAccounts];
+                if (event.target.checked) this.selectedAccounts = this.filteredAccounts.map(account => account.email);
                 else this.selectedAccounts = [];
+            },
+    toggleAllCloud(event) {
+                if (event.target.checked) this.selectedCloud = this.filteredCloud.map(account => String(account.id) + '|' + account.account_type);
+                else this.selectedCloud = [];
             },
     viewCloudDetails(acc) {
                 if (!acc.details || Object.keys(acc.details).length === 0) {

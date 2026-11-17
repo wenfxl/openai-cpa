@@ -15,7 +15,7 @@ grok:
 cloakbrowser:
   headless: true
   humanize: true
-  # CloakBrowser 强制使用 GeoIP；运行前必须按 README 下载浏览器和 GeoIP
+  # GeoIP 仅在与浏览器代理同时开启时生效；华为注册国由页面自动适配
   geoip: true
   # 留空时 ChatGPT 和 X.com 均显式使用 en-US；GeoIP 继续提供时区/出口 IP
   locale: ""
